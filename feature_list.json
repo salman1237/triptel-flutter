@@ -164,15 +164,20 @@
       "id": "FR-106",
       "behavior": "Guest purchase resumes after login/register/Google",
       "verification": "flutter test test/features/checkout",
-      "state": "not_started",
+      "state": "blocked",
+      "blocked_reason": "This FR persists {productId, discountCode} before sending a guest to login and resumes checkout afterward -- but there is no checkout flow to persist from or resume into yet (FR-301+ are all not_started; catalog FR-201+ that would let a guest pick a product is also not_started). Building the persistence provider in isolation now (like FR-007's pendingReferralProvider, built ahead of FR-101's register screen) was considered, but unlike FR-007 there is no real producer (a guest purchase attempt) or consumer (resumed checkout) to wire it to or test meaningfully yet, and redirecting to a not-yet-existing route would be unsafe with go_router. Revisit when FR-301 (checkout review screen) exists -- build the pending-purchase provider and this FR together then, same incremental pattern as FR-007/FR-105b.",
       "evidence": null
     },
     {
       "id": "FR-107",
       "behavior": "Session restore from secure storage; 401 -> login",
       "verification": "flutter test test/features/auth",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "b3bfba5",
+        "screens": ["artifacts/FR-107-restored-session.png"],
+        "notes": "48 auth tests pass (session restore success reconstructs the token correctly incl. must_change_password from storage not the REST response, 401 clears the token and signs out, a non-401 failure leaves the token untouched). Proven non-vacuous: disabled the 401 branch, got a real failure, restored, green again. bash harness.sh verify green (121 tests). On-device: a real JWT already in secure storage from earlier salman2033 testing -- after a full reinstall + force-stop + cold launch of the freshly built APK, the Account tab immediately showed 'Signed in as salman2033' with no re-entered credentials, proving a real GET /auth/me round-trip against live beta restored the session. Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-108",
