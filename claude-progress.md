@@ -3,20 +3,20 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101..105, FR-107 done; FR-106 blocked;
-  FR-108 next).
+- **Phase:** Auth nearly done (FR-101..105, FR-107, FR-108 done; FR-106
+  blocked; FR-109 next — last item in section B).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-108** (sign out
-  clears token and cached user data — `AuthNotifier.logout()` already
-  exists from FR-101's session, just needs its own dedicated test coverage
-  and on-device verification as its own feature) `active`. Then **FR-109**
-  (suspended account screen on 403 "Account suspended" — same pattern as
-  FR-105b: `ApiException.isSuspended` likely needs adding/wiring, similar to
-  `.mustChangePassword`). That closes out the Auth section (B) entirely
-  except the two blocked/deferred items below. After auth: compatibility
-  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+ — revisit
-  **FR-106** then, building its pending-purchase provider alongside FR-301
-  the same way FR-007's referral provider was built alongside FR-101).
+- **Next step:** run the `next-feature` loop: mark **FR-109** (suspended
+  account screen on 403 "Account suspended" — API.md §0.1: sign out, show
+  a suspended screen with Support contact) `active`. `ApiException.isSuspended`
+  already exists (checked a 403 with that exact message). Login already
+  surfaces a 403 "Account suspended" as a plain inline error (FR-102's
+  session) — FR-109 should replace that with a dedicated screen, matching
+  FR-105's pattern. Like FR-105b, there's no OTHER gated endpoint yet that
+  could hit this outside login, so scope is login's 403 case specifically.
+  This closes out the Auth section (B) entirely except the two
+  blocked/deferred items below. After auth: compatibility (FR-950..952),
+  then catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** then).
   Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**,
   **FR-105b** (wire a real gated endpoint's 403 to Set Password once one
   exists), **FR-106** (blocked on catalog/checkout).
@@ -26,6 +26,24 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 9 continued (FR-108):
+  - `AuthNotifier.logout()` itself predates this round (built in FR-101's
+    session); gave it dedicated, meaningful coverage now that FR-107 exists
+    to make persistent-storage assertions actually prove something. 2 new
+    tests: `SecureStore` genuinely cleared (not just in-memory `AuthState`),
+    and a fresh `ProviderContainer` over the same storage (simulating an
+    app relaunch) correctly restores to signed-out. Confirmed no other
+    account-scoped cache exists anywhere in the app today (currency/language
+    prefs are device-level, correctly untouched by logout).
+  - Proven non-vacuous. `bash harness.sh verify` green (123 tests).
+    On-device, the strongest proof the session had evidence for yet: signed
+    in → tapped Sign out → reverted immediately → real `adb shell am
+    force-stop` (full process kill) + cold relaunch → still signed out.
+    Since FR-107's restore logic was already proven (same device, same
+    session) to pick up a real stored token, this negative result is solid
+    proof `logout()` genuinely deleted the token from OS-level storage.
+  - Reviewer agent: PASS.
+  - Commits: `2412543` (test code), `5be0a8b` (state → passing).
 - 2026-11-13 — Session 9 continued (FR-106 evaluated/blocked, FR-107):
   - **FR-106** evaluated and marked `blocked`, not built: resuming a guest
     purchase needs a real purchase attempt to persist from and a real
