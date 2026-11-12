@@ -44,8 +44,12 @@
       "id": "FR-004",
       "behavior": "4-tab shell: Home, My eSIMs, Wallet, Account",
       "verification": "flutter test test/app && bash harness.sh shot FR-004",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "ea15221",
+        "screens": ["artifacts/FR-004-home.png", "artifacts/FR-004-wallet.png"],
+        "notes": "shell_test.dart passes (4 tabs render, tapping each navigates to the right screen type). Proven non-vacuous: pointed /wallet at AccountScreen, got a real 'Found 0 widgets with type WalletScreen' failure, restored, green again. bash harness.sh verify green (13 tests total). On-device: FR-004-home.png shows the shell with Home active after a real bootstrap round-trip; a real adb tap on the Wallet tab produced FR-004-wallet.png with Wallet now highlighted and its placeholder content, proving live tab-switching. Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-005",
