@@ -30,6 +30,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="triptel" />
             </intent-filter>
+            <!-- FR-007: incoming https://triptel.co/track/<token> and
+                 https://beta.triptel.co/track/<token> links. Best-effort
+                 (no autoVerify): the backend has no /.well-known/assetlinks.json
+                 yet, so Android can't auto-verify app ownership of the domain
+                 and will offer a disambiguation chooser rather than opening
+                 this app directly. See claude-progress.md "Blocked on backend" #7. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="triptel.co" android:pathPrefix="/track" />
+                <data android:scheme="https" android:host="beta.triptel.co" android:pathPrefix="/track" />
+            </intent-filter>
         </activity>
         <meta-data
             android:name="flutterEmbedding"
