@@ -86,6 +86,9 @@ Widget _testApp({AuthApi? authApi}) {
           path: '/forgot-password',
           builder: (context, state) =>
               const Text('forgot-password-placeholder')),
+      GoRoute(
+          path: '/suspended',
+          builder: (context, state) => const Text('suspended-placeholder')),
     ],
   );
 
@@ -155,7 +158,10 @@ void main() {
     expect(find.text('home-placeholder'), findsNothing);
   });
 
-  testWidgets('shows the real 403 suspended error', (tester) async {
+  testWidgets(
+      'navigates to /suspended on a real 403 Account suspended (FR-109)', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _testApp(
           authApi: _FakeAuthApi(
@@ -172,7 +178,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('login-submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Account suspended'), findsOneWidget);
+    expect(find.text('suspended-placeholder'), findsOneWidget);
+    expect(find.text('home-placeholder'), findsNothing);
   });
 
   testWidgets('navigates to /register via the secondary link', (tester) async {

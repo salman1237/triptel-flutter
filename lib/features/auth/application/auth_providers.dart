@@ -43,6 +43,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         await secureStore.clear();
         return const AuthUnauthenticated();
       }
+      if (e.isSuspended) {
+        await secureStore.clear();
+        return const AuthSuspended();
+      }
       rethrow;
     }
   }
@@ -68,25 +72,47 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthAuthenticated(token));
   }
 
+  /// FR-109: on a 403 "Account suspended", there's no token to clear (login
+  /// never issues one for a suspended account) but the state still flips to
+  /// [AuthSuspended] so the UI routes to the dedicated screen instead of an
+  /// inline error — swallowed here rather than rethrown, since the state
+  /// change itself is what the caller should react to.
   Future<void> login(
       {required String emailOrUsername, required String password}) async {
-    final token = await ref
-        .read(authApiProvider)
-        .login(emailOrUsername: emailOrUsername, password: password);
-    await ref.read(secureStoreProvider).saveToken(token.accessToken,
-        mustChangePassword: token.mustChangePassword);
-    state = AsyncData(AuthAuthenticated(token));
+    try {
+      final token = await ref
+          .read(authApiProvider)
+          .login(emailOrUsername: emailOrUsername, password: password);
+      await ref.read(secureStoreProvider).saveToken(token.accessToken,
+          mustChangePassword: token.mustChangePassword);
+      state = AsyncData(AuthAuthenticated(token));
+    } on ApiException catch (e) {
+      if (e.isSuspended) {
+        state = const AsyncData(AuthSuspended());
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// `credential` is the Google ID token obtained with `serverClientId`.
   /// Google sign-ups carry no referral code — FR-802 (claim a referrer
   /// after the fact) is the intended follow-up, not built yet.
   Future<void> loginWithGoogle({required String credential}) async {
-    final token =
-        await ref.read(authApiProvider).loginWithGoogle(credential: credential);
-    await ref.read(secureStoreProvider).saveToken(token.accessToken,
-        mustChangePassword: token.mustChangePassword);
-    state = AsyncData(AuthAuthenticated(token));
+    try {
+      final token = await ref
+          .read(authApiProvider)
+          .loginWithGoogle(credential: credential);
+      await ref.read(secureStoreProvider).saveToken(token.accessToken,
+          mustChangePassword: token.mustChangePassword);
+      state = AsyncData(AuthAuthenticated(token));
+    } on ApiException catch (e) {
+      if (e.isSuspended) {
+        state = const AsyncData(AuthSuspended());
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// FR-105: clears `must_change_password` both server-side (via the API

@@ -14,6 +14,7 @@ class _FakeAuthApi implements AuthApi {
   _FakeAuthApi({
     this.registerError,
     this.loginMustChangePassword = false,
+    this.loginError,
     this.googleError,
     this.changePasswordError,
     this.currentUser,
@@ -22,6 +23,7 @@ class _FakeAuthApi implements AuthApi {
 
   final ApiException? registerError;
   final bool loginMustChangePassword;
+  final ApiException? loginError;
   final ApiException? googleError;
   final ApiException? changePasswordError;
   final CurrentUser? currentUser;
@@ -52,6 +54,7 @@ class _FakeAuthApi implements AuthApi {
   @override
   Future<AuthToken> login(
       {required String emailOrUsername, required String password}) async {
+    if (loginError != null) throw loginError!;
     return AuthToken(
       accessToken: 'jwt-login',
       tokenType: 'bearer',
@@ -393,6 +396,108 @@ void main() {
         container.read(authNotifierProvider).value as AuthAuthenticated;
     expect(state.token.mustChangePassword, isTrue,
         reason: 'flag stays set when the call fails');
+  });
+
+  test(
+      'login() goes to AuthSuspended on a 403 Account suspended, no token saved',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            loginError: const ApiException(
+                statusCode: 403, message: 'Account suspended'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .login(emailOrUsername: 'suspended-user', password: 'whatever');
+
+    expect(container.read(authNotifierProvider).value, isA<AuthSuspended>());
+    final store = container.read(secureStoreProvider);
+    expect(await store.readToken(), isNull);
+  });
+
+  test('loginWithGoogle() goes to AuthSuspended on a 403 Account suspended',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            googleError: const ApiException(
+                statusCode: 403, message: 'Account suspended'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .loginWithGoogle(credential: 'fake-id-token');
+
+    expect(container.read(authNotifierProvider).value, isA<AuthSuspended>());
+  });
+
+  test('a non-suspended login failure still rethrows normally', () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            loginError: const ApiException(
+              statusCode: 401,
+              message: 'Invalid email/username or password',
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+
+    await expectLater(
+      container
+          .read(authNotifierProvider.notifier)
+          .login(emailOrUsername: 'x', password: 'wrong'),
+      throwsA(isA<ApiException>()),
+    );
+    expect(
+        container.read(authNotifierProvider).value, isA<AuthUnauthenticated>());
+  });
+
+  test(
+      'restoring a session goes to AuthSuspended and clears the token on a 403 Account suspended',
+      () async {
+    installFakeSecureStorage();
+    await SecureStore()
+        .saveToken('now-suspended-jwt', mustChangePassword: false);
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            currentUserError: const ApiException(
+                statusCode: 403, message: 'Account suspended'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(authNotifierProvider.future);
+
+    expect(state, isA<AuthSuspended>());
+    final store = container.read(secureStoreProvider);
+    expect(await store.readToken(), isNull);
   });
 
   test('logout() clears the session', () async {

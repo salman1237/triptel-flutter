@@ -27,5 +27,9 @@ void main() {
     test('goes to /home when unauthenticated (defensive default)', () {
       expect(postAuthRoute(const AuthUnauthenticated()), '/home');
     });
+
+    test('goes to /suspended when suspended (FR-109)', () {
+      expect(postAuthRoute(const AuthSuspended()), '/suspended');
+    });
   });
 }

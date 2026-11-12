@@ -4,6 +4,7 @@ import 'app/deep_link_bridge.dart';
 import 'app/router.dart';
 import 'core/i18n/rtl_scope.dart';
 import 'core/theme/theme.dart';
+import 'features/auth/presentation/auth_route_bridge.dart';
 import 'features/bootstrap/presentation/bootstrap_gate.dart';
 
 void main() {
@@ -21,8 +22,10 @@ class TriptelApp extends StatelessWidget {
       theme: buildAppTheme(),
       routerConfig: appRouter,
       builder: (context, child) => DeepLinkBridge(
-        child: BootstrapGate(
-          child: RtlScope(child: child ?? const SizedBox.shrink()),
+        child: AuthRouteBridge(
+          child: BootstrapGate(
+            child: RtlScope(child: child ?? const SizedBox.shrink()),
+          ),
         ),
       ),
     );
