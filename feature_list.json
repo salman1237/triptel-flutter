@@ -183,8 +183,12 @@
       "id": "FR-108",
       "behavior": "Sign out clears token and cached user data",
       "verification": "flutter test test/features/auth",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "2412543",
+        "screens": ["artifacts/FR-108-signed-out.png", "artifacts/FR-108-relaunch-still-signed-out.png"],
+        "notes": "AuthNotifier.logout() existed since FR-101; this round gave it dedicated coverage now that FR-107 makes it meaningful. 2 new tests pass: SecureStore is actually cleared (token + must_change_password), and a fresh ProviderContainer over the same storage (simulating relaunch) restores to signed-out. No other account-scoped cache exists in the app (currency/language prefs are correctly device-level, not account-level, and untouched). 123 tests total pass. Proven non-vacuous: disabled the clear() call, got 2 real failures, restored, green again. bash harness.sh verify green. On-device: signed in -> tapped Sign out -> immediately reverted to Create account/Sign in -> real adb force-stop + cold relaunch -> still signed out, proving the token was genuinely gone from persistent storage (FR-107's own restore logic, verified on the same device, would have found it otherwise). Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-109",
