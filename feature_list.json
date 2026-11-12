@@ -72,6 +72,17 @@
     {
       "id": "FR-006",
       "behavior": "Language switch loads translations; Arabic renders RTL",
+      "verification": "flutter test test/core/i18n",
+      "state": "passing",
+      "evidence": {
+        "commit": "4b2e47e",
+        "screens": ["artifacts/FR-006-account2.png", "artifacts/FR-006-sheet.png", "artifacts/FR-006-rtl.png"],
+        "notes": "17 tests pass (resolveInitialLanguage incl. English-unavailable fallback, isRtlLanguage, translate, translations loader fetch/cache/fallback mirroring loadBootstrap, provider persistence, pill switcher widget flow incl. Directionality flip). Proven non-vacuous: broke resolveInitialLanguage's fallback, got real failures, restored, green again. bash harness.sh verify green (50 tests). On-device end-to-end against live beta: EN pill on Account -> tapped -> sheet showed real /settings/languages (English/Bengali/Arabic/Spanish/French/German) -> tapped Arabic -> whole app mirrored to RTL (pill moved to top-left, bottom tab order reversed, chevron and text flipped) -- a real full-app RTL mirror driven by live data. Reviewed by reviewer agent: PASS, with one advisory (see FR-006b) not blocking this feature. Verification path corrected from a stale test/features/bootstrap placeholder to test/core/i18n (logged in DECISIONS.md)."
+      }
+    },
+    {
+      "id": "FR-006b",
+      "behavior": "BootstrapGate's splash/maintenance/error branches also respect the saved RTL language, not just normal app content",
       "verification": "flutter test test/features/bootstrap",
       "state": "not_started",
       "evidence": null
