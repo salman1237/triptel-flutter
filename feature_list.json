@@ -11,8 +11,12 @@
       "id": "FR-001",
       "behavior": "Theme tokens + shared components render (Design_System.md §4)",
       "verification": "flutter test test/core/theme && bash harness.sh shot FR-001",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "a4f79a5",
+        "screens": ["artifacts/FR-001.png"],
+        "notes": "5 theme tests pass (proven non-vacuous by breaking AppColors.primary and seeing tokens_test.dart + shared_components_test.dart fail, then restoring). bash harness.sh verify green (analyze, format, full test suite, debug APK build). Device screenshot on 10EF1302BJ000R5 shows hero header, search pill, segmented control, country row, balance card, list group, info box, plan option tile, sticky total bar in Triptel purple/white. Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-002",
