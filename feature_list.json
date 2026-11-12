@@ -113,8 +113,12 @@
       "id": "FR-102",
       "behavior": "Login with email or username; must_change_password persisted",
       "verification": "flutter test test/features/auth && bash harness.sh shot FR-102",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "24ca106",
+        "screens": ["artifacts/FR-102-login-form.png", "artifacts/FR-102-after-submit.png", "artifacts/FR-102-signed-in.png"],
+        "notes": "26 auth tests pass total (7 new: login happy path, empty-field client error, real 401/403 inline, secondary link, plus must_change_password persistence end-to-end). Proven non-vacuous: forced SecureStore to always write must_change_password=false, got a real failure, restored, green again. bash harness.sh verify green (99 tests). On-device: real login against live beta with a pre-existing real account the user provided (not written to any repo file) -- submitted, navigated to Home, Account tab showed 'Signed in as salman2033' with working Sign out, a genuinely different proof path from FR-101's fresh-registration evidence. Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-103",
