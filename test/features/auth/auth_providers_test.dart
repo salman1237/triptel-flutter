@@ -416,4 +416,57 @@ void main() {
     expect(
         container.read(authNotifierProvider).value, isA<AuthUnauthenticated>());
   });
+
+  test(
+      'logout() clears the token and must_change_password from secure storage (FR-108)',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider
+            .overrideWithValue(_FakeAuthApi(loginMustChangePassword: true)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .login(emailOrUsername: 'salman2033', password: 'whatever');
+    final store = container.read(secureStoreProvider);
+    expect(await store.readToken(), isNotNull);
+
+    await container.read(authNotifierProvider.notifier).logout();
+
+    expect(await store.readToken(), isNull);
+    expect(await store.readMustChangePassword(), isFalse);
+  });
+
+  test(
+      'a fresh app start after logout does not restore the old session (FR-107+FR-108)',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [authApiProvider.overrideWithValue(_FakeAuthApi())],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container.read(authNotifierProvider.notifier).register(
+          email: 'a@b.co',
+          username: 'alice',
+          password: 'min8chars',
+        );
+    await container.read(authNotifierProvider.notifier).logout();
+
+    // Simulates relaunching the app: a brand new provider container reading
+    // the same (now-cleared) secure storage.
+    final relaunched = ProviderContainer(
+      overrides: [authApiProvider.overrideWithValue(_FakeAuthApi())],
+    );
+    addTearDown(relaunched.dispose);
+
+    final state = await relaunched.read(authNotifierProvider.future);
+    expect(state, isA<AuthUnauthenticated>());
+  });
 }
