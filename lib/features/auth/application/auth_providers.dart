@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/storage/secure_store_provider.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/auth_api.dart';
 import '../data/google_auth_service.dart';
+import '../data/models/auth_token.dart';
 import 'auth_state.dart';
 
 final authApiProvider =
@@ -11,15 +13,38 @@ final authApiProvider =
 final googleAuthServiceProvider =
     Provider<GoogleAuthService>((ref) => GoogleAuthServiceImpl());
 
-/// FR-101/102/108's session state. FR-107 (restore a session that already
-/// existed when the app launched, via `GET /auth/me`) isn't built yet — for
-/// now a signed-in session only lives for the current app run, though the
-/// token is still persisted to secure storage so FR-107 has something to
-/// read once it exists.
+/// FR-101/102/105/107/108's session state.
 class AuthNotifier extends AsyncNotifier<AuthState> {
+  /// FR-107: a token already in secure storage (from a previous app run) is
+  /// restored via `GET /auth/me`, which doesn't return `must_change_password`
+  /// (API.md §2) — that flag is read from secure storage instead. A 401
+  /// means the token no longer works, so it's cleared and the app falls
+  /// back to signed-out; any other failure (e.g. network down) propagates
+  /// as an `AsyncError`, which the UI already treats like unauthenticated.
   @override
   Future<AuthState> build() async {
-    return const AuthUnauthenticated();
+    final secureStore = ref.watch(secureStoreProvider);
+    final accessToken = await secureStore.readToken();
+    if (accessToken == null) return const AuthUnauthenticated();
+
+    try {
+      final user = await ref.read(authApiProvider).fetchCurrentUser();
+      final mustChangePassword = await secureStore.readMustChangePassword();
+      return AuthAuthenticated(AuthToken(
+        accessToken: accessToken,
+        tokenType: 'bearer',
+        role: user.role,
+        userId: user.id,
+        username: user.username,
+        mustChangePassword: mustChangePassword,
+      ));
+    } on ApiException catch (e) {
+      if (e.isUnauthorized) {
+        await secureStore.clear();
+        return const AuthUnauthenticated();
+      }
+      rethrow;
+    }
   }
 
   Future<void> register({

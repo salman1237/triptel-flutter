@@ -7,6 +7,7 @@ import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/features/auth/application/auth_providers.dart';
 import 'package:triptel/features/auth/data/auth_api.dart';
 import 'package:triptel/features/auth/data/models/auth_token.dart';
+import 'package:triptel/features/auth/data/models/current_user.dart';
 import 'package:triptel/features/auth/presentation/register_screen.dart';
 import 'secure_storage_test_mock.dart';
 
@@ -51,6 +52,9 @@ class _FakeAuthApi implements AuthApi {
   Future<void> changePassword(
           {required String currentPassword, required String newPassword}) =>
       throw UnimplementedError();
+
+  @override
+  Future<CurrentUser> fetchCurrentUser() => throw UnimplementedError();
 }
 
 Widget _testApp({AuthApi? authApi}) {

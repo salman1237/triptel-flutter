@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import 'models/auth_token.dart';
+import 'models/current_user.dart';
 
 /// Auth endpoints this app uses (API.md §2). Abstracted so application-layer
 /// logic (AuthNotifier) can be unit-tested against a fake.
@@ -34,6 +35,11 @@ abstract class AuthApi {
   /// same as current — all surfaced to the user verbatim.
   Future<void> changePassword(
       {required String currentPassword, required String newPassword});
+
+  /// `GET /auth/me` (API.md §2): used on launch to restore a session from a
+  /// token already in secure storage (FR-107). Does NOT return
+  /// `must_change_password` — that must come from secure storage.
+  Future<CurrentUser> fetchCurrentUser();
 }
 
 class AuthApiImpl implements AuthApi {
@@ -95,5 +101,11 @@ class AuthApiImpl implements AuthApi {
       '/auth/change-password',
       data: {'current_password': currentPassword, 'new_password': newPassword},
     );
+  }
+
+  @override
+  Future<CurrentUser> fetchCurrentUser() async {
+    final data = await _client.get('/auth/me');
+    return CurrentUser.fromJson(data as Map<String, dynamic>);
   }
 }

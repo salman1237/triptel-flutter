@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/network/api_exception.dart';
+import 'package:triptel/core/storage/secure_store.dart';
 import 'package:triptel/core/storage/secure_store_provider.dart';
 import 'package:triptel/features/auth/application/auth_providers.dart';
 import 'package:triptel/features/auth/application/auth_state.dart';
 import 'package:triptel/features/auth/data/auth_api.dart';
 import 'package:triptel/features/auth/data/models/auth_token.dart';
+import 'package:triptel/features/auth/data/models/current_user.dart';
 import 'secure_storage_test_mock.dart';
 
 class _FakeAuthApi implements AuthApi {
@@ -14,12 +16,16 @@ class _FakeAuthApi implements AuthApi {
     this.loginMustChangePassword = false,
     this.googleError,
     this.changePasswordError,
+    this.currentUser,
+    this.currentUserError,
   });
 
   final ApiException? registerError;
   final bool loginMustChangePassword;
   final ApiException? googleError;
   final ApiException? changePasswordError;
+  final CurrentUser? currentUser;
+  final ApiException? currentUserError;
 
   static const token = AuthToken(
     accessToken: 'jwt-abc',
@@ -79,6 +85,19 @@ class _FakeAuthApi implements AuthApi {
   }) async {
     if (changePasswordError != null) throw changePasswordError!;
   }
+
+  @override
+  Future<CurrentUser> fetchCurrentUser() async {
+    if (currentUserError != null) throw currentUserError!;
+    return currentUser ??
+        const CurrentUser(
+          id: 'u-1',
+          email: 'alice@example.com',
+          username: 'alice',
+          role: 'USER',
+          status: 'ACTIVE',
+        );
+  }
 }
 
 void main() {
@@ -93,6 +112,87 @@ void main() {
 
     expect(await container.read(authNotifierProvider.future),
         isA<AuthUnauthenticated>());
+  });
+
+  test('restores the session from a stored token via GET /auth/me (FR-107)',
+      () async {
+    installFakeSecureStorage();
+    await SecureStore().saveToken('stored-jwt', mustChangePassword: true);
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            currentUser: const CurrentUser(
+              id: 'u-9',
+              email: 'x@y.co',
+              username: 'restored',
+              role: 'USER',
+              status: 'ACTIVE',
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(authNotifierProvider.future);
+    expect(state, isA<AuthAuthenticated>());
+    final token = (state as AuthAuthenticated).token;
+    expect(token.accessToken, 'stored-jwt');
+    expect(token.username, 'restored');
+    // must_change_password only ever comes from Token responses, never
+    // GET /auth/me (API.md §2) -- it has to come from secure storage.
+    expect(token.mustChangePassword, isTrue);
+  });
+
+  test('clears the session on a 401 from GET /auth/me (stale token)', () async {
+    installFakeSecureStorage();
+    await SecureStore().saveToken('stale-jwt', mustChangePassword: false);
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            currentUserError: const ApiException(
+              statusCode: 401,
+              message: 'Could not validate authentication credentials',
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final state = await container.read(authNotifierProvider.future);
+    expect(state, isA<AuthUnauthenticated>());
+    final store = container.read(secureStoreProvider);
+    expect(await store.readToken(), isNull);
+  });
+
+  test('a non-401 failure while restoring does not clear the stored token',
+      () async {
+    installFakeSecureStorage();
+    await SecureStore()
+        .saveToken('flaky-network-jwt', mustChangePassword: false);
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            currentUserError: const ApiException(
+                statusCode: 503, message: 'Service unavailable'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(authNotifierProvider.future),
+      throwsA(isA<ApiException>()),
+    );
+
+    final store = container.read(secureStoreProvider);
+    expect(await store.readToken(), 'flaky-network-jwt',
+        reason: 'only a 401 should clear the token, not a transient failure');
   });
 
   test('register() signs the user in and persists the token', () async {
