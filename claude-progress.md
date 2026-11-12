@@ -3,25 +3,42 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101, FR-102, FR-103 done; FR-104 next).
+- **Phase:** Auth in progress (FR-101..104 done; FR-105 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-104** (forgot/reset
-  password: `POST /auth/forgot-password` request link in-app, the emailed
-  link opens the web — no app deep link for password reset exists) `active`.
-  `AuthApi.forgotPassword()` already exists (added while FR-103 was in
-  flight) — this feature mainly needs the request screen + its own tests.
-  Then **FR-105** (forced password change: route to Set Password when
-  `must_change_password` is true or on the 403 "set your own password"
-  response — `AuthNotifier` already has `must_change_password` from FR-102's
-  login). After auth: compatibility (FR-950..952), then catalog (FR-201+),
-  then checkout (FR-301+). Low-priority follow-ups logged, not urgent:
-  **FR-005b**, **FR-006b**.
+- **Next step:** run the `next-feature` loop: mark **FR-105** (forced
+  password change: route to Set Password when `must_change_password` is
+  true or on the 403 "Please set your own password before buying or moving
+  money." response — `AuthNotifier` already persists `must_change_password`
+  from FR-102's login, via `SecureStore.readMustChangePassword()`. Spec says
+  this must NOT block viewing My eSIMs) `active`. After auth: compatibility
+  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+). FR-106
+  (resume purchase after auth) and FR-107/108/109 (session restore, sign
+  out, suspended screen) are the remaining auth items after FR-105.
+  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-12 — Session 9 continued (FR-104):
+  - `ForgotPasswordScreen` — email field, client-side `validateEmail`
+    (reused from FR-101), POSTs `/auth/forgot-password` via `authApiProvider`
+    directly (not `authNotifierProvider` — this is a one-shot request, not a
+    session change). Always shows the identical generic success message
+    regardless of the response, matching API.md's "never enumerate" rule;
+    the success copy explicitly says the link opens on the web, not in the
+    app (no deep link exists for `/auth/reset-password?token=`).
+  - "Forgot password?" link added to `LoginScreen`, mirrored correctly in
+    RTL via `AlignmentDirectional.centerEnd`.
+  - 4 new tests, proven non-vacuous (disabled the success state transition,
+    watched 2 tests fail for real, restored). `bash harness.sh verify`
+    green (107 tests). On-device: real `POST /auth/forgot-password` against
+    live beta using the FR-101 test account — generic success shown with
+    the required web-link disclaimer.
+  - Reviewer agent: PASS, confirmed the no-enumeration property genuinely
+    holds (no code path branches on whether the email exists).
+  - Commits: `4b4e6d9` (feature code), `0c738c8` (state → passing).
 - 2026-11-12 — Session 9 (FR-103):
   - `GoogleAuthService` wraps `google_sign_in` v7 (`GoogleSignIn.instance
     .initialize(serverClientId:)` then `.authenticate()`), deliberately thin
