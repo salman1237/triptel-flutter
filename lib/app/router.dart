@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../features/account/presentation/account_screen.dart';
+import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/catalog/presentation/home_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
@@ -20,6 +21,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
         path: '/register', builder: (context, state) => const RegisterScreen()),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),

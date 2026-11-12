@@ -56,9 +56,20 @@ class AccountScreen extends ConsumerWidget {
             _ => Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-                child: PillButton(
-                  label: 'Create account',
-                  onPressed: () => context.go('/register'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PillButton(
+                      label: 'Create account',
+                      onPressed: () => context.go('/register'),
+                    ),
+                    const SizedBox(height: 12),
+                    PillButton(
+                      label: 'Sign in',
+                      variant: PillButtonVariant.secondary,
+                      onPressed: () => context.go('/login'),
+                    ),
+                  ],
                 ),
               ),
           },
