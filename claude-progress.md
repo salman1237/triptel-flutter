@@ -3,16 +3,45 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation (FR-001..003 done; FR-004 next).
+- **Phase:** Foundation (FR-001..004 done; FR-005 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-004** (4-tab shell: Home ·
-  My eSIMs · Wallet · Account, `go_router` `StatefulShellRoute`) `active`. It
-  replaces `main.dart`'s `BootstrapGate(child: ThemePreviewScreen())` placeholder
-  with the real shell (keep the preview screen around for FR-001 evidence/dev use,
-  just stop wiring it as `home`). Then FR-005 (currency) → FR-006 (language/RTL) →
-  FR-007 (deep links), then auth (FR-101..109), then compatibility (FR-950..952).
+- **Next step:** run the `next-feature` loop: mark **FR-005** (currency display &
+  switcher: EUR → selected currency via `/settings/rates`, pill switcher in
+  headers, persist via `PUT /auth/me/preferences` when signed in else locally)
+  `active`. Note auth doesn't exist yet (FR-101..109 are `not_started`), so FR-005
+  should build the local-persistence path now and leave a TODO/blocked note for
+  the signed-in sync until auth lands. Then FR-006 (language/RTL) → FR-007 (deep
+  links), then auth (FR-101..109), then compatibility (FR-950..952).
 
 ## Done
+- 2026-11-12 — Session 3 (FR-004):
+  - `lib/app/router.dart` — `GoRouter` with one `StatefulShellRoute.indexedStack`,
+    4 branches (`/home`, `/my-esims`, `/wallet`, `/account`), each its own
+    navigation stack.
+  - `lib/app/app_shell.dart` — hand-rolled bottom nav bar from FR-001 tokens
+    (not Material's `BottomNavigationBar`), `goBranch(i, initialLocation: i ==
+    currentIndex)` so tapping the active tab resets it to root but switching
+    tabs preserves each one's stack.
+  - Four placeholder screens (`lib/features/{catalog,esims,wallet,account}/presentation/`),
+    each just an `EmptyState` pointing at the FR that owns the real content
+    (FR-201/402/601/1001) — FR-004 is shell-only by design.
+  - `lib/main.dart` switched to `MaterialApp.router`; `BootstrapGate` now wraps
+    the whole routed app via the `builder` param so maintenance mode still
+    gates everything, including go_router's own error page.
+  - Test: `test/app/shell_test.dart` renders the full app (bootstrapProvider
+    overridden to skip the network), asserts all 4 tabs and that tapping each
+    navigates to the right screen. Proven non-vacuous: pointed `/wallet` at
+    `AccountScreen`, got a real "Found 0 widgets with type WalletScreen"
+    failure, restored, green again.
+  - `bash harness.sh verify` green (13 tests). On-device (10EF1302BJ000R5):
+    `artifacts/FR-004-home.png` after a real bootstrap round-trip, then a real
+    `adb shell input tap` on the Wallet tab produced `artifacts/FR-004-wallet.png`
+    with Wallet now highlighted — confirms live tab-switching, not just the
+    widget test.
+  - Reviewer agent: PASS (re-ran the revert experiment independently, confirmed
+    FR-001's tests still pass, checked Rules.md scope — no raw colours, no
+    early-built Home/Wallet/etc. content).
+  - Commits: `ea15221` (feature code), `e022ad3` (state → passing).
 - 2026-11-12 — Session 2 (FR-002, FR-003):
   - `lib/core/config/env.dart` (API_BASE_URL dart-define), `lib/core/network/`
     (`ApiClient` — the one dio instance, `ApiException` mapping `detail` per
