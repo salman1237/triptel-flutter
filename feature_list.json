@@ -124,8 +124,13 @@
       "id": "FR-103",
       "behavior": "Google sign-in via serverClientId -> POST /auth/google",
       "verification": "flutter test test/features/auth && bash harness.sh shot FR-103",
-      "state": "not_started",
-      "evidence": null
+      "state": "blocked",
+      "blocked_reason": "All code is built and unit-tested (AuthApi.loginWithGoogle -> POST /auth/google, AuthNotifier.loginWithGoogle, GoogleAuthService wrapping google_sign_in v7, LoginScreen's Continue with Google button shown only when /settings/public.google_client_id is non-null). On-device the button correctly opens the native Google account picker (the backend's real google_client_id is already configured), but selecting a real account twice in a row both times returned GoogleSignInException 'activity is cancelled by the user' rather than completing -- consistent with the documented gap: no Android OAuth client is registered in Google Cloud Console for co.triptel.app + this machine's debug keystore SHA-1, which the native Google Sign-In SDK requires even though only the web client id is sent to the backend. Needs the user to register that Android OAuth client (see claude-progress.md 'User actions pending') before this can be verified end-to-end and marked passing.",
+      "evidence": {
+        "commit": "87729cc",
+        "screens": ["artifacts/FR-103-login-google.png", "artifacts/FR-103-after-cancel.png", "artifacts/FR-103-result-check.png"],
+        "notes": "19 new/changed unit+widget tests (loginWithGoogle success/error, Google button hidden when google_client_id is null, shown+flow works with a fake GoogleAuthService, cancels gracefully when the picker returns null). Proven non-vacuous. bash harness.sh verify green (99 tests). Screenshots: artifacts/FR-103-login-google.png (button visible), artifacts/FR-103-after-cancel.png and FR-103-result-check.png (real on-device attempts both surfaced the cancellation error cleanly, no crash -- intermediate screenshots of the real Google account picker were viewed then deleted immediately, never committed, since they showed the device owner's real name/email)."
+      }
     },
     {
       "id": "FR-104",
