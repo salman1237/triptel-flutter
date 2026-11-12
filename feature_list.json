@@ -22,15 +22,23 @@
       "id": "FR-002",
       "behavior": "Bootstrap loads /settings/public, /rates, /languages with cache",
       "verification": "flutter test test/features/bootstrap",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "f07ad28",
+        "screens": ["artifacts/FR-002.png", "artifacts/FR-002-loaded.png"],
+        "notes": "6 bootstrap tests pass. Proven non-vacuous: disabled cache.save() in loadBootstrap, got 2 real runtime failures (fallback test threw, fresh-fetch cache assertion failed null), restored, green again. bash harness.sh verify green. On-device (10EF1302BJ000R5) real network round-trip against beta.triptel.co: FR-002.png caught the splash mid-load, FR-002-loaded.png 5s later shows the live /settings/public response (maintenance_mode=false) passed the gate through to content. Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-003",
       "behavior": "maintenance_mode=true shows blocking screen",
       "verification": "flutter test test/features/bootstrap",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "f07ad28",
+        "screens": [],
+        "notes": "Covered by bootstrap_gate_test.dart 'shows MaintenanceScreen when maintenance_mode is true': asserts MaintenanceScreen renders, non-null support email shows, null contacts stay hidden (API.md §1), and child content stays hidden. No on-device screenshot: the live beta backend is not currently in maintenance mode, so there is no way to produce a real device screenshot of this screen without flipping a flag on someone else's backend (out of scope). Reviewed by reviewer agent: PASS, noted as a disclosed limitation not a workaround."
+      }
     },
     {
       "id": "FR-004",
