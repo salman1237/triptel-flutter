@@ -135,8 +135,12 @@
       "id": "FR-104",
       "behavior": "Forgot password request; reset link opens web",
       "verification": "flutter test test/features/auth",
-      "state": "active",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "4b4e6d9",
+        "screens": ["artifacts/FR-104-form.png", "artifacts/FR-104-filled.png", "artifacts/FR-104-result.png"],
+        "notes": "36 auth tests pass (4 new: client-side email validation, generic success shown, same success for an unknown email (no-enumeration), real backend error stays on form). Proven non-vacuous: disabled the success state transition, got real failures, restored, green again. bash harness.sh verify green (107 tests). On-device: real POST /auth/forgot-password against live beta with the FR-101 test account -- generic success message shown with the required 'opens on the web, not in this app' disclaimer. Reviewed by reviewer agent: PASS (confirmed no-enumeration property genuinely holds -- no branching on the response anywhere in the screen)."
+      }
     },
     {
       "id": "FR-105",
