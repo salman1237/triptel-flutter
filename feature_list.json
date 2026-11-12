@@ -124,19 +124,18 @@
       "id": "FR-103",
       "behavior": "Google sign-in via serverClientId -> POST /auth/google",
       "verification": "flutter test test/features/auth && bash harness.sh shot FR-103",
-      "state": "blocked",
-      "blocked_reason": "All code is built and unit-tested (AuthApi.loginWithGoogle -> POST /auth/google, AuthNotifier.loginWithGoogle, GoogleAuthService wrapping google_sign_in v7, LoginScreen's Continue with Google button shown only when /settings/public.google_client_id is non-null). On-device the button correctly opens the native Google account picker (the backend's real google_client_id is already configured), but selecting a real account twice in a row both times returned GoogleSignInException 'activity is cancelled by the user' rather than completing -- consistent with the documented gap: no Android OAuth client is registered in Google Cloud Console for co.triptel.app + this machine's debug keystore SHA-1, which the native Google Sign-In SDK requires even though only the web client id is sent to the backend. Needs the user to register that Android OAuth client (see claude-progress.md 'User actions pending') before this can be verified end-to-end and marked passing.",
+      "state": "passing",
       "evidence": {
-        "commit": "87729cc",
-        "screens": ["artifacts/FR-103-login-google.png", "artifacts/FR-103-after-cancel.png", "artifacts/FR-103-result-check.png"],
-        "notes": "19 new/changed unit+widget tests (loginWithGoogle success/error, Google button hidden when google_client_id is null, shown+flow works with a fake GoogleAuthService, cancels gracefully when the picker returns null). Proven non-vacuous. bash harness.sh verify green (99 tests). Screenshots: artifacts/FR-103-login-google.png (button visible), artifacts/FR-103-after-cancel.png and FR-103-result-check.png (real on-device attempts both surfaced the cancellation error cleanly, no crash -- intermediate screenshots of the real Google account picker were viewed then deleted immediately, never committed, since they showed the device owner's real name/email)."
+        "commit": "743d13f",
+        "screens": ["artifacts/FR-103-google-logo.png", "artifacts/FR-103-google-signed-in-account.png", "artifacts/FR-103-signed-in-google.png", "artifacts/FR-103-login-google.png", "artifacts/FR-103-after-cancel.png", "artifacts/FR-103-result-check.png"],
+        "notes": "User registered the Android OAuth client for co.triptel.app in Google Cloud Console (SHA-1 D9:9B:92:70:99:D3:64:68:A6:F2:62:BB:56:81:98:EB:C6:14:E6:B9), unblocking the native flow -- no code change needed, only the missing external registration. Retested end-to-end on device 10EF1302BJ000R5: Continue with Google -> account picker -> 'Allow Google to sign you in to Triptel' consent screen (this step is itself proof the OAuth client is now correctly registered -- it previously failed immediately with 'cancelled by the user', see FR-103-after-cancel.png/FR-103-result-check.png from the earlier blocked attempt) -> Agree and share -> POST /auth/google succeeded -> Account tab shows 'Signed in as mdimranhosenbd96' with a working Sign out button. Also added a hand-drawn GoogleLogo (Google's real 4-colour G path data, no new dependency) on the button per user request. 19+ tests pass incl. GoogleLogo. bash harness.sh verify green. Screenshots containing the real account's name/email/photo were viewed then deleted immediately, never committed -- only PII-free screenshots remain. Reviewed by reviewer agent: PASS."
       }
     },
     {
       "id": "FR-104",
       "behavior": "Forgot password request; reset link opens web",
       "verification": "flutter test test/features/auth",
-      "state": "not_started",
+      "state": "active",
       "evidence": null
     },
     {
