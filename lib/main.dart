@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'app/theme_preview_screen.dart';
+import 'app/router.dart';
 import 'core/theme/theme.dart';
 import 'features/bootstrap/presentation/bootstrap_gate.dart';
 
@@ -13,12 +13,13 @@ class TriptelApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Triptel',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      // TODO(FR-004): replace the preview-screen child with the real 4-tab shell.
-      home: const BootstrapGate(child: ThemePreviewScreen()),
+      routerConfig: appRouter,
+      builder: (context, child) =>
+          BootstrapGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }
