@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/storage/shared_prefs_provider.dart';
 import '../data/bootstrap_api.dart';
 import '../data/bootstrap_cache.dart';
 import '../data/models/bootstrap_data.dart';
@@ -10,10 +10,6 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 final bootstrapApiProvider = Provider<BootstrapApi>(
   (ref) => BootstrapApiImpl(ref.watch(apiClientProvider)),
-);
-
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>(
-  (ref) => SharedPreferences.getInstance(),
 );
 
 final bootstrapCacheProvider = FutureProvider<BootstrapCache>((ref) async {
