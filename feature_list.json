@@ -102,8 +102,12 @@
       "id": "FR-101",
       "behavior": "Register with optional referral code -> signed in",
       "verification": "flutter test test/features/auth && bash harness.sh shot FR-101",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "95cf287",
+        "screens": ["artifacts/FR-101-register-form.png", "artifacts/FR-101-result.png", "artifacts/FR-101-signed-in.png"],
+        "notes": "19 tests pass (password/email/username validation, AuthNotifier register/logout incl. ApiException surfacing, register screen happy path + client/backend errors + referral pre-fill incl. not overwriting a user-typed value). Proven non-vacuous for both password validation and referral pre-fill (broke each, got real failures, restored, green again). bash harness.sh verify green (97 tests). On-device real end-to-end registration against live beta: created a real new account (triptel_test_<timestamp>), app navigated to Home, Account tab then showed 'Signed in as triptel_test_<timestamp>' with a working Sign out button. Reviewed by reviewer agent: PASS; added the referral-prefill test it flagged as a gap before this commit."
+      }
     },
     {
       "id": "FR-102",
