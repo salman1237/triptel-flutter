@@ -3,17 +3,50 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation (FR-001..004 done; FR-005 next).
+- **Phase:** Foundation (FR-001..005 done; FR-006 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-005** (currency display &
-  switcher: EUR → selected currency via `/settings/rates`, pill switcher in
-  headers, persist via `PUT /auth/me/preferences` when signed in else locally)
-  `active`. Note auth doesn't exist yet (FR-101..109 are `not_started`), so FR-005
-  should build the local-persistence path now and leave a TODO/blocked note for
-  the signed-in sync until auth lands. Then FR-006 (language/RTL) → FR-007 (deep
-  links), then auth (FR-101..109), then compatibility (FR-950..952).
+- **Next step:** run the `next-feature` loop: mark **FR-006** (language switcher &
+  RTL: `/settings/languages` list already cached by bootstrap, load
+  `/settings/translations/{code}` on switch, `EdgeInsetsDirectional`/
+  `AlignmentDirectional` only per Rules.md so Arabic renders RTL) `active`. Then
+  FR-007 (deep links) closes out the Foundation section, then auth (FR-101..109),
+  then compatibility (FR-950..952). **FR-005b** (not_started, low priority) is a
+  reviewer-flagged follow-up: add a direct provider-level test for
+  `selectedCurrencyRateProvider` once a real screen consumes it — currently
+  nothing does, so it's not urgent.
 
 ## Done
+- 2026-11-12 — Session 4 (FR-005):
+  - `lib/core/money/money.dart` — `Money` (EUR integer cents, parsed from API
+    decimal strings; +/-/comparisons never touch `double`, only the one-off
+    display multiply in `formatMoney` does, which Rules.md's "never accumulate
+    doubles" allows since it's display-only and not fed back into further math).
+  - `currency_format.dart` (symbol map + JPY zero-decimal rule, API.md §0.2),
+    `currency_preference.dart` (pure `resolveInitialCurrency` + `resolveRate`,
+    manual-override-wins per API.md §1), `currency_providers.dart` (Riverpod:
+    `CurrencyPreferenceNotifier` persists to `shared_preferences`, not secure
+    storage — this is a non-sensitive display setting), `currency_pill_switcher.dart`
+    (header pill + bottom-sheet picker, Design_System.md §3).
+  - Refactored `sharedPreferencesProvider` out of `bootstrap_providers.dart` into
+    `core/storage/shared_prefs_provider.dart` so both features share one instance
+    — re-verified FR-002/003/004's tests still pass after the move.
+  - `home_screen.dart` (FR-004's placeholder) now hosts the pill, since
+    Design_System.md says the pill switcher belongs in headers — minimal,
+    additive touch, not FR-201 scope creep.
+  - Signed-in sync via `PUT /auth/me/preferences` deliberately deferred — no
+    auth exists yet (FR-101..109 `not_started`); local persistence only for now.
+  - Tests: 20 tests, proven non-vacuous (forced JPY to 2 decimals, watched the
+    format test fail for real, restored). `bash harness.sh verify` green (33
+    tests total). On-device, a full real flow against live beta: EUR pill on
+    Home → tapped → sheet showed real `/settings/rates` currencies → tapped
+    BDT → pill updated to "BDT ৳" (`artifacts/FR-005-home.png`,
+    `-sheet.png`, `-sheet2.png`, `-selected.png`).
+  - Reviewer agent: PASS, with one advisory — `selectedCurrencyRateProvider`'s
+    own Riverpod glue (two `ref.watch` calls) has no direct test, only the pure
+    `resolveRate` function it calls does; no live exposure today since nothing
+    consumes that provider yet. Logged as **FR-005b** rather than fixed inline
+    (Rules.md: don't "also fix" nearby things).
+  - Commits: `b427c21` (feature code), `55d09db` (state → passing + FR-005b logged).
 - 2026-11-12 — Session 3 (FR-004):
   - `lib/app/router.dart` — `GoRouter` with one `StatefulShellRoute.indexedStack`,
     4 branches (`/home`, `/my-esims`, `/wallet`, `/account`), each its own
