@@ -3,27 +3,61 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101..105 done; FR-106 next).
+- **Phase:** Auth in progress (FR-101..105, FR-107 done; FR-106 blocked;
+  FR-108 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-106** (resume a
-  guest's pending purchase after login/register/Google — persist
-  `{productId, discountCode}` before sending a guest to login, resume
-  checkout afterward) `active`. Note checkout (FR-301+) isn't built yet, so
-  FR-106 will mostly be the persistence/resume *mechanism* (a pending-intent
-  provider similar to FR-007's `pendingReferralProvider`), consumed fully
-  once FR-301+ exists — same incremental-infra pattern as FR-105's 403 half.
-  Then FR-107 (session restore via `GET /auth/me` on launch), FR-108 (sign
-  out — `AuthNotifier.logout()` already exists, needs its own test/dedicated
-  pass), FR-109 (suspended account screen on 403). After auth: compatibility
-  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+). Low-priority
-  follow-ups logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire
-  a real gated endpoint's 403 to Set Password once one exists).
+- **Next step:** run the `next-feature` loop: mark **FR-108** (sign out
+  clears token and cached user data — `AuthNotifier.logout()` already
+  exists from FR-101's session, just needs its own dedicated test coverage
+  and on-device verification as its own feature) `active`. Then **FR-109**
+  (suspended account screen on 403 "Account suspended" — same pattern as
+  FR-105b: `ApiException.isSuspended` likely needs adding/wiring, similar to
+  `.mustChangePassword`). That closes out the Auth section (B) entirely
+  except the two blocked/deferred items below. After auth: compatibility
+  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+ — revisit
+  **FR-106** then, building its pending-purchase provider alongside FR-301
+  the same way FR-007's referral provider was built alongside FR-101).
+  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**,
+  **FR-105b** (wire a real gated endpoint's 403 to Set Password once one
+  exists), **FR-106** (blocked on catalog/checkout).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 9 continued (FR-106 evaluated/blocked, FR-107):
+  - **FR-106** evaluated and marked `blocked`, not built: resuming a guest
+    purchase needs a real purchase attempt to persist from and a real
+    checkout to resume into, and neither exists yet (catalog FR-201+ and
+    checkout FR-301+ are all `not_started`). Unlike FR-007's referral
+    provider (built ahead of FR-101's register screen, which already
+    existed to consume it), FR-106 has no producer or consumer to wire to
+    yet, and redirecting to a not-yet-registered go_router route would be
+    unsafe. Logged to revisit alongside FR-301.
+  - **FR-107**: `CurrentUser` model (`GET /auth/me`, API.md §2 — explicitly
+    does NOT include `must_change_password`), `AuthApi.fetchCurrentUser()`.
+    `AuthNotifier.build()` rewritten: reads a stored token, and if present
+    reconstructs `AuthAuthenticated` by combining `/auth/me`'s
+    role/userId/username with the stored accessToken AND the stored
+    `must_change_password` flag (the REST response can't supply that part).
+    A 401 clears the stored token and falls back to signed-out (API.md
+    §0.1); any other failure propagates as an error without touching the
+    token, so a transient network blip doesn't destroy a restorable session.
+  - 3 new tests isolating the three branches (restore success, 401,
+    non-401), proven non-vacuous. `bash harness.sh verify` green (121
+    tests). On-device: a real JWT already in secure storage from earlier
+    `salman2033` testing — after a full reinstall + force-stop + cold
+    launch, the Account tab showed "Signed in as salman2033" with zero
+    re-entered credentials, a strong proof of a real session restore
+    against live beta.
+  - User asked why BDT currency selection didn't fix right-to-left layout:
+    explained currency (FR-005) and language (FR-006) are independent —
+    RTL comes from the language pill (still set to Arabic from earlier
+    testing), not the currency pill.
+  - Reviewer agent: PASS.
+  - Commits: `b3bfba5` (feature code), `29e20be` (state → FR-106 blocked,
+    FR-107 passing).
 - 2026-11-12 — Session 9 continued (FR-105):
   - `AuthToken.copyWith()`, `AuthApi.changePassword()` (POSTs
     `/auth/change-password`), `postAuthRoute(AuthState)` (pure: `/set-password`
