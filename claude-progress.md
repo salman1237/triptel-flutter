@@ -3,19 +3,47 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation (FR-001..005 done; FR-006 next).
+- **Phase:** Foundation (FR-001..006 done; FR-007 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-006** (language switcher &
-  RTL: `/settings/languages` list already cached by bootstrap, load
-  `/settings/translations/{code}` on switch, `EdgeInsetsDirectional`/
-  `AlignmentDirectional` only per Rules.md so Arabic renders RTL) `active`. Then
-  FR-007 (deep links) closes out the Foundation section, then auth (FR-101..109),
-  then compatibility (FR-950..952). **FR-005b** (not_started, low priority) is a
-  reviewer-flagged follow-up: add a direct provider-level test for
-  `selectedCurrencyRateProvider` once a real screen consumes it — currently
-  nothing does, so it's not urgent.
+- **Next step:** run the `next-feature` loop: mark **FR-007** (deep links:
+  `triptel://payment-callback?...` via `app_links`, incoming
+  `https://triptel.co/track/<token>` / `?ref=CODE` best-effort) `active`. This
+  closes out the Foundation section (FR-001..007); next after that is auth
+  (FR-101..109), then compatibility (FR-950..952). Two low-priority follow-ups
+  logged, not urgent: **FR-005b** (direct provider test for
+  `selectedCurrencyRateProvider`, unused by any screen yet) and **FR-006b**
+  (`BootstrapGate`'s splash/maintenance/error branches don't respect a saved
+  RTL language — rare edge case, maintenance mode is uncommon).
 
 ## Done
+- 2026-11-12 — Session 5 (FR-006):
+  - `lib/core/i18n/` — `translations_api.dart`/`translations_cache.dart`/
+    `translations_loader.dart` mirror FR-002's bootstrap fetch+cache+fallback
+    shape exactly, for `/settings/translations/{code}`. `language_preference.dart`
+    has three pure rules: `resolveInitialLanguage` (stored-if-active → en-if-active
+    → first-active), `isRtlLanguage` (false for unknown codes, never guesses),
+    `translate` (namespace/key lookup with fallback — an additive client-side
+    safety net, not competing with the server's own English back-fill).
+  - `language_providers.dart` persists to `shared_preferences` key
+    `language.selected` (not secure storage). `rtl_scope.dart`'s `RtlScope`
+    wraps the app's real content in the right `Directionality`; wired into
+    `main.dart` inside `BootstrapGate` so splash/maintenance/error stay LTR —
+    a known, disclosed limitation (FR-006b), not silently shipped.
+  - `language_pill_switcher.dart` mirrors FR-005's currency pill; lives on
+    Account's FR-004 placeholder.
+  - Tests: 17, proven non-vacuous (broke `resolveInitialLanguage`'s fallback,
+    watched it fail for real, restored). `bash harness.sh verify` green (50
+    tests total). On-device, full real flow against live beta: EN pill on
+    Account → tapped → sheet showed real `/settings/languages` (English,
+    বাংলা, العربية, Español, Français, Deutsch) → tapped Arabic → entire app
+    mirrored to RTL (pill moved to top-left, bottom tab order reversed,
+    chevron/text flipped) — `artifacts/FR-006-account2.png`, `-sheet.png`,
+    `-rtl.png`.
+  - Also corrected FR-006's stale `verification` field in `feature_list.json`
+    (was copy-pasted from FR-002/003 before this code existed) to point at
+    `test/core/i18n`; logged in `DECISIONS.md`.
+  - Reviewer agent: PASS, with the FR-006b advisory above.
+  - Commits: `4b2e47e` (feature code), `41e80a8` (state → passing + FR-006b logged).
 - 2026-11-12 — Session 4 (FR-005):
   - `lib/core/money/money.dart` — `Money` (EUR integer cents, parsed from API
     decimal strings; +/-/comparisons never touch `double`, only the one-off
