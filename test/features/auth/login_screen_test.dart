@@ -73,6 +73,10 @@ Widget _testApp({AuthApi? authApi}) {
       GoRoute(
           path: '/home',
           builder: (context, state) => const Text('home-placeholder')),
+      GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) =>
+              const Text('forgot-password-placeholder')),
     ],
   );
 
@@ -170,5 +174,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('register-placeholder'), findsOneWidget);
+  });
+
+  testWidgets('navigates to /forgot-password via the Forgot password? link',
+      (tester) async {
+    await tester.pumpWidget(_testApp(authApi: _FakeAuthApi()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('login-forgot-password')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('forgot-password-placeholder'), findsOneWidget);
   });
 }

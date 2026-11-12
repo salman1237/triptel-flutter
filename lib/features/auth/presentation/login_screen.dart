@@ -123,7 +123,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             Text(_error!,
                 style: AppTypography.caption(color: AppColors.danger)),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: PillButton(
+              key: const ValueKey('login-forgot-password'),
+              label: 'Forgot password?',
+              variant: PillButtonVariant.text,
+              fullWidth: false,
+              onPressed: () => context.go('/forgot-password'),
+            ),
+          ),
+          const SizedBox(height: 16),
           PillButton(
             key: const ValueKey('login-submit'),
             label: _submitting ? 'Signing in…' : 'Sign in',
