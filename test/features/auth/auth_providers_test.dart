@@ -66,6 +66,9 @@ class _FakeAuthApi implements AuthApi {
       mustChangePassword: false,
     );
   }
+
+  @override
+  Future<void> forgotPassword({required String email}) async {}
 }
 
 void main() {

@@ -42,6 +42,10 @@ class _FakeAuthApi implements AuthApi {
   @override
   Future<AuthToken> loginWithGoogle({required String credential}) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> forgotPassword({required String email}) =>
+      throw UnimplementedError();
 }
 
 Widget _testApp({AuthApi? authApi}) {

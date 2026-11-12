@@ -12,12 +12,25 @@ class PillButton extends StatelessWidget {
     this.onPressed,
     this.variant = PillButtonVariant.primary,
     this.fullWidth = true,
+    this.leading,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final PillButtonVariant variant;
   final bool fullWidth;
+
+  /// Optional icon/logo shown before the label (e.g. Google's "G" mark).
+  final Widget? leading;
+
+  Widget _labelRow(Color color) {
+    final text = Text(label, style: AppTypography.label(color: color));
+    if (leading == null) return text;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [leading!, const SizedBox(width: 10), text],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +50,7 @@ class PillButton extends StatelessWidget {
                   : AppColors.primary,
             ),
           ),
-          child:
-              Text(label, style: AppTypography.label(color: AppColors.surface)),
+          child: _labelRow(AppColors.surface),
         ),
       PillButtonVariant.secondary => OutlinedButton(
           onPressed: onPressed,
@@ -48,13 +60,11 @@ class PillButton extends StatelessWidget {
             shape: const StadiumBorder(),
             side: const BorderSide(color: AppColors.lilac200, width: 1.5),
           ),
-          child:
-              Text(label, style: AppTypography.label(color: AppColors.primary)),
+          child: _labelRow(AppColors.primary),
         ),
       PillButtonVariant.text => TextButton(
           onPressed: onPressed,
-          child:
-              Text(label, style: AppTypography.label(color: AppColors.primary)),
+          child: _labelRow(AppColors.primary),
         ),
     };
 

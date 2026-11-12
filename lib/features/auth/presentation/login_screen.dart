@@ -135,6 +135,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               key: const ValueKey('login-google'),
               label: _googleSubmitting ? 'Signing in…' : 'Continue with Google',
               variant: PillButtonVariant.secondary,
+              leading: const GoogleLogo(),
               onPressed: _googleSubmitting ? null : _signInWithGoogle,
             ),
           ],

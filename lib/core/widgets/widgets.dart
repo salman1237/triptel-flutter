@@ -4,6 +4,7 @@ export 'empty_state.dart';
 export 'error_state.dart';
 export 'esim_qr.dart';
 export 'flag_avatar.dart';
+export 'google_logo.dart';
 export 'hero_header.dart';
 export 'info_box.dart';
 export 'list_group.dart';

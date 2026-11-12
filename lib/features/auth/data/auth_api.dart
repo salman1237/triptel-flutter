@@ -22,6 +22,12 @@ abstract class AuthApi {
   /// SHA-1 must also exist in Google Cloud Console or the native sign-in
   /// flow never completes, even though that client id isn't sent here).
   Future<AuthToken> loginWithGoogle({required String credential});
+
+  /// `POST /auth/forgot-password` (API.md §2) always returns the same
+  /// generic success, whether or not the email exists — never enumerate.
+  /// The emailed link points at the **web** reset page; this app has no
+  /// deep link for it (FR-104's scope ends at sending the request).
+  Future<void> forgotPassword({required String email});
 }
 
 class AuthApiImpl implements AuthApi {
@@ -67,5 +73,10 @@ class AuthApiImpl implements AuthApi {
     final data =
         await _client.post('/auth/google', data: {'credential': credential});
     return AuthToken.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> forgotPassword({required String email}) async {
+    await _client.post('/auth/forgot-password', data: {'email': email});
   }
 }
