@@ -8,6 +8,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
 import '../application/auth_providers.dart';
+import '../application/auth_state.dart';
 
 /// FR-102: email-or-username + password. `must_change_password` is
 /// persisted by `AuthNotifier.login()` (API.md §2 — only `Token` responses
@@ -55,7 +56,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authNotifierProvider.notifier)
           .loginWithGoogle(credential: idToken);
-      if (mounted) context.go('/home');
+      if (mounted) {
+        context.go(postAuthRoute(ref.read(authNotifierProvider).value!));
+      }
     } on GoogleSignInException catch (e) {
       if (mounted) {
         setState(
@@ -85,7 +88,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             emailOrUsername: _emailOrUsernameController.text.trim(),
             password: _passwordController.text,
           );
-      if (mounted) context.go('/home');
+      if (mounted) {
+        context.go(postAuthRoute(ref.read(authNotifierProvider).value!));
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {

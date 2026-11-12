@@ -64,6 +64,26 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthAuthenticated(token));
   }
 
+  /// FR-105: clears `must_change_password` both server-side (via the API
+  /// call succeeding) and in local state/storage, without starting a new
+  /// session — the user stays signed in with the same access token.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await ref.read(authApiProvider).changePassword(
+        currentPassword: currentPassword, newPassword: newPassword);
+
+    final current = state.value;
+    if (current is AuthAuthenticated) {
+      final updatedToken = current.token.copyWith(mustChangePassword: false);
+      await ref
+          .read(secureStoreProvider)
+          .saveToken(updatedToken.accessToken, mustChangePassword: false);
+      state = AsyncData(AuthAuthenticated(updatedToken));
+    }
+  }
+
   Future<void> logout() async {
     await ref.read(secureStoreProvider).clear();
     state = const AsyncData(AuthUnauthenticated());

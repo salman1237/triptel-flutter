@@ -28,6 +28,12 @@ abstract class AuthApi {
   /// The emailed link points at the **web** reset page; this app has no
   /// deep link for it (FR-104's scope ends at sending the request).
   Future<void> forgotPassword({required String email});
+
+  /// `POST /auth/change-password` (API.md §2): clears `must_change_password`
+  /// server-side on success. 400s: wrong current password, < 8 chars, or
+  /// same as current — all surfaced to the user verbatim.
+  Future<void> changePassword(
+      {required String currentPassword, required String newPassword});
 }
 
 class AuthApiImpl implements AuthApi {
@@ -78,5 +84,16 @@ class AuthApiImpl implements AuthApi {
   @override
   Future<void> forgotPassword({required String email}) async {
     await _client.post('/auth/forgot-password', data: {'email': email});
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      '/auth/change-password',
+      data: {'current_password': currentPassword, 'new_password': newPassword},
+    );
   }
 }

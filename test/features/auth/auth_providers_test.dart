@@ -13,11 +13,13 @@ class _FakeAuthApi implements AuthApi {
     this.registerError,
     this.loginMustChangePassword = false,
     this.googleError,
+    this.changePasswordError,
   });
 
   final ApiException? registerError;
   final bool loginMustChangePassword;
   final ApiException? googleError;
+  final ApiException? changePasswordError;
 
   static const token = AuthToken(
     accessToken: 'jwt-abc',
@@ -69,6 +71,14 @@ class _FakeAuthApi implements AuthApi {
 
   @override
   Future<void> forgotPassword({required String email}) async {}
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (changePasswordError != null) throw changePasswordError!;
+  }
 }
 
 void main() {
@@ -219,6 +229,70 @@ void main() {
 
     expect(
         container.read(authNotifierProvider).value, isA<AuthUnauthenticated>());
+  });
+
+  test(
+      'changePassword() clears must_change_password in state and secure storage',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider
+            .overrideWithValue(_FakeAuthApi(loginMustChangePassword: true)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .login(emailOrUsername: 'salman2033', password: 'temp-pass');
+    var state = container.read(authNotifierProvider).value as AuthAuthenticated;
+    expect(state.token.mustChangePassword, isTrue);
+
+    await container.read(authNotifierProvider.notifier).changePassword(
+        currentPassword: 'temp-pass', newPassword: 'newpass123');
+
+    state = container.read(authNotifierProvider).value as AuthAuthenticated;
+    expect(state.token.mustChangePassword, isFalse);
+    expect(state.token.accessToken, 'jwt-login');
+    final store = container.read(secureStoreProvider);
+    expect(await store.readMustChangePassword(), isFalse);
+  });
+
+  test(
+      'changePassword() surfaces an ApiException (e.g. 400 wrong current password)',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            loginMustChangePassword: true,
+            changePasswordError: const ApiException(
+                statusCode: 400, message: 'Wrong current password'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .login(emailOrUsername: 'salman2033', password: 'temp-pass');
+
+    await expectLater(
+      container
+          .read(authNotifierProvider.notifier)
+          .changePassword(currentPassword: 'wrong', newPassword: 'newpass123'),
+      throwsA(isA<ApiException>()),
+    );
+
+    final state =
+        container.read(authNotifierProvider).value as AuthAuthenticated;
+    expect(state.token.mustChangePassword, isTrue,
+        reason: 'flag stays set when the call fails');
   });
 
   test('logout() clears the session', () async {

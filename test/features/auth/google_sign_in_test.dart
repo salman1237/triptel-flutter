@@ -35,6 +35,11 @@ class _FakeAuthApi implements AuthApi {
       throw UnimplementedError();
 
   @override
+  Future<void> changePassword(
+          {required String currentPassword, required String newPassword}) =>
+      throw UnimplementedError();
+
+  @override
   Future<AuthToken> loginWithGoogle({required String credential}) async =>
       const AuthToken(
         accessToken: 'jwt-google',

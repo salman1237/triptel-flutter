@@ -43,6 +43,21 @@ class AccountScreen extends ConsumerWidget {
                       textAlign: TextAlign.center,
                       style: AppTypography.body(),
                     ),
+                    if (token.mustChangePassword) ...[
+                      const SizedBox(height: 12),
+                      InfoBox(
+                        key: const ValueKey('must-change-password-prompt'),
+                        icon: Icons.lock_outline,
+                        text:
+                            "You're using a temporary password. Set your own to buy eSIMs or"
+                            ' move money.',
+                      ),
+                      const SizedBox(height: 12),
+                      PillButton(
+                        label: 'Set password',
+                        onPressed: () => context.go('/set-password'),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     PillButton(
                       label: 'Sign out',

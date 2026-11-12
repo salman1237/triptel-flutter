@@ -36,6 +36,11 @@ class _FakeAuthApi implements AuthApi {
   Future<void> forgotPassword({required String email}) async {
     if (error != null) throw error!;
   }
+
+  @override
+  Future<void> changePassword(
+          {required String currentPassword, required String newPassword}) =>
+      throw UnimplementedError();
 }
 
 Widget _testApp({AuthApi? authApi}) {

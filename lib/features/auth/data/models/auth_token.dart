@@ -26,4 +26,13 @@ class AuthToken {
         username: json['username'] as String,
         mustChangePassword: json['must_change_password'] as bool? ?? false,
       );
+
+  AuthToken copyWith({bool? mustChangePassword}) => AuthToken(
+        accessToken: accessToken,
+        tokenType: tokenType,
+        role: role,
+        userId: userId,
+        username: username,
+        mustChangePassword: mustChangePassword ?? this.mustChangePassword,
+      );
 }

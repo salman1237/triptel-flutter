@@ -7,6 +7,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../application/auth_providers.dart';
+import '../application/auth_state.dart';
 import '../application/register_validation.dart';
 
 /// FR-101: email/username/password (+ optional phone/full name/referral
@@ -71,7 +72,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ? null
                 : _referralController.text.trim(),
           );
-      if (mounted) context.go('/home');
+      if (mounted) {
+        context.go(postAuthRoute(ref.read(authNotifierProvider).value!));
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
