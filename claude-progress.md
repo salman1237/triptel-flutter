@@ -1,31 +1,68 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
-## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
+## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth nearly done (FR-101..105, FR-107, FR-108 done; FR-106
-  blocked; FR-109 next — last item in section B).
+- **Phase:** Auth section (B) complete except blocked/deferred follow-ups
+  (FR-101..105, FR-107, FR-108, FR-109 done; FR-106 blocked).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-109** (suspended
-  account screen on 403 "Account suspended" — API.md §0.1: sign out, show
-  a suspended screen with Support contact) `active`. `ApiException.isSuspended`
-  already exists (checked a 403 with that exact message). Login already
-  surfaces a 403 "Account suspended" as a plain inline error (FR-102's
-  session) — FR-109 should replace that with a dedicated screen, matching
-  FR-105's pattern. Like FR-105b, there's no OTHER gated endpoint yet that
-  could hit this outside login, so scope is login's 403 case specifically.
-  This closes out the Auth section (B) entirely except the two
-  blocked/deferred items below. After auth: compatibility (FR-950..952),
-  then catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** then).
-  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**,
-  **FR-105b** (wire a real gated endpoint's 403 to Set Password once one
-  exists), **FR-106** (blocked on catalog/checkout).
+- **Next step:** run the `next-feature` loop: pick the first `not_started`
+  item after FR-109 in feature_list.json order — compatibility detection
+  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+ — revisit
+  **FR-106** then, once a real gated post-auth endpoint exists). Low-priority
+  follow-ups logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire
+  a real gated endpoint's 403 to Set Password once one exists), **FR-106**
+  (blocked on catalog/checkout).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 9 continued (FR-109):
+  - Suspended-account screen on a 403 "Account suspended" (API.md §0.1).
+    New `AuthSuspended` AuthState variant; `postAuthRoute()` returns
+    `/suspended` for it. `AuthNotifier.build()` (session restore),
+    `login()`, and `loginWithGoogle()` all clear the token and set
+    `AuthSuspended` on that 403 (never saving a token for it); other
+    `ApiException`s still rethrow as before. New `SuspendedScreen` mirrors
+    FR-003's maintenance screen (support email/phone from `/settings/public`,
+    hidden if both null). New `AuthRouteBridge` (wraps the whole app in
+    `main.dart`, inside `DeepLinkBridge`/outside `BootstrapGate`) listens
+    globally for the transition into `AuthSuspended` and routes to
+    `/suspended` — needed because an already-signed-in user whose session
+    restore discovers suspension has no login-screen interaction to trigger
+    navigation otherwise (FR-107's restore path). Login's own `403` handling
+    (which used to show an inline "Account suspended" error, from FR-102)
+    now goes through the same `AuthSuspended` state instead.
+  - 131 tests pass; `flutter analyze` clean; `bash harness.sh verify` green
+    (debug APK built). Proven non-vacuous twice: (1) disabled the
+    `isSuspended` branch, `auth_providers_test.dart`'s 3 new suspension tests
+    failed for real, restored, green again; (2) broke `AuthRouteBridge`'s
+    listener condition to `if (false)`, the new
+    `test/app/auth_route_bridge_test.dart` failed ("0 widgets found, expected
+    1"), restored, green again.
+  - No real suspended beta account exists, so the live-backend 403 can't be
+    driven end-to-end on-device (same disclosed limitation as FR-105's
+    positive case). Evidence instead: `artifacts/fr-109/02-home.png` — a
+    post-change device smoke test showing a normal signed-in session still
+    resolves to `/home` (no accidental suspension regression); and
+    `artifacts/fr-109/03-suspended-screen.png` — a widget-test
+    `RepaintBoundary` capture of the real `SuspendedScreen` showing its
+    actual layout (icon, headline, body, support-contact pill). Text in
+    that capture renders as placeholder glyph boxes because `flutter test`
+    doesn't load real fonts; the exact text content is separately asserted
+    by `suspended_screen_test.dart`'s `find.text(...)` checks, so this is a
+    structural, not typographic, screenshot.
+  - Reviewer agent: first pass FAIL (no test exercised `AuthRouteBridge` at
+    all — `flutter test test/features/auth` would still pass if it were
+    deleted; no screenshot evidence of `SuspendedScreen` existed). Both
+    fixed as above; re-reviewed: PASS.
+  - Gotcha: capturing a widget's `RepaintBoundary` to PNG inside a
+    `flutter test` run (not an integration/device test) is a decent
+    structural-screenshot fallback when a real device/account path is
+    genuinely unavailable — just disclose the no-real-fonts caveat.
+  - Commits: `77d9f37` (feature), `8959d9d` (state).
 - 2026-11-13 — Session 9 continued (FR-108):
   - `AuthNotifier.logout()` itself predates this round (built in FR-101's
     session); gave it dedicated, meaningful coverage now that FR-107 exists
