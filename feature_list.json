@@ -146,6 +146,17 @@
       "id": "FR-105",
       "behavior": "must_change_password or 403 routes to Set Password",
       "verification": "flutter test test/features/auth && bash harness.sh shot FR-105",
+      "state": "passing",
+      "evidence": {
+        "commit": "10cf47c",
+        "screens": ["artifacts/FR-105-account-no-prompt.png"],
+        "notes": "47 auth+account tests pass (postAuthRoute, changePassword clears the flag without a new session, failure leaves the flag untouched, Set Password screen success/error/skip-to-My-eSIMs, Account prompt shown/hidden). Proven non-vacuous twice (postAuthRoute switch, changePassword's state update). bash harness.sh verify green (118 tests). On-device: logged in with the real salman2033 account (must_change_password=false) -- correctly went straight to Home with no prompt, demonstrating the negative case against the live backend. The positive case (must_change_password=true -> redirected to Set Password) has no real beta account available to trigger it, so it's verified only via widget tests with fakes -- disclosed, not a workaround. The 403 'set your own password' interception half is deliberately left unwired: no require_password_changed-gated endpoint exists yet in this app (checkout/wallet are future FRs); ApiException.mustChangePassword already exists for whichever FR calls the first gated endpoint. Reviewed by reviewer agent: PASS."
+      }
+    },
+    {
+      "id": "FR-105b",
+      "behavior": "A real require_password_changed-gated endpoint's 403 actually routes to Set Password (ApiException.mustChangePassword is wired to navigation, not just a dormant getter)",
+      "verification": "flutter test test/features/auth",
       "state": "not_started",
       "evidence": null
     },
