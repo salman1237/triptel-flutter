@@ -3,13 +3,39 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Initialize (harness only, no feature code yet).
+- **Phase:** Foundation (FR-001 done; FR-002 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-001** (theme + shared components) `active` and build it
-  from `docs/Design_System.md` + `docs/design-reference/`. Then FR-002 → FR-004,
-  then auth, then the compatibility features (FR-950..952).
+- **Next step:** run the `next-feature` loop: mark **FR-002** (bootstrap:
+  `/settings/public`, `/rates`, `/languages` with cache + splash) `active` and build it
+  from `docs/API.md` §bootstrap endpoints + `docs/Functional_Requirements.md` FR-002/003.
+  Then FR-003 (maintenance gate) → FR-004 (4-tab shell) → FR-005..007, then auth,
+  then the compatibility features (FR-950..952).
 
 ## Done
+- 2026-11-12 — Session 1 (FR-001):
+  - Theme tokens (`lib/core/theme/tokens.dart`, `typography.dart`, `theme.dart`) exactly
+    matching Design_System.md §1 (colours, radii, Plus Jakarta Sans type scale).
+  - Full §4 shared-component library in `lib/core/widgets/`: TriptelScaffold, HeroHeader,
+    PillButton, SegmentedPill, SearchPill, FlagAvatar, CountryRow, PlanWheelPicker,
+    PlanOptionTile, PriceText, StatusChip, BalanceCard, ListGroup/ListRow, InfoBox,
+    StickyTotalBar, PaymentMethodSheet, EsimQr (EC H, 22% logo, white disc per Rules.md),
+    UsageRing, EmptyState, ErrorState.
+  - `lib/app/theme_preview_screen.dart` renders all of them; wired as `main.dart`'s
+    temporary `home` until FR-002/FR-004 add the real bootstrap + shell.
+  - Tests: `test/core/theme/tokens_test.dart` (token/typography values) and
+    `shared_components_test.dart` (every component renders + a tap interaction).
+    Proven non-vacuous: broke `AppColors.primary`, watched both test files fail,
+    restored, watched them pass again.
+    `bash harness.sh verify` green (analyze, format, full suite, debug APK build).
+  - Device screenshot `artifacts/FR-001.png` on 10EF1302BJ000R5 (Triptel purple/white,
+    matches Design_System §2 Home/Account/Country-plans patterns combined in one
+    kitchen-sink preview).
+  - Reviewer agent: PASS (spot-checked tokens, raw-colour grep, vacuousness test,
+    re-ran `harness.sh verify` and the screenshot independently).
+  - Commits: `a4f79a5` (feature code), `359269e` (state → passing).
+  - Gotcha: `dart format --output=none --set-exit-if-changed` only *reports* diffs,
+    it never writes; `dart format lib test` (no `--output=none`) is what actually
+    fixes formatting before `harness.sh verify` will pass clean.
 - 2026-11-12 — Session 0 (Initialize):
   - `flutter create` (Android + iOS), app id `co.triptel.app`, Gradle 8.11.1 /
     AGP 8.7.3 / Kotlin 2.1 for JDK 23, minSdk 23, `triptel://` deep-link scheme
