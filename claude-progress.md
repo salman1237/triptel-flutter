@@ -3,15 +3,46 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation (FR-001 done; FR-002 next).
+- **Phase:** Foundation (FR-001..003 done; FR-004 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-002** (bootstrap:
-  `/settings/public`, `/rates`, `/languages` with cache + splash) `active` and build it
-  from `docs/API.md` §bootstrap endpoints + `docs/Functional_Requirements.md` FR-002/003.
-  Then FR-003 (maintenance gate) → FR-004 (4-tab shell) → FR-005..007, then auth,
-  then the compatibility features (FR-950..952).
+- **Next step:** run the `next-feature` loop: mark **FR-004** (4-tab shell: Home ·
+  My eSIMs · Wallet · Account, `go_router` `StatefulShellRoute`) `active`. It
+  replaces `main.dart`'s `BootstrapGate(child: ThemePreviewScreen())` placeholder
+  with the real shell (keep the preview screen around for FR-001 evidence/dev use,
+  just stop wiring it as `home`). Then FR-005 (currency) → FR-006 (language/RTL) →
+  FR-007 (deep links), then auth (FR-101..109), then compatibility (FR-950..952).
 
 ## Done
+- 2026-11-12 — Session 2 (FR-002, FR-003):
+  - `lib/core/config/env.dart` (API_BASE_URL dart-define), `lib/core/network/`
+    (`ApiClient` — the one dio instance, `ApiException` mapping `detail` per
+    API.md §0.1).
+  - `lib/features/bootstrap/` — models matching the live beta `/settings/public`,
+    `/settings/rates`, `/settings/languages` shapes; `BootstrapCache` (plain
+    `shared_preferences`, not secure storage — only non-sensitive settings);
+    `loadBootstrap()` (plain-Dart business rule: fetch fresh → cache → on any
+    failure fall back to last cache, else rethrow) — Architecture.md's
+    "business rules in plain Dart" followed here deliberately so it's unit-testable
+    without a widget tree.
+  - `BootstrapGate` wires splash/error/maintenance/content branching into
+    `main.dart`'s `home`; `MaintenanceScreen` (FR-003) hides null support
+    contacts, Retry calls `ref.invalidate(bootstrapProvider)`.
+  - Tests: `bootstrap_loader_test.dart` (fresh-fetch-and-cache, cache-fallback,
+    rethrow-when-no-cache — proven non-vacuous by disabling `cache.save()` and
+    watching 2 tests fail for real reasons, then restoring), `bootstrap_gate_test.dart`
+    (loading/maintenance-true/maintenance-false branches via provider override).
+    `test/widget_test.dart` updated to override `bootstrapProvider` so the smoke
+    test doesn't hang on a real network call.
+  - `bash harness.sh verify` green. On-device (10EF1302BJ000R5), a **real** network
+    round-trip against `beta.triptel.co`: `artifacts/FR-002.png` (splash mid-load),
+    `artifacts/FR-002-loaded.png` (live `maintenance_mode=false` response passed
+    through to content 5 s later). FR-003 has no on-device screenshot — the live
+    beta isn't in maintenance mode, so only the widget-test evidence exists
+    (disclosed limitation, not a workaround).
+  - Reviewer agent: PASS for both (spot-checked models vs API.md, re-ran the
+    cache-save-disable experiment independently, re-ran `harness.sh verify`,
+    checked Rules.md/Architecture.md compliance).
+  - Commits: `f07ad28` (feature code), `63e6d47` (state → passing).
 - 2026-11-12 — Session 1 (FR-001):
   - Theme tokens (`lib/core/theme/tokens.dart`, `typography.dart`, `theme.dart`) exactly
     matching Design_System.md §1 (colours, radii, Plus Jakarta Sans type scale).
