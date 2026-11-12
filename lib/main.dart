@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/router.dart';
+import 'core/i18n/rtl_scope.dart';
 import 'core/theme/theme.dart';
 import 'features/bootstrap/presentation/bootstrap_gate.dart';
 
@@ -18,8 +19,9 @@ class TriptelApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: appRouter,
-      builder: (context, child) =>
-          BootstrapGate(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => BootstrapGate(
+        child: RtlScope(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

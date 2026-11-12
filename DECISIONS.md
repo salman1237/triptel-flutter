@@ -1,6 +1,17 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-12 — FR-006's verification path corrected to where its tests live
+`feature_list.json`'s FR-006 `verification` was a stale placeholder
+(`flutter test test/features/bootstrap`, copy-pasted from FR-002/003 before
+FR-006 had any code). Changed to `flutter test test/core/i18n`, matching
+FR-005's precedent of putting cross-cutting, non-feature-specific logic
+(currency, language) under `core/` rather than `features/`. **Why:** the
+verification command must exercise the code that was actually written;
+pointing it at `test/features/bootstrap` would have "passed" without running
+any of FR-006's own tests. **Revisit if:** language/i18n logic grows enough
+to warrant its own `features/i18n/` folder instead of living in `core/`.
+
 ## 2026-11-12 — Folder and repo layout
 `D:\eSim\Triptel-flutter`, its own git repo, ignored by the parent `D:\eSim`
 repo (same arrangement as `Triptel-MobileApp`). **Why:** user asked for a separate
