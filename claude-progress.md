@@ -3,24 +3,60 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation complete (FR-001..007 all passing). Auth next.
+- **Phase:** Auth in progress (FR-101 done; FR-102 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-101** (register with
-  optional referral code — `pendingReferralProvider` from FR-007 pre-fills it)
-  `active` and build auth (FR-101..109) using `flutter_secure_storage` for the
-  JWT (Rules.md: JWT/`must_change_password` only there, never
-  `shared_preferences`). Google Sign-In (FR-103) is blocked on the user
-  registering an Android OAuth client (see "User actions pending") — build
-  everything else, set FR-103 `blocked` with that reason, keep moving. After
-  auth: compatibility (FR-950..952), then catalog (FR-201+), then checkout
-  (FR-301+, including FR-307's ShurjoPay WebView flow — confirmed with the user
-  this app never talks to the `shurjopay` pub.dev package directly, since
-  that's a server-side SDK; the backend already owns ShurjoPay, this app just
-  opens its `checkout_url` in a WebView and intercepts `triptel://`, API.md §9).
-  Three low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**,
-  and no new ones from FR-007.
+- **Next step:** run the `next-feature` loop: mark **FR-102** (login with
+  email-or-username + password, persist `must_change_password`) `active`. It
+  reuses `AuthNotifier.login()` (already built, just untested/unverified as its
+  own feature) — mainly needs a LoginScreen + its route + tests. The user gave
+  a real beta test login (username `salman2033`) for on-device verification —
+  **do not write that credential into any repo file** (public repo); only use
+  it live via adb during device testing, same as the register flow's test
+  account. Google Sign-In (FR-103) is blocked on the user registering an
+  Android OAuth client (see "User actions pending") — build everything else,
+  set FR-103 `blocked` with that reason, keep moving. After auth: compatibility
+  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+, including
+  FR-307's ShurjoPay WebView flow — confirmed with the user this app never
+  talks to the `shurjopay` pub.dev package directly, since that's a
+  server-side SDK; the backend already owns ShurjoPay, this app just opens its
+  `checkout_url` in a WebView and intercepts `triptel://`, API.md §9). Low-priority
+  follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
 
 ## Done
+- 2026-11-12 — Session 7 (FR-101):
+  - `lib/core/storage/secure_store.dart` — JWT + `must_change_password` only
+    (Rules.md), via `flutter_secure_storage` (no official test API, so
+    `test/features/auth/secure_storage_test_mock.dart` fakes its method
+    channel — channel name and method names confirmed against the pinned
+    `flutter_secure_storage_platform_interface` version's source directly).
+  - `apiClientProvider` (bootstrap_providers.dart) now wires its
+    `tokenProvider` to `SecureStore.readToken` — `ApiClient` is the only thing
+    that ever attaches `Authorization`, per Architecture.md.
+  - `lib/features/auth/` — `AuthApi.register()/login()`, pure
+    `validateRegisterPassword`/`validateEmail`/`validateUsername`,
+    `AuthNotifier` (register/login/logout, one cohesive class since they
+    share session state — only `register()`'s behavior is tested/claimed
+    here; FR-102/107/108 will add their own tests against the same already-built
+    methods). `RegisterScreen` validates client-side before calling the API,
+    shows real backend errors inline, pre-fills a pending referral code from
+    FR-007 without fighting a value the user already typed.
+  - `AccountScreen` (FR-004's placeholder) now shows "Create account" or
+    "Signed in as `<username>`" + "Sign out" depending on session state.
+  - Tests: 19, two non-vacuousness proofs (password validation, referral
+    pre-fill — the second added after the reviewer flagged it as an untested
+    spec behavior). `bash harness.sh verify` green (97 tests, confirming the
+    `apiClientProvider`/`account_screen.dart` changes didn't regress FR-001..007).
+  - On-device: real end-to-end registration against live beta — created an
+    actual new account (`triptel_test_<timestamp>`), confirmed the signed-in
+    state afterward (`artifacts/FR-101-signed-in.png`). Gotcha hit during this
+    run: the Vivo device's secure keyboard blocks `adb screencap` while a
+    password field has focus — screenshots come back as 0-byte files; tap
+    elsewhere to drop focus first, and never use `adb shell input keyevent 4`
+    (BACK) to dismiss a keyboard on a route with no back-stack, since it exits
+    the app instead.
+  - Reviewer agent: PASS, flagged the untested referral pre-fill — fixed
+    before this commit rather than deferred.
+  - Commits: `95cf287` (feature code), `efaad36` (state → passing).
 - 2026-11-12 — Session 6 (FR-007 — Foundation section complete):
   - `lib/core/deeplink/` — `parseDeepLink`/`extractReferralCode` (pure),
     `handleDeepLink` dispatch, `app_links`-backed listener mirroring FR-002's
