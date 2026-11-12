@@ -1,0 +1,501 @@
+{
+  "_rules": [
+    "Autonomous loop (CLAUDE.md): take the 'active' item or the first 'not_started', build, verify, review, commit, then continue with the next without asking.",
+    "WIP = 1: exactly one item may be 'active'.",
+    "States: not_started -> active -> passing | blocked (blocked needs 'blocked_reason'; the loop then moves on).",
+    "Only a passing verification command (proven to fail when the feature is reverted) moves an item to passing; evidence = {commit, screens, notes}.",
+    "Order = build order. Foundation first, then auth, then handset compatibility (checkout and install depend on it)."
+  ],
+  "features": [
+    {
+      "id": "FR-001",
+      "behavior": "Theme tokens + shared components render (Design_System.md §4)",
+      "verification": "flutter test test/core/theme && bash harness.sh shot FR-001",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-002",
+      "behavior": "Bootstrap loads /settings/public, /rates, /languages with cache",
+      "verification": "flutter test test/features/bootstrap",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-003",
+      "behavior": "maintenance_mode=true shows blocking screen",
+      "verification": "flutter test test/features/bootstrap",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-004",
+      "behavior": "4-tab shell: Home, My eSIMs, Wallet, Account",
+      "verification": "flutter test test/app && bash harness.sh shot FR-004",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-005",
+      "behavior": "EUR amounts convert to chosen currency; preference persisted",
+      "verification": "flutter test test/core/money",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-006",
+      "behavior": "Language switch loads translations; Arabic renders RTL",
+      "verification": "flutter test test/features/bootstrap",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-007",
+      "behavior": "triptel://payment-callback and track/ref links are parsed and routed",
+      "verification": "flutter test test/app",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-101",
+      "behavior": "Register with optional referral code -> signed in",
+      "verification": "flutter test test/features/auth && bash harness.sh shot FR-101",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-102",
+      "behavior": "Login with email or username; must_change_password persisted",
+      "verification": "flutter test test/features/auth && bash harness.sh shot FR-102",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-103",
+      "behavior": "Google sign-in via serverClientId -> POST /auth/google",
+      "verification": "flutter test test/features/auth && bash harness.sh shot FR-103",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-104",
+      "behavior": "Forgot password request; reset link opens web",
+      "verification": "flutter test test/features/auth",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-105",
+      "behavior": "must_change_password or 403 routes to Set Password",
+      "verification": "flutter test test/features/auth && bash harness.sh shot FR-105",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-106",
+      "behavior": "Guest purchase resumes after login/register/Google",
+      "verification": "flutter test test/features/checkout",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-107",
+      "behavior": "Session restore from secure storage; 401 -> login",
+      "verification": "flutter test test/features/auth",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-108",
+      "behavior": "Sign out clears token and cached user data",
+      "verification": "flutter test test/features/auth",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-109",
+      "behavior": "403 Account suspended shows suspended screen",
+      "verification": "flutter test test/features/auth",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-950",
+      "behavior": "Native signals -> supported/notSupported/unknown verdict",
+      "verification": "flutter test test/features/compatibility && flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-951",
+      "behavior": "Compatibility result screen (tinted header, device chip, verdict)",
+      "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-951",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-952",
+      "behavior": "Supported devices list by brand, searchable, EID tip",
+      "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-952",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-201",
+      "behavior": "Home: hero, quick actions, promos, popular destinations",
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-201",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-202",
+      "behavior": "Destination search sheet with Country/Regional toggle and A-Z list",
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-202",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-203",
+      "behavior": "Regional list with coverage sheet",
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-203",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-204",
+      "behavior": "Plans screen: plan-type toggle, wheel picker, radio plans, Continue",
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-204",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-205",
+      "behavior": "Plan detail/coverage sheet",
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-205",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-206",
+      "behavior": "Share destination link",
+      "verification": "flutter test test/features/catalog",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-301",
+      "behavior": "Pre-checkout compatibility gate dialog (never blocks)",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-301",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-302",
+      "behavior": "Checkout review screen with breakdown and sticky total bar",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-302",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-303",
+      "behavior": "Guest discount estimate via /discounts/check",
+      "verification": "flutter test test/features/checkout",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-304",
+      "behavior": "Authoritative discount via /discounts/preview",
+      "verification": "flutter test test/features/checkout",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-305",
+      "behavior": "Payment method sheet only when DEFAULT+REWARD covers total",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-305",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-306",
+      "behavior": "Wallet checkout + poll schedule; PROCESSING never failure",
+      "verification": "flutter test test/features/checkout && flutter test integration_test/fr_306_test.dart -d 10EF1302BJ000R5",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-307",
+      "behavior": "ShurjoPay checkout (mobile:true) via WebView -> triptel:// -> poll",
+      "verification": "flutter test test/features/checkout && flutter test integration_test/fr_307_test.dart -d 10EF1302BJ000R5",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-308",
+      "behavior": "Provisioning progress steps",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-308",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-309",
+      "behavior": "Still-preparing state after poll window",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-309",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-310",
+      "behavior": "Purchase success: QR, install links (gated), copy",
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-310",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-311",
+      "behavior": "Failure only on FAILED, refund message",
+      "verification": "flutter test test/features/checkout",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-401",
+      "behavior": "EsimQr: EC level H, 22% logo, white disc; damage test decodes",
+      "verification": "flutter test test/features/esims",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-402",
+      "behavior": "My eSIMs list with status chips and empty state",
+      "verification": "flutter test test/features/esims && bash harness.sh shot FR-402",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-403",
+      "behavior": "eSIM usage view uses status totals (incl. top-ups); refresh cooldown",
+      "verification": "flutter test test/features/esims && bash harness.sh shot FR-403",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-404",
+      "behavior": "Install section: QR, 1-tap links, manual codes; gated by compatibility",
+      "verification": "flutter test test/features/esims && bash harness.sh shot FR-404",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-405",
+      "behavior": "Lifecycle banners disable install/top-up",
+      "verification": "flutter test test/features/esims",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-406",
+      "behavior": "Daily breakdown and install history when present",
+      "verification": "flutter test test/features/esims",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-407",
+      "behavior": "Top-up options section hidden when empty",
+      "verification": "flutter test test/features/esims",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-408",
+      "behavior": "Top-up via wallet or ShurjoPay; status reloads",
+      "verification": "flutter test test/features/esims && flutter test integration_test/fr_408_test.dart -d 10EF1302BJ000R5",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-409",
+      "behavior": "Share tracking link and receipt",
+      "verification": "flutter test test/features/esims",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-410",
+      "behavior": "Report problem -> ticket prefilled with order_id",
+      "verification": "flutter test test/features/support",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-501",
+      "behavior": "Public tracking by token without login",
+      "verification": "flutter test test/features/tracking && bash harness.sh shot FR-501",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-601",
+      "behavior": "Wallet overview balance card (DEFAULT/REWARD/COMMISSION>0)",
+      "verification": "flutter test test/features/wallet && bash harness.sh shot FR-601",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-602",
+      "behavior": "Ledger list with labels and filter",
+      "verification": "flutter test test/features/wallet",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-603",
+      "behavior": "Gateway wallet top-up with limits and WebView interception",
+      "verification": "flutter test test/features/wallet && flutter test integration_test/fr_603_test.dart -d 10EF1302BJ000R5",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-604",
+      "behavior": "Manual deposit to configured method",
+      "verification": "flutter test test/features/wallet && bash harness.sh shot FR-604",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-605",
+      "behavior": "Top-up result states",
+      "verification": "flutter test test/features/wallet",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-701",
+      "behavior": "Payout accounts CRUD (max 5)",
+      "verification": "flutter test test/features/withdrawals",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-702",
+      "behavior": "Withdrawal request with blockers and fee preview",
+      "verification": "flutter test test/features/withdrawals && bash harness.sh shot FR-702",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-703",
+      "behavior": "Withdrawal history and cancel pending",
+      "verification": "flutter test test/features/withdrawals",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-704",
+      "behavior": "Withdrawal receipt share",
+      "verification": "flutter test test/features/withdrawals",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-801",
+      "behavior": "Refer & earn screen with code, invite, stats, lists",
+      "verification": "flutter test test/features/referrals && bash harness.sh shot FR-801",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-802",
+      "behavior": "Claim referrer while can_claim",
+      "verification": "flutter test test/features/referrals",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-803",
+      "behavior": "Referral link pre-fill + validate on register",
+      "verification": "flutter test test/features/referrals",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-953",
+      "behavior": "Compatibility surfaced on home, account, checkout, install",
+      "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-953",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-901",
+      "behavior": "eSIM setup guide",
+      "verification": "flutter test test/features/guides && bash harness.sh shot FR-901",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-902",
+      "behavior": "New-to-eSIM sheet",
+      "verification": "flutter test test/features/guides && bash harness.sh shot FR-902",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1001",
+      "behavior": "Account screen groups and greeting card",
+      "verification": "flutter test test/features/account && bash harness.sh shot FR-1001",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1002",
+      "behavior": "Profile view/edit phone, change password",
+      "verification": "flutter test test/features/account",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1003",
+      "behavior": "KYC status and submission",
+      "verification": "flutter test test/features/kyc && bash harness.sh shot FR-1003",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1101",
+      "behavior": "Support ticket list",
+      "verification": "flutter test test/features/support",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1102",
+      "behavior": "New ticket with category and attachments",
+      "verification": "flutter test test/features/support && bash harness.sh shot FR-1102",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1103",
+      "behavior": "Ticket thread reply/close, authenticated attachments",
+      "verification": "flutter test test/features/support",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1104",
+      "behavior": "Contact shortcuts sheet (hidden when null)",
+      "verification": "flutter test test/features/support",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-1201",
+      "behavior": "Legal documents list and reader",
+      "verification": "flutter test test/features/legal",
+      "state": "not_started",
+      "evidence": null
+    }
+  ]
+}
