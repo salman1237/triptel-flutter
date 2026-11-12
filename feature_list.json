@@ -90,9 +90,13 @@
     {
       "id": "FR-007",
       "behavior": "triptel://payment-callback and track/ref links are parsed and routed",
-      "verification": "flutter test test/app",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/core/deeplink",
+      "state": "passing",
+      "evidence": {
+        "commit": "e882e0e",
+        "screens": ["artifacts/FR-007-launch.png", "artifacts/FR-007-tracking.png"],
+        "notes": "19 tests pass (parseDeepLink host/path matching incl. untrusted-host rejection, extractReferralCode, handleDeepLink dispatch, referral persistence, real-app routing widget test). Proven non-vacuous: forced the tracking-host check to false, got real failures, restored, green again. bash harness.sh verify green (69 tests). Found and fixed a real infra gap: AndroidManifest.xml had no https intent-filter at all (only triptel://), so track links could never reach the app on a real device; added one scoped to host+pathPrefix=/track, no autoVerify (no backend .well-known yet). On-device: rebuilt, reinstalled, sent real adb am start VIEW intents for both triptel://payment-callback and https://triptel.co/track/TOKDEVICE1 to the running app -- both delivered successfully; FR-007-tracking.png shows the real TrackingScreen with the token. Reviewed by reviewer agent: PASS (trimmed an undocumented www.triptel.co host per its note before this commit)."
+      }
     },
     {
       "id": "FR-101",
