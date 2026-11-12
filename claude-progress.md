@@ -3,24 +3,58 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101, FR-102 done; FR-103 next — likely `blocked`).
+- **Phase:** Auth in progress (FR-101, FR-102 done; FR-103 blocked; FR-104 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-103** (Google Sign-In)
-  `active`. This needs an Android OAuth client for `co.triptel.app` + the
-  debug keystore's SHA-1, which only the user can register in Google Cloud
-  Console (see "User actions pending" — still outstanding). Expect to set
-  FR-103 `state: "blocked"` with that reason after confirming nothing else is
-  buildable first (e.g. the `google_sign_in` package wiring itself, gated
-  behind the missing client id), then move straight to **FR-104** (forgot/reset
-  password — request link in-app, the emailed link opens the web since there's
-  no app deep link for password reset) and **FR-105** (forced password change:
-  route to Set Password when `must_change_password` is true or on the 403
-  "set your own password" response — `AuthNotifier` already has
-  `must_change_password` available from FR-102's login). After auth:
-  compatibility (FR-950..952), then catalog (FR-201+), then checkout (FR-301+).
-  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
+- **Next step:** run the `next-feature` loop: mark **FR-104** (forgot/reset
+  password: `POST /auth/forgot-password` request link in-app, the emailed
+  link opens the web — no app deep link for password reset exists) `active`.
+  Then **FR-105** (forced password change: route to Set Password when
+  `must_change_password` is true or on the 403 "set your own password"
+  response — `AuthNotifier` already has `must_change_password` from FR-102's
+  login). After auth: compatibility (FR-950..952), then catalog (FR-201+),
+  then checkout (FR-301+). Low-priority follow-ups logged, not urgent:
+  **FR-005b**, **FR-006b**.
+- **User action pending:** register an Android OAuth client for
+  `co.triptel.app` in the same Google Cloud Console project as the existing
+  web client (`1095507553767-...apps.googleusercontent.com`) — package name
+  `co.triptel.app`, SHA-1 `D9:9B:92:70:99:D3:64:68:A6:F2:62:BB:56:81:98:EB:C6:14:E6:B9`
+  (this machine's debug keystore). Once added, re-run FR-103's on-device test
+  — the button/flow are already built, just blocked on this. Release builds
+  will need a second Android OAuth client for the release keystore's SHA-1
+  later; iOS needs its own OAuth client + Associated Domains, out of scope
+  without a Mac.
 
 ## Done
+- 2026-11-12 — Session 9 (FR-103, blocked):
+  - `GoogleAuthService` wraps `google_sign_in` v7 (`GoogleSignIn.instance
+    .initialize(serverClientId:)` then `.authenticate()`), deliberately thin
+    and untested like `deep_link_listener.dart`'s plugin glue.
+    `AuthApi.loginWithGoogle()`/`AuthNotifier.loginWithGoogle()` POST
+    `/auth/google` with the ID token. `LoginScreen` shows "Continue with
+    Google" only when `/settings/public.google_client_id` is non-null.
+  - On-device: the button correctly opened the **real** Google account
+    picker (proving `google_client_id` is live from beta and the plugin
+    wiring works) — but completing a real sign-in twice in a row both
+    returned `GoogleSignInException` "cancelled by the user" rather than
+    completing. Diagnosed as the documented gap: no Android OAuth client
+    registered for `co.triptel.app` + this machine's debug SHA-1 yet (the
+    native SDK requires one even though only the web client id is sent to
+    the backend). Confirmed with the user before attempting a real sign-in
+    (since it touches their personal Google identity), and again after the
+    picker behaved unexpectedly well, to make sure proceeding was wanted.
+  - **Gotcha, not committed anywhere sensitive:** two intermediate
+    screenshots during this test showed the device owner's real name and
+    Gmail address (the native account picker). Viewed them to confirm state,
+    then deleted immediately — never written to `artifacts/` as committed
+    evidence, never pushed. Only the clean before/after screenshots (button
+    visible, cancellation error shown with no PII) are in the repo.
+  - 19 tests added (loginWithGoogle success/error, Google button
+    shown/hidden by `google_client_id`, full flow via a fake
+    `GoogleAuthService`, cancel handling). `bash harness.sh verify` green
+    (99 tests).
+  - Gave the user the exact Google Cloud Console steps + this machine's
+    debug SHA-1 to unblock it.
+  - Commits: `87729cc` (feature code), `9a5e294` (state → blocked).
 - 2026-11-12 — Session 8 (FR-102):
   - `lib/features/auth/presentation/login_screen.dart` — email-or-username +
     password; only checks both fields are non-empty client-side (reusing
