@@ -8,7 +8,21 @@ import 'package:triptel/features/auth/application/auth_providers.dart';
 import 'package:triptel/features/auth/data/auth_api.dart';
 import 'package:triptel/features/auth/data/models/auth_token.dart';
 import 'package:triptel/features/auth/presentation/login_screen.dart';
+import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
+import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
+import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
 import 'secure_storage_test_mock.dart';
+
+final _noGoogleBootstrap = BootstrapData(
+  settings: const PublicSettings(
+    platformName: 'Triptel',
+    maintenanceMode: false,
+    defaultCurrency: 'EUR',
+  ),
+  rates: const [],
+  languages: const [],
+  fromCache: false,
+);
 
 class _FakeAuthApi implements AuthApi {
   _FakeAuthApi({this.error});
@@ -38,6 +52,10 @@ class _FakeAuthApi implements AuthApi {
       mustChangePassword: false,
     );
   }
+
+  @override
+  Future<AuthToken> loginWithGoogle({required String credential}) =>
+      throw UnimplementedError();
 }
 
 Widget _testApp({AuthApi? authApi}) {
@@ -56,7 +74,8 @@ Widget _testApp({AuthApi? authApi}) {
 
   return ProviderScope(
     overrides: [
-      if (authApi != null) authApiProvider.overrideWithValue(authApi)
+      bootstrapProvider.overrideWith((ref) async => _noGoogleBootstrap),
+      if (authApi != null) authApiProvider.overrideWithValue(authApi),
     ],
     child: MaterialApp.router(routerConfig: router),
   );

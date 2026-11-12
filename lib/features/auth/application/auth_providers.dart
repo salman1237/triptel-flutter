@@ -2,10 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_store_provider.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/auth_api.dart';
+import '../data/google_auth_service.dart';
 import 'auth_state.dart';
 
 final authApiProvider =
     Provider<AuthApi>((ref) => AuthApiImpl(ref.watch(apiClientProvider)));
+
+final googleAuthServiceProvider =
+    Provider<GoogleAuthService>((ref) => GoogleAuthServiceImpl());
 
 /// FR-101/102/108's session state. FR-107 (restore a session that already
 /// existed when the app launched, via `GET /auth/me`) isn't built yet — for
@@ -44,6 +48,17 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final token = await ref
         .read(authApiProvider)
         .login(emailOrUsername: emailOrUsername, password: password);
+    await ref.read(secureStoreProvider).saveToken(token.accessToken,
+        mustChangePassword: token.mustChangePassword);
+    state = AsyncData(AuthAuthenticated(token));
+  }
+
+  /// `credential` is the Google ID token obtained with `serverClientId`.
+  /// Google sign-ups carry no referral code — FR-802 (claim a referrer
+  /// after the fact) is the intended follow-up, not built yet.
+  Future<void> loginWithGoogle({required String credential}) async {
+    final token =
+        await ref.read(authApiProvider).loginWithGoogle(credential: credential);
     await ref.read(secureStoreProvider).saveToken(token.accessToken,
         mustChangePassword: token.mustChangePassword);
     state = AsyncData(AuthAuthenticated(token));

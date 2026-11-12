@@ -9,10 +9,15 @@ import 'package:triptel/features/auth/data/models/auth_token.dart';
 import 'secure_storage_test_mock.dart';
 
 class _FakeAuthApi implements AuthApi {
-  _FakeAuthApi({this.registerError, this.loginMustChangePassword = false});
+  _FakeAuthApi({
+    this.registerError,
+    this.loginMustChangePassword = false,
+    this.googleError,
+  });
 
   final ApiException? registerError;
   final bool loginMustChangePassword;
+  final ApiException? googleError;
 
   static const token = AuthToken(
     accessToken: 'jwt-abc',
@@ -46,6 +51,19 @@ class _FakeAuthApi implements AuthApi {
       userId: 'u-2',
       username: emailOrUsername,
       mustChangePassword: loginMustChangePassword,
+    );
+  }
+
+  @override
+  Future<AuthToken> loginWithGoogle({required String credential}) async {
+    if (googleError != null) throw googleError!;
+    return const AuthToken(
+      accessToken: 'jwt-google',
+      tokenType: 'bearer',
+      role: 'USER',
+      userId: 'u-3',
+      username: 'google-user',
+      mustChangePassword: false,
     );
   }
 }
@@ -150,6 +168,54 @@ void main() {
     final store = container.read(secureStoreProvider);
     expect(await store.readToken(), 'jwt-login');
     expect(await store.readMustChangePassword(), isTrue);
+  });
+
+  test('loginWithGoogle() signs the user in with the credential exchange',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [authApiProvider.overrideWithValue(_FakeAuthApi())],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+    await container
+        .read(authNotifierProvider.notifier)
+        .loginWithGoogle(credential: 'fake-id-token');
+
+    final state = container.read(authNotifierProvider).value;
+    expect(state, isA<AuthAuthenticated>());
+    expect((state as AuthAuthenticated).token.username, 'google-user');
+  });
+
+  test(
+      'loginWithGoogle() surfaces an ApiException (e.g. 409 linked to a different account)',
+      () async {
+    installFakeSecureStorage();
+    final container = ProviderContainer(
+      overrides: [
+        authApiProvider.overrideWithValue(
+          _FakeAuthApi(
+            googleError: const ApiException(
+                statusCode: 409,
+                message: 'Email linked to a different Google account'),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.future);
+
+    await expectLater(
+      container
+          .read(authNotifierProvider.notifier)
+          .loginWithGoogle(credential: 'fake-id-token'),
+      throwsA(isA<ApiException>()),
+    );
+
+    expect(
+        container.read(authNotifierProvider).value, isA<AuthUnauthenticated>());
   });
 
   test('logout() clears the session', () async {
