@@ -55,6 +55,17 @@
       "id": "FR-005",
       "behavior": "EUR amounts convert to chosen currency; preference persisted",
       "verification": "flutter test test/core/money",
+      "state": "passing",
+      "evidence": {
+        "commit": "b427c21",
+        "screens": ["artifacts/FR-005-home.png", "artifacts/FR-005-sheet.png", "artifacts/FR-005-sheet2.png", "artifacts/FR-005-selected.png"],
+        "notes": "20 tests pass (Money cents arithmetic, formatMoney symbol/decimals, resolveInitialCurrency/resolveRate incl. manual-override-wins, persistence across a fresh ProviderContainer, pill switcher widget flow). Proven non-vacuous: forced JPY to 2 decimals, got a real '¥1500.00' vs '¥1500' failure, restored, green again. bash harness.sh verify green (33 tests). On-device end-to-end against live beta: EUR pill on Home -> tapped it -> sheet showed real /settings/rates currencies -> tapped BDT -> pill updated to 'BDT ৳', confirming the full real flow. Reviewed by reviewer agent: PASS, with one advisory (see FR-005b) not blocking this feature."
+      }
+    },
+    {
+      "id": "FR-005b",
+      "behavior": "selectedCurrencyRateProvider has a direct provider-level test (not just resolveRate's unit test)",
+      "verification": "flutter test test/core/money/currency_providers_test.dart",
       "state": "not_started",
       "evidence": null
     },
