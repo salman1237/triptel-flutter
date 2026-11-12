@@ -3,26 +3,48 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101 done; FR-102 next).
+- **Phase:** Auth in progress (FR-101, FR-102 done; FR-103 next — likely `blocked`).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-102** (login with
-  email-or-username + password, persist `must_change_password`) `active`. It
-  reuses `AuthNotifier.login()` (already built, just untested/unverified as its
-  own feature) — mainly needs a LoginScreen + its route + tests. The user gave
-  a real beta test login (username `salman2033`) for on-device verification —
-  **do not write that credential into any repo file** (public repo); only use
-  it live via adb during device testing, same as the register flow's test
-  account. Google Sign-In (FR-103) is blocked on the user registering an
-  Android OAuth client (see "User actions pending") — build everything else,
-  set FR-103 `blocked` with that reason, keep moving. After auth: compatibility
-  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+, including
-  FR-307's ShurjoPay WebView flow — confirmed with the user this app never
-  talks to the `shurjopay` pub.dev package directly, since that's a
-  server-side SDK; the backend already owns ShurjoPay, this app just opens its
-  `checkout_url` in a WebView and intercepts `triptel://`, API.md §9). Low-priority
-  follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
+- **Next step:** run the `next-feature` loop: mark **FR-103** (Google Sign-In)
+  `active`. This needs an Android OAuth client for `co.triptel.app` + the
+  debug keystore's SHA-1, which only the user can register in Google Cloud
+  Console (see "User actions pending" — still outstanding). Expect to set
+  FR-103 `state: "blocked"` with that reason after confirming nothing else is
+  buildable first (e.g. the `google_sign_in` package wiring itself, gated
+  behind the missing client id), then move straight to **FR-104** (forgot/reset
+  password — request link in-app, the emailed link opens the web since there's
+  no app deep link for password reset) and **FR-105** (forced password change:
+  route to Set Password when `must_change_password` is true or on the 403
+  "set your own password" response — `AuthNotifier` already has
+  `must_change_password` available from FR-102's login). After auth:
+  compatibility (FR-950..952), then catalog (FR-201+), then checkout (FR-301+).
+  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
 
 ## Done
+- 2026-11-12 — Session 8 (FR-102):
+  - `lib/features/auth/presentation/login_screen.dart` — email-or-username +
+    password; only checks both fields are non-empty client-side (reusing
+    FR-101's `validateEmail` would wrongly reject a bare username). Calls the
+    `AuthNotifier.login()` method FR-101's session already built, surfaces
+    real backend errors (401 invalid credentials, 403 suspended — shown
+    inline for now; FR-109's dedicated suspended screen isn't built yet, a
+    deliberate, logged scope boundary) inline.
+  - `AccountScreen`'s unauthenticated state now shows both "Create account"
+    and "Sign in".
+  - Tests: `must_change_password` persistence proven end-to-end (API response
+    → `AuthNotifier.login()` → `SecureStore.saveToken` → read back), proven
+    non-vacuous. `bash harness.sh verify` green (99 tests). On-device: real
+    login against live beta using a **different, pre-existing** real account
+    (username `salman2033`, provided verbally by the user and never written
+    to any repo file) — confirmed "Signed in as salman2033" afterward, a
+    genuinely independent proof from FR-101's fresh-registration evidence.
+  - Found and fixed a test-infrastructure-only bug while writing tests: the
+    screen's "Sign in" heading and its submit button's "Sign in" label made
+    `find.text('Sign in')` ambiguous; added a `ValueKey` to the button and
+    switched affected taps to `find.byKey`. Confirmed this didn't change what
+    a real user sees (both strings still legitimately say "Sign in" on screen).
+  - Reviewer agent: PASS.
+  - Commits: `24ca106` (feature code), `f641aec` (state → passing).
 - 2026-11-12 — Session 7 (FR-101):
   - `lib/core/storage/secure_store.dart` — JWT + `must_change_password` only
     (Rules.md), via `flutter_secure_storage` (no official test API, so
