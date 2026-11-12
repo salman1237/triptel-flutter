@@ -3,24 +3,52 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth in progress (FR-101..104 done; FR-105 next).
+- **Phase:** Auth in progress (FR-101..105 done; FR-106 next).
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-105** (forced
-  password change: route to Set Password when `must_change_password` is
-  true or on the 403 "Please set your own password before buying or moving
-  money." response — `AuthNotifier` already persists `must_change_password`
-  from FR-102's login, via `SecureStore.readMustChangePassword()`. Spec says
-  this must NOT block viewing My eSIMs) `active`. After auth: compatibility
-  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+). FR-106
-  (resume purchase after auth) and FR-107/108/109 (session restore, sign
-  out, suspended screen) are the remaining auth items after FR-105.
-  Low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**.
+- **Next step:** run the `next-feature` loop: mark **FR-106** (resume a
+  guest's pending purchase after login/register/Google — persist
+  `{productId, discountCode}` before sending a guest to login, resume
+  checkout afterward) `active`. Note checkout (FR-301+) isn't built yet, so
+  FR-106 will mostly be the persistence/resume *mechanism* (a pending-intent
+  provider similar to FR-007's `pendingReferralProvider`), consumed fully
+  once FR-301+ exists — same incremental-infra pattern as FR-105's 403 half.
+  Then FR-107 (session restore via `GET /auth/me` on launch), FR-108 (sign
+  out — `AuthNotifier.logout()` already exists, needs its own test/dedicated
+  pass), FR-109 (suspended account screen on 403). After auth: compatibility
+  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+). Low-priority
+  follow-ups logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire
+  a real gated endpoint's 403 to Set Password once one exists).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-12 — Session 9 continued (FR-105):
+  - `AuthToken.copyWith()`, `AuthApi.changePassword()` (POSTs
+    `/auth/change-password`), `postAuthRoute(AuthState)` (pure: `/set-password`
+    when `mustChangePassword`, else `/home`) feeding login/register/Google's
+    post-success navigation.
+  - `AuthNotifier.changePassword()` clears the flag in state + `SecureStore`
+    on success, keeping the same access token (no new session); leaves it
+    untouched on failure.
+  - `SetPasswordScreen` — current/new password fields, success state, and a
+    "Not now — go to My eSIMs" link; it's a normal routable screen (not a
+    modal) with the 4-tab shell still reachable, so it never blocks viewing
+    My eSIMs. Account's signed-in view also shows a defensive prompt for a
+    user who skipped it earlier.
+  - Deliberately left unwired: the 403 "set your own password" interception
+    half, since no `require_password_changed`-gated endpoint exists yet
+    (checkout/wallet are future FRs) — logged as **FR-105b** rather than
+    faked. `ApiException.mustChangePassword` already exists for whichever FR
+    calls the first gated endpoint.
+  - 47 tests (auth + account), two non-vacuousness proofs. `bash harness.sh
+    verify` green (118 tests). On-device: logged in with the real
+    `salman2033` account (`must_change_password: false`) — correctly no
+    prompt/redirect. The positive case has no real beta account to trigger
+    it, so only widget-tested — disclosed, not faked.
+  - Reviewer agent: PASS.
+  - Commits: `10cf47c` (feature code), `3520305` (state → passing + FR-105b logged).
 - 2026-11-12 — Session 9 continued (FR-104):
   - `ForgotPasswordScreen` — email field, client-side `validateEmail`
     (reused from FR-101), POSTs `/auth/forgot-password` via `authApiProvider`
