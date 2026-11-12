@@ -3,19 +3,53 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-12) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Foundation (FR-001..006 done; FR-007 next).
+- **Phase:** Foundation complete (FR-001..007 all passing). Auth next.
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: mark **FR-007** (deep links:
-  `triptel://payment-callback?...` via `app_links`, incoming
-  `https://triptel.co/track/<token>` / `?ref=CODE` best-effort) `active`. This
-  closes out the Foundation section (FR-001..007); next after that is auth
-  (FR-101..109), then compatibility (FR-950..952). Two low-priority follow-ups
-  logged, not urgent: **FR-005b** (direct provider test for
-  `selectedCurrencyRateProvider`, unused by any screen yet) and **FR-006b**
-  (`BootstrapGate`'s splash/maintenance/error branches don't respect a saved
-  RTL language — rare edge case, maintenance mode is uncommon).
+- **Next step:** run the `next-feature` loop: mark **FR-101** (register with
+  optional referral code — `pendingReferralProvider` from FR-007 pre-fills it)
+  `active` and build auth (FR-101..109) using `flutter_secure_storage` for the
+  JWT (Rules.md: JWT/`must_change_password` only there, never
+  `shared_preferences`). Google Sign-In (FR-103) is blocked on the user
+  registering an Android OAuth client (see "User actions pending") — build
+  everything else, set FR-103 `blocked` with that reason, keep moving. After
+  auth: compatibility (FR-950..952), then catalog (FR-201+), then checkout
+  (FR-301+, including FR-307's ShurjoPay WebView flow — confirmed with the user
+  this app never talks to the `shurjopay` pub.dev package directly, since
+  that's a server-side SDK; the backend already owns ShurjoPay, this app just
+  opens its `checkout_url` in a WebView and intercepts `triptel://`, API.md §9).
+  Three low-priority follow-ups logged, not urgent: **FR-005b**, **FR-006b**,
+  and no new ones from FR-007.
 
 ## Done
+- 2026-11-12 — Session 6 (FR-007 — Foundation section complete):
+  - `lib/core/deeplink/` — `parseDeepLink`/`extractReferralCode` (pure),
+    `handleDeepLink` dispatch, `app_links`-backed listener mirroring FR-002's
+    fetch+cache shape. Referral codes persist to `shared_preferences` for
+    FR-803/FR-101; payment-callback params and tracking tokens sit in state
+    providers until checkout (FR-306/307) and tracking (FR-501) exist to
+    consume them.
+  - New top-level `/track/:token` route + `TrackingScreen` placeholder;
+    `DeepLinkBridge` activates the listener and navigates there.
+  - **Found and fixed a real infra gap**: `AndroidManifest.xml` had no `https`
+    intent-filter at all — only `triptel://` — so `/track/` links could never
+    reach the app on a real device no matter how correct the Dart parsing was.
+    Added one scoped to `pathPrefix=/track`, no `autoVerify` (no backend
+    `.well-known/assetlinks.json` yet — logged in DECISIONS.md and already
+    tracked as "Blocked on backend" #7).
+  - Tests: 19, proven non-vacuous. `bash harness.sh verify` green (69 tests).
+    On-device: rebuilt, reinstalled, sent real `adb shell am start -a
+    android.intent.action.VIEW -d <uri>` intents for both schemes to the
+    running app — both delivered; `artifacts/FR-007-tracking.png` shows the
+    real `TrackingScreen` with the token from a live deep link, not a widget
+    test.
+  - Reviewer agent: PASS; trimmed an undocumented `www.triptel.co` host (API.md
+    only lists `triptel.co`/`beta.triptel.co`) per its note before committing.
+  - User asked about integrating the `shurjopay` pub.dev package (a
+    server-side SDK) — confirmed with them this app doesn't need it: per
+    API.md §9 the client only opens the backend's `checkout_url` in a WebView
+    and intercepts `triptel://`, which FR-007 already wired up and FR-307
+    will consume. No new dependency added.
+  - Commits: `e882e0e` (feature code), `19fd12a` (state → passing).
 - 2026-11-12 — Session 5 (FR-006):
   - `lib/core/i18n/` — `translations_api.dart`/`translations_cache.dart`/
     `translations_loader.dart` mirror FR-002's bootstrap fetch+cache+fallback

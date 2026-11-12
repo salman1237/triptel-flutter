@@ -1,6 +1,20 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-12 — Added an Android https intent-filter for track links, without autoVerify
+While building FR-007, `https://triptel.co/track/<token>` test intents couldn't
+reach the app at all — `AndroidManifest.xml` only ever registered the
+`triptel://` custom scheme, never `https`. Added a second `<intent-filter>`
+scoped to `android:host` + `android:pathPrefix="/track"` (not the whole
+domain), deliberately **without** `android:autoVerify="true"`. **Why:**
+there's no `/.well-known/assetlinks.json` on the backend yet (the existing
+"Blocked on backend" gap #7), so claiming `autoVerify` would be a lie Android
+could never confirm; Android will show a disambiguation chooser instead of
+opening the app directly, which matches FR-007's spec: "best effort."
+**Revisit if:** the backend adds `assetlinks.json` — then add `autoVerify="true"`
+and the matching iOS Associated Domains entitlement (not done yet, no Mac to
+test it) so track links open the app directly instead of the browser.
+
 ## 2026-11-12 — FR-006's verification path corrected to where its tests live
 `feature_list.json`'s FR-006 `verification` was a stale placeholder
 (`flutter test test/features/bootstrap`, copy-pasted from FR-002/003 before
