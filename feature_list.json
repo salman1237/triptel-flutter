@@ -194,8 +194,15 @@
       "id": "FR-109",
       "behavior": "403 Account suspended shows suspended screen",
       "verification": "flutter test test/features/auth",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "77d9f37",
+        "screens": [
+          "artifacts/fr-109/02-home.png",
+          "artifacts/fr-109/03-suspended-screen.png"
+        ],
+        "notes": "On a 403 Account suspended (API.md section 0.1) during session restore, login, or Google sign-in, AuthNotifier clears the token and sets AuthSuspended; postAuthRoute() returns /suspended. AuthRouteBridge (new) listens for the transition into AuthSuspended globally so an already-signed-in user whose session restore discovers suspension is routed there too, with no login-screen interaction needed. New SuspendedScreen mirrors FR-003's maintenance screen pattern (support email/phone from /settings/public, hidden if both null). 131 tests pass; flutter analyze clean; bash harness.sh verify green (debug APK built). Proven non-vacuous twice: (1) disabled the isSuspended branch in login()/build(), auth_providers_test.dart's suspension tests failed for real, restored, green again; (2) broke AuthRouteBridge's listener condition to `if (false)`, test/app/auth_route_bridge_test.dart failed with 0 SuspendedScreen widgets found (expected 1), restored, green again. No real suspended beta account exists to exercise the live backend 403 end-to-end on-device (same disclosed limitation as FR-105's positive case), so 02-home.png documents a healthy post-change device smoke test (signed-in session still resolves to /home, no accidental suspension), and 03-suspended-screen.png is a widget-test RepaintBoundary capture of the real SuspendedScreen (layout/structure visible; text renders as placeholder glyphs because flutter test doesn't load real fonts -- exact text content is separately asserted by suspended_screen_test.dart). Reviewed by reviewer agent: initial FAIL (missing AuthRouteBridge test coverage, missing suspended-screen screenshot), both fixed, re-reviewed: PASS."
+      }
     },
     {
       "id": "FR-950",
