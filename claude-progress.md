@@ -7,10 +7,10 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
-  Catalog (C): FR-201, FR-202, FR-203, FR-204 passing (FR-201b — usage
-  summary for signed-in users with an active eSIM — and FR-202b — featured
-  "Global" package card — both deferred, not_started, need data/screens
-  that don't exist yet).
+  Catalog (C): FR-201, FR-202, FR-203, FR-204, FR-205 passing (FR-201b —
+  usage summary for signed-in users with an active eSIM — and FR-202b —
+  featured "Global" package card — both deferred, not_started, need
+  data/screens that don't exist yet).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -25,12 +25,10 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-204 in feature_list.json order — FR-205 (plan detail /
-  coverage sheet — this one's trivial for non-regional products, since
-  FR-204's screen already shows "1 country"; the interesting case,
-  disambiguating titles, needs a look), FR-206 (shareable destination link),
-  then checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once
-  those screens exist; this also finally gives FR-204's "Continue" button
+  item after FR-205 in feature_list.json order — FR-206 (shareable
+  destination link; `share_plus: ^12.0.2` already in `pubspec.yaml`), then
+  checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once those
+  screens exist; this also finally gives FR-204's "Continue" button
   something real to do). Low-priority follow-ups logged, not urgent:
   **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
   Set Password once one exists), **FR-106** (blocked on catalog/checkout),
@@ -44,6 +42,40 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-205):
+  - **FR-205 (plan detail/coverage sheet):** new `plan_detail_sheet.dart`
+    — a modal bottom sheet opened via a new "Plan details" `TextButton`
+    (keyed `plan-details-${product.id}`) under each plan row in
+    `DestinationPlansScreen` (FR-204). Shows the full disambiguating
+    `titleEn` (products can share data+validity, differing only by
+    supplier suffix, e.g. "Japan 1GB 7Days" vs "(IIJ)" per API.md §3),
+    three plan facts (data-type label via `planShape`, "Starts on
+    install", "Personal hotspot"), and a Coverage section: the real
+    `coverage_countries` list + count for regional products, or a plain
+    "{countryName} · 1 country" row for the normal single-country case
+    (same reasoning as FR-204's row-level coverage label — this app's
+    `GET /catalog/destinations/{slug}` only ever returns non-regional
+    products).
+  - 5 new tests (4 in `plan_detail_sheet_test.dart`, 1 added to
+    `destination_plans_screen_test.dart` for the real tap-through). Full
+    catalog suite: 54 tests green. Non-vacuous: broke
+    `isRegionalCoverage`'s condition, confirmed real compile/test failures
+    in `plan_detail_sheet_test.dart`, restored, confirmed green again.
+    `flutter analyze` clean, `dart format` no changes, `bash harness.sh
+    verify` green.
+  - On-device evidence (`artifacts/FR-205.png`, device
+    `109973842B010285`): reached via genuine navigation (Home → Japan →
+    "Plan details"), shows the real single-country path ("Japan · 1
+    country"). The regional-coverage branch is unit-tested but not
+    reachable live for the reason above — disclosed in
+    `feature_list.json`'s evidence notes, same pattern as FR-201b/FR-202b.
+  - Reviewer: PASS on first pass (checked FR text's 4 named facts are all
+    rendered, null-safety on `coverageCountries`, real entry point,
+    non-vacuous tests via its own mutation test, no redundancy with
+    FR-204's row). Flagged only that the on-device screenshot hadn't been
+    captured via `bash harness.sh shot FR-205` yet — fixed before marking
+    passing.
+  - Commits: `153ca7e` (feature), `b350845` (state).
 - 2026-11-13 — Session 10 continued (FR-204, the biggest feature this
   session):
   - **FR-204 (destination plans screen):** `DestinationPlansScreen`
