@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_pill_switcher.dart';
 import '../../../core/money/currency_providers.dart';
@@ -8,6 +9,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../application/catalog_providers.dart';
 import '../application/plan_shape.dart';
+import '../application/share_destination.dart';
 import '../data/models/destination.dart';
 import '../data/models/product.dart';
 import 'plan_detail_sheet.dart';
@@ -278,6 +280,16 @@ class _Header extends StatelessWidget {
                   icon: const Icon(Icons.arrow_back, color: AppColors.surface),
                 ),
                 const Spacer(),
+                IconButton(
+                  key: const ValueKey('share-destination-button'),
+                  onPressed: () => SharePlus.instance.share(
+                    ShareParams(
+                      text: destinationShareUrl(country.slug),
+                      subject: country.nameEn,
+                    ),
+                  ),
+                  icon: const Icon(Icons.share, color: AppColors.surface),
+                ),
                 const CurrencyPillSwitcher(),
               ],
             ),

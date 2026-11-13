@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/catalog/application/catalog_providers.dart';
@@ -8,6 +10,16 @@ import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/catalog/presentation/destination_plans_screen.dart';
+
+class _FakeSharePlatform extends SharePlatform with MockPlatformInterfaceMixin {
+  ShareParams? lastParams;
+
+  @override
+  Future<ShareResult> share(ShareParams params) async {
+    lastParams = params;
+    return ShareResult('', ShareResultStatus.success);
+  }
+}
 
 const _country = Country(
   id: 107,
@@ -104,6 +116,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Recommended'), findsOneWidget);
+  });
+
+  testWidgets('tapping the share icon shares the public explore URL (FR-206)',
+      (tester) async {
+    final fakePlatform = _FakeSharePlatform();
+    SharePlatform.instance = fakePlatform;
+    addTearDown(() => SharePlatform.instance = SharePlatform());
+
+    await tester.pumpWidget(_app([_fixed(gb: 1, days: 7)]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('share-destination-button')));
+    await tester.pumpAndSettle();
+
+    expect(fakePlatform.lastParams?.text, 'https://triptel.co/explore/japan');
+    expect(fakePlatform.lastParams?.subject, 'Japan');
   });
 
   testWidgets('tapping "Plan details" opens FR-205\'s detail sheet',
