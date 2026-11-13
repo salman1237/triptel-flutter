@@ -12,7 +12,7 @@ Session log. Read first at session start, update last at session end.
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
   passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
-  (D): FR-301, FR-302, FR-303 passing.
+  (D): FR-301, FR-302, FR-303, FR-304 passing.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -27,21 +27,89 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-303 (discount code guest estimate) just landed, wiring
-  FR-302's voucher sheet to the real `/discounts/check` — next is
-  **FR-304** (discount code — authoritative, `POST /discounts/preview`,
-  auth-required, called before actually charging). No valid discount code
-  currently exists on the beta environment (confirmed via curl on both
-  "WELCOME" and a random string) — same limitation will apply to FR-304;
-  disclose it the same way. Revisit **FR-106** and **FR-953b** once enough
-  of FR-301+ exists (FR-953b's checkout half can start once a real
-  purchase action exists, i.e. once FR-306+ exists).
+  array order. FR-304 (authoritative discount preview, `POST
+  /discounts/preview`) just landed — next is **FR-305** (payment method
+  sheet, Wallet shown only when DEFAULT+REWARD covers the total). This is
+  likely where real wallet-balance fetching (FR-601, not_started) first
+  becomes a genuine dependency — check whether to build a minimal balance
+  read ahead of FR-601, same incremental pattern as FR-007/FR-105b, or
+  defer. No valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work.
+  Revisit **FR-106** and **FR-953b** once enough of FR-301+ exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-304, authoritative discount
+  preview):
+  - **FR-304:** adds `DiscountsApi.preview(code, productId)` (`POST
+    /discounts/preview`, auth required) and wires it into checkout
+    review's "Continue to payment": when a voucher is applied and the
+    user is signed in, re-confirms it authoritatively (a code can expire
+    between FR-303's guest estimate and now) before proceeding — invalid
+    clears the discount and shows the reason via SnackBar, keeping the
+    user on review (never silently proceeds); a thrown `ApiException`
+    (e.g. a real captured 404 "Product not found or inactive") shows its
+    message the same way; valid falls through to the still-nonexistent
+    "coming soon" (FR-305+). A guest skips the check entirely — no
+    sign-in-and-resume flow exists yet (FR-106, deferred) — disclosed as
+    a limitation, not silently guessed.
+  - **Real bug found and fixed while building this:**
+    `ref.read(authNotifierProvider).valueOrNull` returned `null`
+    (`AsyncLoading`) on first access inside the button handler, since
+    nothing else in the screen `ref.watch`es that provider — the
+    `AsyncNotifier.build()` hadn't resolved yet at the moment of the
+    synchronous read. Fixed by awaiting `authNotifierProvider.future`
+    instead, which properly waits for `build()` to resolve. Diagnosed via
+    a temporary `debugPrint` in a throwaway diagnostic test file (deleted
+    after). Worth remembering generally: `ref.read()` on an
+    `AsyncNotifierProvider` nobody watches can return a stale/loading
+    value — use `.future` when you need the resolved value on demand.
+  - Fixture note (same disclosed pattern as FR-303): registered a
+    throwaway beta test account via `curl -X POST .../auth/register`
+    (sanctioned per `.claude/skills/verify-on-device/SKILL.md`'s "use a
+    beta test account"), used its real JWT to capture a REAL invalid-code
+    `/discounts/preview` response and a REAL 404 "Product not found or
+    inactive" response (using a real product UUID pulled from an existing
+    fixture, then a bogus one). No valid discount code exists on beta at
+    all, so the valid-response fixture again had to be constructed from
+    `docs/API.md`'s own documented example, disclosed not hidden.
+  - 9 new tests (2 model-parsing + 5 FR-304-specific widget tests using a
+    `_FixedAuth extends AuthNotifier` override mirroring the existing
+    pattern in `test/features/account/account_screen_password_prompt_test.dart`).
+    Non-vacuous: broke the invalid-preview branch, got a real failure,
+    restored. Full suite (266 tests) green; flutter analyze clean; bash
+    harness.sh verify green.
+  - On-device evidence (`artifacts/FR-304.png`): the user provided real
+    beta account credentials (`salman2033`) mid-session and asked me to
+    sign in with them — did so live, confirmed "Signed in as salman2033"
+    in Account, then reached checkout for real (Home → Japan → plan →
+    FR-301 gate → review) and got FR-303's live "That discount code isn't
+    valid." for "WELCOME". Since no discount can ever become validly
+    applied live (no valid code exists on beta), the UI can never reach
+    the branch that actually calls `/discounts/preview` live — disclosed,
+    not overclaimed; that logic is fully covered by widget tests instead.
+  - Device gotcha this round: the connected device swapped mid-session
+    (vivo `10EF1302BJ000R5` went `unauthorized` after an adb restart,
+    needed re-approval on the phone), and that vivo's `screencap` silently
+    produced 0-byte files whenever the on-screen keyboard/IME was open —
+    dismissing the keyboard first (`KEYCODE_BACK`, then relaunching since
+    that also backs out of the app) fixed it. Worth remembering for this
+    specific device.
+  - Reviewer: PASS, with a notable disclosure — it accidentally ran `git
+    checkout --` on the uncommitted `checkout_review_screen.dart` mid-review
+    (a real mistake, caught and disclosed, not hidden), reconstructed the
+    file by hand from what it had already read, and verified the
+    reconstruction via analyze/format/tests/harness verify. Before
+    committing, independently re-diffed every changed file myself against
+    what I'd actually written — confirmed the logic was byte-for-byte
+    intact (only cosmetic quote-style/comment differences, which I
+    restored). No data was actually lost, but this is a reminder to
+    always verify a reviewer's own destructive-recovery claims rather than
+    trusting them blindly. Commits: `603b3ef` (feature), `c630b66`
+    (state).
 - 2026-11-14 — Session 10 continued (FR-303, discount code guest estimate):
   - **FR-303:** wires FR-302's voucher code sheet (previously a "coming
     soon" placeholder) to the real public `POST /discounts/check`
