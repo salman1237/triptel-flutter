@@ -7,6 +7,7 @@ import '../features/auth/presentation/set_password_screen.dart';
 import '../features/auth/presentation/suspended_screen.dart';
 import '../features/catalog/presentation/destination_plans_screen.dart';
 import '../features/catalog/presentation/home_screen.dart';
+import '../features/checkout/presentation/checkout_review_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
 import '../features/compatibility/presentation/supported_devices_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
@@ -47,6 +48,11 @@ final appRouter = GoRouter(
       path: '/explore/:slug',
       builder: (context, state) =>
           DestinationPlansScreen(slug: state.pathParameters['slug']!),
+    ),
+    GoRoute(
+      path: '/checkout/review',
+      builder: (context, state) =>
+          CheckoutReviewScreen(args: state.extra! as CheckoutReviewArgs),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

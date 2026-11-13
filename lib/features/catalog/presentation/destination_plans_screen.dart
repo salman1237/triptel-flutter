@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_pill_switcher.dart';
@@ -7,6 +8,7 @@ import '../../../core/money/currency_providers.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../checkout/presentation/checkout_review_screen.dart';
 import '../../checkout/presentation/pre_checkout_gate.dart';
 import '../application/catalog_providers.dart';
 import '../application/plan_shape.dart';
@@ -19,9 +21,8 @@ import 'plan_detail_sheet.dart';
 /// (only shapes that actually exist for this destination), a wheel picker
 /// over the shape's primary dimension (data size for Fixed, validity days
 /// for Day Pass/Unlimited -- docs/Design_System.md), and a radio list of
-/// the plans matching the wheel's current value. Checkout (FR-301+)
-/// doesn't exist yet, so "Continue" shows a "coming soon" snack instead of
-/// routing to a path that doesn't exist (FR-105b-style reasoning).
+/// the plans matching the wheel's current value. "Continue" runs FR-301's
+/// compatibility gate, then routes to FR-302's checkout review screen.
 class DestinationPlansScreen extends ConsumerStatefulWidget {
   const DestinationPlansScreen({super.key, required this.slug});
 
@@ -38,9 +39,11 @@ class _DestinationPlansScreenState
   int _wheelIndex = 0;
   String? _selectedProductId;
 
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Checkout is coming soon')),
+  void _goToCheckout(
+      BuildContext context, Product product, String countryName) {
+    context.push(
+      '/checkout/review',
+      extra: CheckoutReviewArgs(product: product, countryName: countryName),
     );
   }
 
@@ -66,10 +69,11 @@ class _DestinationPlansScreenState
               _selectedProductId = null;
             }),
             onProductSelected: (id) => setState(() => _selectedProductId = id),
-            onContinue: () => runPreCheckoutCompatibilityGate(
+            onContinue: (product) => runPreCheckoutCompatibilityGate(
               context,
               ref,
-              onContinue: () => _comingSoon(context),
+              onContinue: () =>
+                  _goToCheckout(context, product, value.country.nameEn),
             ),
           ),
         AsyncError() => SafeArea(
@@ -106,7 +110,7 @@ class _Body extends StatelessWidget {
   final ValueChanged<PlanShape> onShapeChanged;
   final ValueChanged<int> onWheelChanged;
   final ValueChanged<String> onProductSelected;
-  final VoidCallback onContinue;
+  final ValueChanged<Product> onContinue;
 
   static const _shapeLabels = {
     PlanShape.fixed: 'Data',
@@ -240,7 +244,10 @@ class _Body extends StatelessWidget {
         StickyTotalBar(
           totalText: selectedProductId == null ? 'Select a plan' : '',
           ctaLabel: 'Continue',
-          onPressed: selectedProductId == null ? null : onContinue,
+          onPressed: selectedProductId == null
+              ? null
+              : () => onContinue(
+                  matching.firstWhere((p) => p.id == selectedProductId)),
         ),
       ],
     );

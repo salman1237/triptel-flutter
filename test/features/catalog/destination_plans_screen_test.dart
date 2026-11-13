@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 import 'package:triptel/core/money/currency_providers.dart';
@@ -10,6 +11,7 @@ import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/catalog/presentation/destination_plans_screen.dart';
+import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
 import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 
@@ -65,19 +67,35 @@ Product _unlimited(
       isFeatured: featured,
     );
 
-Widget _app(List<Product> products) => ProviderScope(
-      overrides: [
-        destinationProvider('japan').overrideWith(
-          (ref) async => Destination(country: _country, products: products),
+Widget _app(List<Product> products) {
+  final router = GoRouter(
+    initialLocation: '/explore/japan',
+    routes: [
+      GoRoute(
+        path: '/explore/:slug',
+        builder: (context, state) => const DestinationPlansScreen(
+          slug: 'japan',
         ),
-        selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
-        currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
-        esimVerdictProvider.overrideWith((ref) async => _supportedVerdict),
-      ],
-      child: const MaterialApp(
-        home: DestinationPlansScreen(slug: 'japan'),
       ),
-    );
+      GoRoute(
+        path: '/checkout/review',
+        builder: (context, state) =>
+            CheckoutReviewScreen(args: state.extra! as CheckoutReviewArgs),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [
+      destinationProvider('japan').overrideWith(
+        (ref) async => Destination(country: _country, products: products),
+      ),
+      selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+      currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+      esimVerdictProvider.overrideWith((ref) async => _supportedVerdict),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
 
 class _FixedCurrency extends CurrencyPreferenceNotifier {
   @override
@@ -155,17 +173,18 @@ void main() {
   });
 
   testWidgets(
-      'selecting a plan then tapping Continue shows "coming soon" '
-      '(checkout, FR-301+, does not exist yet)', (tester) async {
+      'selecting a plan then tapping Continue (supported device) routes to '
+      "FR-302's checkout review screen", (tester) async {
     await tester.pumpWidget(_app([_fixed(gb: 1, days: 7)]));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Japan 1.0GB 7Days'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    expect(find.byType(CheckoutReviewScreen), findsOneWidget);
+    expect(find.text('Japan 1.0GB 7Days'), findsOneWidget);
   });
 
   testWidgets(
