@@ -7,7 +7,7 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
-  Catalog (C): FR-201, FR-202 passing (FR-201b — usage summary for
+  Catalog (C): FR-201, FR-202, FR-203 passing (FR-201b — usage summary for
   signed-in users with an active eSIM — and FR-202b — featured "Global"
   package card — both deferred, not_started, need data/screens that don't
   exist yet).
@@ -25,10 +25,8 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-202 in feature_list.json order — FR-203 (regional list:
-  each regional pseudo-country's "(N countries)" parsed out of its name,
-  "N countries" link to a coverage list sheet), then FR-204 (destination
-  plans screen — once this exists, the remaining "coming soon" taps on
+  item after FR-203 in feature_list.json order — FR-204 (destination plans
+  screen — once this exists, the remaining "coming soon" taps on
   destination rows, both in Home's popular list and inside the explore
   sheet, can finally be wired to real navigation), FR-205/206, then
   checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once those
@@ -45,6 +43,44 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-203):
+  - **FR-203 (regional list with coverage sheet):**
+    `CatalogApi.getCoverageCountries(iso2)` (new) calls `GET
+    /catalog/countries/{iso2}/products` and reads the first product's
+    `coverage_countries` (confirmed — and independently re-confirmed by
+    the reviewer — identical across a regional package's products, so the
+    first one is enough). `coverageCountriesProvider` (family, keyed by
+    iso2) feeds a new `CoverageSheet` (tap a regional row -> real list of
+    covered countries, e.g. AUKUS(3 countries) -> Australia/United
+    Kingdom/United States) and a new `_RegionalRow` widget that shows a
+    real, live "N countries" subtitle on every Regional-tab row.
+  - **First-pass reviewer FAIL, fixed same session:** the initial build
+    only wired the tap-to-open-coverage-sheet behavior and skipped the
+    row-level subtitle, reasoning that the catalog's own display names
+    already embed an (inconsistent) count. The reviewer correctly held
+    FR-203's literal text and the design reference to account — "Globe
+    icon rows, name, 'N countries' *link*" describes a distinct per-row
+    element, not just the name string. Fixed by adding `_RegionalRow`,
+    which derives its subtitle from the same live `coverageCountriesProvider`
+    the sheet itself uses (so the row and the sheet never disagree), with
+    no subtitle shown while loading/on error rather than a wrong flash.
+    **Lesson reinforced:** when an FR's literal text describes two
+    distinct UI elements (a row *and* a link within it), treat consuming
+    one existing data source for a reasonable-sounding combined behavior
+    as a hypothesis to get reviewed, not a given — this is the second time
+    this exact pattern (FR text implies a connected-but-separate UI piece
+    that got collapsed into one) has needed a fix-after-review this
+    session (the first was FR-953's verification-command gap).
+  - Note: the catalog's own embedded count (e.g. "Asia (20 areas)") and
+    the live coverage-list count ("19 countries") can legitimately differ
+    — one is the supplier's own loose area/package count, the other is
+    the actual `coverage_countries` list length. This is expected, not a
+    bug, and is called out in the evidence notes so a future session
+    doesn't mistake it for one.
+  - 9 new tests; non-vacuous both times (coverage-sheet branch, then the
+    subtitle derivation). Full suite (196 tests) passes; `flutter
+    analyze` clean; `bash harness.sh verify` green.
+  - Commits: `e5c8519` (feature), `ce63b02` (state).
 - 2026-11-13 — Session 10 continued (FR-202):
   - **FR-202 (destination search sheet):** new `ExploreSheet`
     (`lib/features/catalog/presentation/explore_sheet.dart`), a full-height
