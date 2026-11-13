@@ -208,7 +208,8 @@
       "id": "FR-950",
       "behavior": "Native signals -> supported/notSupported/unknown verdict",
       "verification": "flutter test test/features/compatibility && flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5",
-      "state": "not_started",
+      "state": "blocked",
+      "blocked_reason": "Decision logic fully built and verified: lib/features/compatibility/{data,application}/ (EsimSupportChannel wrapping the pre-existing co.triptel.app/esim native channel on both platforms, pure evaluateEsimSupport() verdict function, iOS machine-id->marketing-name map, cached esimVerdictProvider). 18 unit/provider tests pass (flutter test test/features/compatibility), non-vacuous (disabled the Android enabled-check branch, got a real failure, restored, green again). flutter analyze clean. The on-device half of this FR's verification command (flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5) cannot complete on the vivo V2344 test device: flutter_tools fails 4/4 attempts with \"Error waiting for a debug connection: The log reader stopped unexpectedly\" while waiting on adb logcat to report the VM Service port, reproduced across an adb server restart, a logcat buffer clear, enabling the vivo Developer Options \"USB debugging (Security settings)\" toggle, and a full USB disconnect/reconnect. Manually confirmed (adb am start + adb shell pidof, repeated over 8s, plus a logcat scan) that the app itself launches and stays running without crashing -- this is a flutter_tools<->adb<->vivo logcat-streaming interaction issue, not an app or code defect. Needs either a different USB cable/port, wireless adb, or a non-vivo test device to unblock the on-device half of this FR's own verification command. Will retry once available; not blocking FR-951/952 which verify via plain `adb exec-out screencap` (already proven reliable this session), not this flutter-tools debug-connection path.",
       "evidence": null
     },
     {
