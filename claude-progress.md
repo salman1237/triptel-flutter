@@ -11,7 +11,8 @@ Session log. Read first at session start, update last at session end.
   for signed-in users with an active eSIM — and FR-202b — featured
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
-  passing; FR-105b blocked (no real gated endpoint exists yet).
+  passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
+  (D): FR-301 passing (first feature in a new `lib/features/checkout/`).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -26,22 +27,54 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-005b and FR-006b (both genuinely buildable, not blocked)
-  built this session. FR-105b, FR-201b, FR-202b checked and found
-  genuinely blocked (reasons in their `feature_list.json` entries: FR-105b
-  needs a real require_password_changed-gated endpoint, which only exists
-  on checkout/wallet money-moving calls, all not_started; FR-201b needs
-  FR-402/403/801 usage data; FR-202b is blocked on the backend itself —
-  `CountryResponse` has no featured-package field). Next real
-  `not_started` item is **FR-301** (pre-checkout compatibility gate
-  dialog) — the start of the checkout section (D). Revisit **FR-106** and
-  **FR-953b** once enough of FR-301+ exists.
+  array order. FR-301 (pre-checkout compatibility gate, new
+  `lib/features/checkout/`) just landed — next is **FR-302** (checkout
+  review screen: plan header, voucher row, price breakdown, sticky total
+  bar with "You save…", "Continue to payment" CTA). This is the real
+  destination for FR-204's "Continue" button (currently "coming soon"
+  after the FR-301 gate) — wire it once FR-302 exists. Revisit **FR-106**
+  and **FR-953b** once enough of FR-301+ exists (FR-953b's checkout half
+  can start as soon as FR-301's gate — already built — has a real purchase
+  action to wire into, i.e. once FR-306+ exists).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-301, first checkout feature):
+  - **FR-301 (pre-checkout compatibility gate):** new
+    `lib/features/checkout/{application,presentation}/`.
+    `decideGateAction(EsimVerdictKind)` (pure, tested) maps
+    supported→proceed, notSupported→show the "Buy Now, Use Later!"
+    dialog, unknown→a softer "We couldn't confirm" note (Rules.md:
+    unknown != not supported). `runPreCheckoutCompatibilityGate` reads
+    FR-950/953's cached `esimVerdictProvider`; on a verdict-check error,
+    proceeds directly rather than blocking. The notSupported dialog
+    (icon/title "Buy Now, Use Later!"/subtitle "Activate anytime."/body,
+    Continue+View Supported Devices+Cancel, matching
+    `docs/design-reference/07-checkout-compatibility-dialog.png` and
+    Design_System.md's spec) reuses the existing `/compatibility/devices`
+    route (FR-952) rather than inventing a new one; the unknown dialog
+    drops the secondary button since nothing's confirmed. Wired into
+    `DestinationPlansScreen`'s (FR-204) "Continue" — it now runs this gate
+    before showing the pre-existing "Checkout is coming soon" snack (real
+    checkout, FR-302+, still doesn't exist).
+  - 10 new tests (3 pure unit + 7 widget, using a real `GoRouter` and real
+    taps, not mocks). Non-vacuous: broke `decideGateAction`'s notSupported
+    branch to `proceed`, got real failures across the dialog-dependent
+    tests, restored. Full suite (241 tests) green; flutter analyze clean;
+    bash harness.sh verify green.
+  - On-device evidence (`artifacts/FR-301.png`) is genuine end-to-end:
+    reached via real navigation (Home → Japan → select a plan → Continue)
+    on a device that genuinely has no eSIM hardware — the real dialog
+    fired matching the design reference; a second (uncommitted,
+    `.harness/`-local) screenshot confirms tapping the dialog's own
+    Continue reaches the "coming soon" snack, proving the never-blocks
+    property live, not just in tests.
+  - Reviewer: PASS first pass — independently re-ran the mutation test and
+    every verification command. Commits: `25cf240` (feature), `8e13b6e`
+    (state).
 - 2026-11-13 — Session 10 continued (FR-006b, then FR-105b/FR-201b/FR-202b
   checked and marked `blocked`):
   - **FR-006b (RTL in BootstrapGate's non-content branches):** `RtlScope`
