@@ -4,26 +4,83 @@ Session log. Read first at session start, update last at session end.
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
 - **Phase:** Auth section (B) complete (FR-101..105, FR-107, FR-108, FR-109
-  done; FR-106 blocked). Compatibility (K): FR-950's decision logic done,
-  blocked only on a device/tooling issue (see Blocked section); FR-951/952 next.
+  done; FR-106 blocked). Compatibility (K): FR-950 and FR-951 both passing;
+  FR-952 next.
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: **FR-951** (compatibility
-  result screen — consumes FR-950's `esimVerdictProvider`, already built and
-  unit-tested even though FR-950 itself is `blocked`) and **FR-952**
-  (supported devices list), both verify via `bash harness.sh shot` (plain
-  `adb screencap`, unaffected by FR-950's `flutter test integration_test`
-  tooling issue). Then catalog (FR-201+), then checkout (FR-301+ — revisit
-  **FR-106** then, once a real gated post-auth endpoint exists). Retry
-  FR-950's on-device integration test opportunistically if the vivo
-  device/USB issue clears up. Low-priority follow-ups logged, not urgent:
-  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
-  Set Password once one exists), **FR-106** (blocked on catalog/checkout).
+- **Test device note:** the vivo V2344 (serial `10EF1302BJ000R5`) has a
+  persistent `flutter_tools`<->`adb` logcat-streaming issue that blocks
+  `flutter test integration_test/*.dart -d <device>` specifically (plain
+  `adb screencap`/`am start`/`pidof` all work fine on it). An OPPO CPH2015
+  (serial `YP7HDIPFPBWGHM9H`, Android 9, also no eUICC) was connected this
+  session and that same integration test passed first try — use whichever
+  device is connected for `flutter test integration_test/`; don't assume
+  the vivo serial still applies.
+- **Next step:** run the `next-feature` loop: **FR-952** (supported devices
+  list, searchable by brand, EID check tip — verify via `bash harness.sh
+  shot FR-952`, the reliable `adb screencap` path). Then FR-953
+  ("compatibility everywhere it matters" — home promo, Account entry,
+  checkout gate, install gating — this is what finally gives
+  `/compatibility` a real in-app entry point). Then catalog (FR-201+), then
+  checkout (FR-301+ — revisit **FR-106** then, once a real gated post-auth
+  endpoint exists). Low-priority follow-ups logged, not urgent: **FR-005b**,
+  **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to Set Password
+  once one exists), **FR-106** (blocked on catalog/checkout).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-950 unblocked, FR-951):
+  - **FR-950 unblocked -> passing.** A different physical device (OPPO
+    CPH2015, Android 9/API 28, no eUICC, serial `YP7HDIPFPBWGHM9H`) was
+    connected mid-session; `flutter test integration_test/fr_950_test.dart
+    -d YP7HDIPFPBWGHM9H` passed cleanly on the first try ("getEsimSupport
+    channel returns a real, decidable verdict" — All tests passed!),
+    confirming the vivo V2344's `flutter_tools`<->`adb` logcat-streaming
+    issue (documented in the FR-950 entry below) was genuinely a
+    device/environment problem, not a code defect. Flipped FR-950 to
+    `passing` with both the unit-test and this device's integration-test
+    evidence.
+  - **FR-951 (compatibility result screen):** `CompatibilityResultScreen`
+    (`lib/features/compatibility/presentation/`) watches `esimVerdictProvider`
+    and renders Eskimo's result-tinted pattern re-skinned in Triptel tokens
+    — success/warning/danger tint + icon + headline per verdict kind (amber
+    "unknown" is its own distinct treatment, never collapsed into red
+    "not supported", per Rules.md), a `StatusChip` device label, explanation
+    text, and a carrier-lock `InfoBox` with original Triptel wording (not
+    copied from Eskimo's reference screenshot text). New `/compatibility`
+    route added to the router; it has no live entry point in the app yet —
+    that's FR-953 ("compatibility everywhere it matters": home promo,
+    Account entry, checkout gate, install gating), same
+    build-screen-before-its-trigger pattern as FR-003/FR-109.
+  - 23 tests pass (5 new screen tests: supported/notSupported/unknown/
+    loading/error), non-vacuous (broke the notSupported headline string,
+    got a real failure, restored). `flutter analyze` clean; `bash
+    harness.sh verify` green (154 tests, debug APK built).
+  - Evidence is a genuine on-device screenshot, not a widget-test render:
+    temporarily set `router.dart`'s `initialLocation` to `/compatibility`
+    (since there's no button to tap there yet), rebuilt the debug APK,
+    installed + launched it on the OPPO CPH2015, screenshotted with `adb
+    exec-out screencap`, then reverted `initialLocation` back to `/home`,
+    rebuilt again, and reinstalled + relaunched to confirm `/home` still
+    loads normally (`git diff lib/app/router.dart` showed only the
+    permanent `/compatibility` route addition — the temporary experiment
+    left no trace). The resulting screenshot shows the real verdict for
+    that device: chip "OPPO CPH2015", red header, "Your device does not
+    support eSIM", "This device has no eSIM hardware." — correct, since
+    that phone has no eUICC feature.
+  - Gotcha: an early attempt at a widget-test `RepaintBoundary` screenshot
+    of this screen (same technique used successfully for FR-109) produced a
+    visually duplicated render (the whole screen painted twice, stacked) at
+    a tall custom `tester.view.physicalSize` (1080x2340); shrinking the test
+    viewport to fit the actual content (1080x1200) fixed it. Root cause not
+    fully diagnosed (not worth the time once a real on-device screenshot
+    became available via the temporary-route trick above) — if this
+    resurfaces, prefer a real on-device capture over debugging the
+    widget-test render artifact further.
+  - Commits: `6ad0832` (FR-951 feature), `3218f93` (state: FR-950 + FR-951
+    passing).
 - 2026-11-13 — Session 10 (FR-950, blocked on device tooling):
   - Built the pure decision logic for eSIM-support detection:
     `lib/features/compatibility/{data,application}/` — `EsimSupportChannel`
