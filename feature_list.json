@@ -303,8 +303,12 @@
       "id": "FR-205",
       "behavior": "Plan detail/coverage sheet",
       "verification": "flutter test test/features/catalog && bash harness.sh shot FR-205",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "153ca7e",
+        "screens": ["artifacts/FR-205.png"],
+        "notes": "Modal sheet opened from a new 'Plan details' button on each plan row (destination_plans_screen.dart). Shows full disambiguating title, 3 plan facts (data type/starts-on-install/hotspot), and a Coverage section. On-device evidence (artifacts/FR-205.png) shows the real single-country path ('Japan · 1 country'), reached via genuine navigation (Home -> Japan -> Plan details). The regional-coverage branch (real country list for coverage_countries) is unit-tested but not reachable live: GET /catalog/destinations/{slug} only ever returns non-regional products per docs/API.md §3, same disclosed limitation as FR-201b/FR-202b. Reviewer: PASS."
+      }
     },
     {
       "id": "FR-206",
