@@ -281,8 +281,12 @@
       "id": "FR-203",
       "behavior": "Regional list with coverage sheet",
       "verification": "flutter test test/features/catalog && bash harness.sh shot FR-203",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "e5c8519",
+        "screens": ["artifacts/fr-203/01-regional-list.png", "artifacts/fr-203/02-coverage-sheet.png", "artifacts/fr-203/03-country-still-coming-soon.png"],
+        "notes": "Each Regional-tab row (_RegionalRow, lib/features/catalog/presentation/explore_sheet.dart) now shows a real 'N countries' subtitle via coverageCountriesProvider -- not parsed from the catalog's own inconsistently-formatted display names ('(N countries)', '(N areas)', 'Name-N', or no count at all), but derived from the actual live coverage_countries length (GET /catalog/countries/{iso2}/products, same data the coverage sheet itself shows, so the two numbers always agree). Tapping a regional row opens CoverageSheet (new), showing the real covered-country list. Country-tab rows are unaffected (still plain CountryRow, still 'coming soon' on tap -- FR-204 doesn't exist yet). 9 new tests; non-vacuous (broke the subtitle's AsyncData guard, got a real failure showing 0 widgets with the expected count text, restored). Full suite (196 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, live beta data: 01 shows real per-row subtitles (Africa/29 countries, Africa (21 areas)/21 countries, Asia (20 areas)/19 countries -- the area-count-vs-coverage-count mismatch there is expected and correct, since the catalog's own area count and the live coverage list length are two different real numbers, not a bug); 02 shows AUKUS(3 countries)'s coverage sheet (3 countries: Australia/United Kingdom/United States) matching its row's own subtitle; 03 confirms the Country tab is unaffected. Reviewed by reviewer agent: first pass FAIL (FR-203's own text calls for a per-row 'N countries' link, which was missing -- the initial build only opened the coverage sheet on tap without a row-level subtitle) -- fixed by adding the real per-row subtitle, re-reviewed: PASS."
+      }
     },
     {
       "id": "FR-204",
