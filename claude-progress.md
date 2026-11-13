@@ -12,7 +12,9 @@ Session log. Read first at session start, update last at session end.
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
   passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
-  (D): FR-301, FR-302, FR-303, FR-304 passing.
+  (D): FR-301, FR-302, FR-303, FR-304, FR-305 passing. New
+  `lib/features/wallet/` data layer (Wallet model, WalletsApi) started
+  ahead of FR-601, same incremental pattern as FR-007.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -27,21 +29,76 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-304 (authoritative discount preview, `POST
-  /discounts/preview`) just landed — next is **FR-305** (payment method
-  sheet, Wallet shown only when DEFAULT+REWARD covers the total). This is
-  likely where real wallet-balance fetching (FR-601, not_started) first
-  becomes a genuine dependency — check whether to build a minimal balance
-  read ahead of FR-601, same incremental pattern as FR-007/FR-105b, or
-  defer. No valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work.
-  Revisit **FR-106** and **FR-953b** once enough of FR-301+ exists.
+  array order. FR-305 (payment method chooser) just landed, built a
+  minimal `lib/features/wallet/` data layer ahead of FR-601 (same
+  incremental pattern as FR-007) — next is **FR-306** (wallet checkout:
+  `POST /orders/checkout` → poll `GET /orders/{id}`). This is the first
+  feature that would make a REAL purchase if run against a product with a
+  nonzero price — use the smallest/cheapest real product and the real
+  signed-in account's wallet balance (confirmed nonzero, ~€533 DEFAULT+
+  REWARD) only with extreme care per CLAUDE.md's "smallest beta test"
+  rule; confirm with the user before actually completing a real charge,
+  even a small one — this is exactly the kind of "real money beyond the
+  smallest beta test" case CLAUDE.md flags as needing a stop-and-ask, not
+  an autonomous call. No valid discount code exists on beta (confirmed via
+  curl) — keep disclosing that limitation for any future discount-related
+  work. Revisit **FR-106** and **FR-953b** once enough of FR-301+ exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-305, payment method chooser):
+  - **FR-305:** new `lib/features/wallet/` (built ahead of FR-601,
+    same incremental pattern as FR-007's pendingReferralProvider): `Wallet`
+    model (`GET /wallets/my-wallets`, auth), pure `spendableBalance`
+    (DEFAULT+REWARD, COMMISSION correctly excluded — API.md §5's
+    "Spendable at checkout = DEFAULT + REWARD" sentence governs checkout;
+    "COMMISSION ... show only if > 0" is about a future *display* screen,
+    not spendability) and `walletCoversTotal` (`>=`). Wired into checkout
+    review's "Continue to payment", after FR-304's discount re-check: when
+    the wallet covers the total, shows the pre-existing shared
+    `PaymentMethodSheet` widget (already in `lib/core/widgets/`, built in
+    an earlier session, not written this session) with real "Balance …
+    · After: …" text and "ShurjoPay" as the other option; when it doesn't
+    (or for a guest, or on a wallet-fetch failure, treated the same as "no
+    wallet" rather than crashing), skips the sheet entirely and goes
+    straight to ShurjoPay. Neither FR-306 nor FR-307 exist yet, so every
+    path still ends in "coming soon" — but which path is genuinely
+    balance-driven, not faked.
+  - 14 new tests (9 wallet unit/model + 5 FR-305 widget tests covering
+    guest-skip/insufficient-skip/sufficient-shows-sheet/select-proceeds/
+    fetch-error-skip). Non-vacuous: broke `walletCoversTotal` to always
+    return true, got 9 real failures, restored. Full suite (280 tests)
+    green; flutter analyze clean; bash harness.sh verify green.
+  - On-device evidence (`artifacts/FR-305.png`) turned out better than
+    expected: using the real signed-in account (the one with real
+    credentials the user gave earlier this session), the real
+    `GET /wallets/my-wallets` call returned a genuine nonzero balance
+    (~€533.70 DEFAULT+REWARD combined) — live evidence of the actual
+    sheet-shown branch, not just the skip branch I'd assumed would be the
+    only reachable one. A follow-up tap on "Wallet" reached the real
+    "Payment is coming soon" snack.
+  - **Reviewer caused and I caught a real encoding bug:** the reviewer's
+    own shell-based mutation-testing command corrupted
+    `wallet_balance.dart`'s doc comment — a `§` character got mangled into
+    an invalid UTF-8 byte sequence (U+FFFD replacement char on read). The
+    reviewer's own `flutter analyze`/`dart analyze` in its sandbox
+    couldn't even resolve the file afterward and flagged this as a
+    possible "stale analyzer artifact," recommending a fresh
+    `harness.sh verify`. Re-read the file myself before committing,
+    confirmed the corruption was real (not a stale-tool illusion),
+    deleted and rewrote the file clean (ASCII-safe wording, no special
+    chars), re-ran `flutter analyze`/full suite/`harness.sh verify` fresh
+    — all green. Second time this session a reviewer's own destructive
+    side-effect needed independent verification before trusting its
+    PASS — see the matching 2026-11-14 DECISIONS.md entry from FR-304;
+    this reinforces it's a pattern worth watching for, not a one-off.
+  - Reviewer: PASS (with the encoding anomaly flagged, and a minor note
+    that only one of two on-device screenshots was kept in `artifacts/` —
+    neither blocked passing). Commits: `e8a07bb` (feature), `3fc6cef`
+    (state).
 - 2026-11-14 — Session 10 continued (FR-304, authoritative discount
   preview):
   - **FR-304:** adds `DiscountsApi.preview(code, productId)` (`POST
