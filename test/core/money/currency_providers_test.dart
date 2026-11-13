@@ -57,4 +57,48 @@ void main() {
     final reloaded = await relaunched.read(currencyPreferenceProvider.future);
     expect(reloaded, 'BDT');
   });
+
+  test('selectedCurrencyRateProvider resolves 1.0 for EUR', () async {
+    SharedPreferences.setMockInitialValues({'currency.selected': 'EUR'});
+    final container = ProviderContainer(
+      overrides: [
+        bootstrapProvider.overrideWith((ref) async => _sampleBootstrap)
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final rate = await container.read(selectedCurrencyRateProvider.future);
+    expect(rate, 1.0);
+  });
+
+  test('selectedCurrencyRateProvider resolves the selected currency\'s rate',
+      () async {
+    SharedPreferences.setMockInitialValues({'currency.selected': 'BDT'});
+    final container = ProviderContainer(
+      overrides: [
+        bootstrapProvider.overrideWith((ref) async => _sampleBootstrap)
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final rate = await container.read(selectedCurrencyRateProvider.future);
+    expect(rate, 141.656046);
+  });
+
+  test(
+      'selectedCurrencyRateProvider recomputes after select() changes the '
+      'currency', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(
+      overrides: [
+        bootstrapProvider.overrideWith((ref) async => _sampleBootstrap)
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(selectedCurrencyRateProvider.future), 1.0);
+
+    await container.read(currencyPreferenceProvider.notifier).select('USD');
+    expect(await container.read(selectedCurrencyRateProvider.future), 1.08);
+  });
 }
