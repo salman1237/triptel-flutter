@@ -1,6 +1,33 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-14 — Dropped the pre-populated integration_test verification
+## command for money-moving FRs (FR-306, and flagging FR-307/408/603)
+`feature_list.json` pre-populated FR-306's `verification` as `flutter test
+test/features/checkout && flutter test integration_test/fr_306_test.dart -d
+<device>`, mirroring FR-950's pattern. **Why this doesn't work here:** FR-950's
+integration test only reads a native platform channel (no network, no
+side effects) — safe to rerun indefinitely. FR-306's real action is
+`POST /orders/checkout` (wallet-only, auth, password-changed): an
+integration_test calling this for real would debit the wallet **every time
+the suite runs** (CI, a developer re-verifying, a future session running
+`harness.sh verify`), which is exactly the repeated/uncontrolled real-money
+spend CLAUDE.md's "smallest beta test" rule exists to prevent — one approved
+manual purchase for evidence is categorically different from an automated
+test that silently repeats it. **What I did instead:** kept
+`flutter test test/features/checkout` (fakes, no network) as the repeatable
+automated check, dropped the `integration_test/fr_306_test.dart` clause from
+the verification string, and captured one manual, user-approved real
+purchase as on-device screenshot evidence instead — same evidence pattern as
+every other FR this session, just for a real (small, confirmed) charge
+instead of a free action. **Revisit if:** FR-307 (ShurjoPay checkout),
+FR-408 (eSIM top-up), or FR-603 (wallet top-up via ShurjoPay) are reached —
+their pre-populated verification strings have the identical problem
+(`integration_test/fr_307_test.dart` etc. calling real payment-initiating
+endpoints) and should get the same treatment: drop the auto-repeating
+real-money integration test, keep widget tests + one approved manual
+capture.
+
 ## 2026-11-14 — Independently re-verified a reviewer's self-disclosed recovery
 The FR-304 reviewer accidentally ran `git checkout --` on an uncommitted file
 mid-review (wiping the session's own in-progress edits), disclosed the mistake
