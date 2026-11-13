@@ -47,6 +47,10 @@ class _FakeCatalogApi implements CatalogApi {
     }
     return all;
   }
+
+  @override
+  Future<List<String>> getCoverageCountries(String iso2) async =>
+      const ['Australia', 'United Kingdom', 'United States'];
 }
 
 Widget _app({List<Country>? all}) {
@@ -94,6 +98,20 @@ void main() {
     expect(find.text('Bangladesh'), findsNothing);
   });
 
+  testWidgets(
+      'a regional row shows a real "N countries" subtitle (FR-203), not '
+      'just the raw package name', (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Regional'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('AUKUS(3 countries)'), findsOneWidget);
+    expect(find.text('3 countries'), findsOneWidget);
+  });
+
   testWidgets('typing a search query debounces then calls the API',
       (tester) async {
     await tester.pumpWidget(_app());
@@ -135,5 +153,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bangladesh'), findsNothing);
+  });
+
+  testWidgets(
+      'tapping a regional entry opens its coverage sheet (FR-203), not a '
+      "coming-soon snack", (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Regional'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('AUKUS(3 countries)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 countries'), findsWidgets);
+    expect(find.text('Australia'), findsOneWidget);
+    expect(find.textContaining('coming soon'), findsNothing);
+  });
+
+  testWidgets('tapping a non-regional entry still shows "coming soon"',
+      (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Bangladesh'));
+    await tester.pump();
+
+    expect(find.textContaining('coming soon'), findsOneWidget);
   });
 }

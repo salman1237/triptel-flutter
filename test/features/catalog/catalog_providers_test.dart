@@ -23,6 +23,9 @@ class _FakeCatalogApi implements CatalogApi {
           id: 107, iso2: 'JP', nameEn: 'Japan', isActive: true, slug: 'japan'),
     ];
   }
+
+  @override
+  Future<List<String>> getCoverageCountries(String iso2) async => const [];
 }
 
 void main() {

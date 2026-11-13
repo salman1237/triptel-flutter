@@ -7,6 +7,7 @@ import '../../../core/widgets/widgets.dart';
 import '../application/catalog_providers.dart';
 import '../application/country_grouping.dart';
 import '../data/models/country.dart';
+import 'coverage_sheet.dart';
 
 /// FR-202: full-height destination search sheet. The featured "Global"
 /// package card needs product-level data (price, country count framing)
@@ -67,6 +68,14 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
     );
   }
 
+  void _onCountryTap(Country country) {
+    if (country.isRegional) {
+      showCoverageSheet(context, iso2: country.iso2, name: country.nameEn);
+    } else {
+      _comingSoon(country.nameEn);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final allAsync = ref.watch(allCountriesProvider);
@@ -104,7 +113,7 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
                     regionalTab: _regionalTab,
                     onRegionalTabChanged: (v) =>
                         setState(() => _regionalTab = v),
-                    onCountryTap: _comingSoon,
+                    onCountryTap: _onCountryTap,
                   ),
                 AsyncError() => Padding(
                     padding: const EdgeInsets.all(32),
@@ -143,7 +152,7 @@ class _Body extends StatelessWidget {
   final List<Country>? searchResults;
   final bool regionalTab;
   final ValueChanged<bool> onRegionalTabChanged;
-  final ValueChanged<String> onCountryTap;
+  final ValueChanged<Country> onCountryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +182,7 @@ class _Body extends StatelessWidget {
             CountryRow(
               name: country.nameEn,
               flagUrl: country.flagUrl,
-              onTap: () => onCountryTap(country.nameEn),
+              onTap: () => onCountryTap(country),
             ),
         ],
       );
@@ -211,7 +220,7 @@ class _Body extends StatelessWidget {
                 final country = popular[index];
                 return _PopularChip(
                   country: country,
-                  onTap: () => onCountryTap(country.nameEn),
+                  onTap: () => onCountryTap(country),
                 );
               },
             ),
@@ -221,15 +230,51 @@ class _Body extends StatelessWidget {
         for (final letter in letters) ...[
           Text(letter, style: AppTypography.label(color: AppColors.primary)),
           for (final country in grouped[letter]!)
-            CountryRow(
-              name: country.nameEn,
-              flagUrl: country.flagUrl,
-              onTap: () => onCountryTap(country.nameEn),
-            ),
+            if (regionalTab)
+              _RegionalRow(
+                country: country,
+                onTap: () => onCountryTap(country),
+              )
+            else
+              CountryRow(
+                name: country.nameEn,
+                flagUrl: country.flagUrl,
+                onTap: () => onCountryTap(country),
+              ),
           const SizedBox(height: 8),
         ],
         const SizedBox(height: AppSpacing.gutter),
       ],
+    );
+  }
+}
+
+/// FR-203: a Regional-tab row with a real "N countries" subtitle, lazily
+/// fetched per row (coverageCountriesProvider is cached/keyed by iso2, so
+/// re-opening the sheet or re-rendering doesn't re-fetch). No subtitle is
+/// shown while loading/on error, to avoid a flash of wrong text -- the
+/// count only ever reflects real coverage data, never a guess parsed out
+/// of the package's display name (those names use inconsistent formats:
+/// "(N countries)", "(N areas)", "Name-N", or no count at all).
+class _RegionalRow extends ConsumerWidget {
+  const _RegionalRow({required this.country, required this.onTap});
+
+  final Country country;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coverageAsync = ref.watch(coverageCountriesProvider(country.iso2));
+    final subtitle = switch (coverageAsync) {
+      AsyncData(:final value) when value.isNotEmpty =>
+        '${value.length} countries',
+      _ => null,
+    };
+
+    return CountryRow(
+      name: country.nameEn,
+      subtitle: subtitle,
+      onTap: onTap,
     );
   }
 }

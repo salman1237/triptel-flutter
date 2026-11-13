@@ -18,3 +18,9 @@ final popularCountriesProvider = FutureProvider<List<Country>>((ref) {
 final allCountriesProvider = FutureProvider<List<Country>>((ref) {
   return ref.watch(catalogApiProvider).getCountries();
 });
+
+/// FR-203: a regional package's coverage list, keyed by iso2.
+final coverageCountriesProvider =
+    FutureProvider.family<List<String>, String>((ref, iso2) {
+  return ref.watch(catalogApiProvider).getCoverageCountries(iso2);
+});
