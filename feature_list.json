@@ -380,8 +380,12 @@
       "id": "FR-305",
       "behavior": "Payment method sheet only when DEFAULT+REWARD covers total",
       "verification": "flutter test test/features/checkout && bash harness.sh shot FR-305",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "e8a07bb",
+        "screens": ["artifacts/FR-305.png"],
+        "notes": "New lib/features/wallet/: Wallet model (GET /wallets/my-wallets, auth), pure spendableBalance (DEFAULT+REWARD, COMMISSION excluded per API.md section 5's 'spendable at checkout' sentence) and walletCoversTotal (>=). Wired into checkout review's 'Continue to payment' after FR-304's discount re-check: covers -> shows the pre-existing shared PaymentMethodSheet widget with real 'Balance X . After: Y' text and ShurjoPay as the other option; doesn't cover (or guest, or wallet-fetch failure) -> skips the sheet entirely, straight to ShurjoPay. Neither FR-306 (wallet checkout) nor FR-307 (ShurjoPay checkout) exist yet, so every path still ends in 'coming soon', but which path is genuinely balance-driven. 9 new wallet tests + 5 new FR-305 widget tests (49 total across test/features/checkout+wallet); non-vacuous (broke walletCoversTotal to always true, got 9 real failures, restored). Full suite (280 tests) green, flutter analyze clean, bash harness.sh verify green (re-run fresh after fixing a UTF-8 encoding corruption the reviewer's own mutation-testing shell command introduced into wallet_balance.dart's doc comment -- caught before committing, file rewritten clean, re-verified). On-device evidence (artifacts/FR-305.png) is genuine and better than expected: using the real signed-in account (real nonzero balance), the real GET /wallets/my-wallets call returned 'Balance EUR533.70 . After: EUR532.80' for a EUR0.90 total -- live evidence of the wallet-covers-total sheet-shown branch, not just the skip branch; a follow-up tap on Wallet reached the real 'Payment is coming soon' snack. Reviewer: PASS."
+      }
     },
     {
       "id": "FR-306",
