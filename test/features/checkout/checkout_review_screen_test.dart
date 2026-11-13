@@ -13,6 +13,9 @@ import 'package:triptel/features/checkout/data/discounts_api.dart';
 import 'package:triptel/features/checkout/data/models/discount_check_result.dart';
 import 'package:triptel/features/checkout/data/models/discount_preview_result.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
+import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/wallet.dart';
+import 'package:triptel/features/wallet/data/wallets_api.dart';
 
 class _FixedCurrency extends CurrencyPreferenceNotifier {
   @override
@@ -59,6 +62,14 @@ class _FakeDiscountsApi implements DiscountsApi {
   }
 }
 
+class _FakeWalletsApi implements WalletsApi {
+  _FakeWalletsApi(this._wallets);
+  final List<Wallet> _wallets;
+
+  @override
+  Future<List<Wallet>> getMyWallets() async => _wallets;
+}
+
 const _product = Product(
   id: 'fixed-1-7',
   countryId: 107,
@@ -75,12 +86,14 @@ Widget _app({
   Object? discountResult,
   Object? previewResult,
   AuthState authState = const AuthUnauthenticated(),
+  List<Wallet> wallets = const [],
 }) =>
     ProviderScope(
       overrides: [
         selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
         authNotifierProvider.overrideWith(() => _FixedAuth(authState)),
+        walletsApiProvider.overrideWithValue(_FakeWalletsApi(wallets)),
         if (discountResult != null || previewResult != null)
           discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
             checkResult: discountResult,
@@ -351,4 +364,113 @@ void main() {
       expect(find.textContaining('Payment is coming soon'), findsNothing);
     });
   });
+
+  group('FR-305: payment method choice', () {
+    testWidgets(
+        'a guest always skips straight to ShurjoPay (no wallet, no sheet)',
+        (tester) async {
+      await tester.pumpWidget(_app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsNothing);
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        "signed in but the wallet doesn't cover the total: skips straight "
+        'to ShurjoPay, no sheet', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(100), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsNothing);
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        'signed in and the wallet (DEFAULT+REWARD) fully covers the total: '
+        'shows the real payment method sheet with the real balance',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(400), isFrozen: false),
+          Wallet(walletType: 'REWARD', balance: Money(200), isFrozen: false),
+          Wallet(
+              walletType: 'COMMISSION', balance: Money(9999), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsOneWidget);
+      expect(find.text('Wallet'), findsOneWidget);
+      // Spendable = DEFAULT(4.00) + REWARD(2.00) = 6.00; COMMISSION ignored.
+      // After paying the 5.00 total: 1.00 left.
+      expect(find.text('Balance €6.00 · After: €1.00'), findsOneWidget);
+      expect(find.text('ShurjoPay'), findsOneWidget);
+    });
+
+    testWidgets('selecting Wallet in the sheet proceeds to "coming soon"',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a wallet-fetch error treats the guest the same as no wallet -- '
+        'skips straight to ShurjoPay, never crashes', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+          currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+          authNotifierProvider.overrideWith(
+              () => _FixedAuth(const AuthAuthenticated(_signedInToken))),
+          walletsApiProvider.overrideWithValue(_ThrowingWalletsApi()),
+        ],
+        child: const MaterialApp(
+          home: CheckoutReviewScreen(
+            args: CheckoutReviewArgs(product: _product, countryName: 'Japan'),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsNothing);
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+  });
+}
+
+class _ThrowingWalletsApi implements WalletsApi {
+  @override
+  Future<List<Wallet>> getMyWallets() async =>
+      throw const ApiException(statusCode: 500, message: 'Network error');
 }

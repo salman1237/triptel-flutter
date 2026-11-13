@@ -12,6 +12,9 @@ import '../../auth/application/auth_providers.dart';
 import '../../auth/application/auth_state.dart';
 import '../../catalog/application/plan_shape.dart';
 import '../../catalog/data/models/product.dart';
+import '../../wallet/application/wallet_balance.dart';
+import '../../wallet/application/wallet_providers.dart';
+import '../../wallet/data/models/wallet.dart';
 import '../application/checkout_breakdown.dart';
 import '../application/discounts_providers.dart';
 import '../data/models/discount_check_result.dart';
@@ -55,28 +58,48 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
         .showSnackBar(SnackBar(content: Text("$what is coming soon")));
   }
 
+  CheckoutBreakdown get _breakdown {
+    final discount = _discount;
+    final subtotal = widget.args.product.retailPrice;
+    return CheckoutBreakdown(
+      subtotal: subtotal,
+      discount: discount != null
+          ? estimateDiscount(discount, subtotal)
+          : const Money(0),
+    );
+  }
+
+  String _formatMoney(Money amount) {
+    final rate = ref.read(selectedCurrencyRateProvider).valueOrNull;
+    final code = ref.read(currencyPreferenceProvider).valueOrNull;
+    if (rate == null || code == null) return '';
+    return formatMoney(amount, currencyCode: code, rateToBase: rate);
+  }
+
   /// FR-304: before charging (the one real "about to pay" trigger that
-  /// exists today, since FR-305's payment chooser doesn't), authoritatively
-  /// re-confirm an applied discount via `POST /discounts/preview` -- codes
-  /// can expire or become invalid between FR-303's guest estimate and now.
-  /// Invalid -> show the reason and keep the user on review (never
-  /// proceeds). Skipped for a guest: the endpoint requires auth, and
-  /// there's no sign-in-and-resume flow yet (FR-106, deferred). Awaits
-  /// `authNotifierProvider.future` rather than reading
-  /// `ref.read(authNotifierProvider).valueOrNull` -- the latter returned
-  /// null/AsyncLoading on first access here since nothing else in this
-  /// screen watches the provider, so its AsyncNotifier.build() hadn't
-  /// resolved yet; `.future` properly awaits it.
+  /// exists today, since FR-306/307's real purchase flows don't),
+  /// authoritatively re-confirm an applied discount via
+  /// `POST /discounts/preview` -- codes can expire or become invalid
+  /// between FR-303's guest estimate and now. Invalid -> show the reason
+  /// and keep the user on review (never proceeds). Skipped for a guest:
+  /// the endpoint requires auth, and there's no sign-in-and-resume flow
+  /// yet (FR-106, deferred). Awaits `authNotifierProvider.future` rather
+  /// than reading `ref.read(authNotifierProvider).valueOrNull` -- the
+  /// latter returned null/AsyncLoading on first access here since nothing
+  /// else in this screen watches the provider, so its
+  /// AsyncNotifier.build() hadn't resolved yet; `.future` properly awaits
+  /// it. Once the discount (if any) is confirmed, FR-305's payment method
+  /// choice runs next.
   Future<void> _onContinueToPayment() async {
     final discount = _discount;
     if (discount == null || !discount.valid || discount.code == null) {
-      _showComingSoon("Payment");
+      await _choosePaymentMethod();
       return;
     }
     final authState = await ref.read(authNotifierProvider.future);
     if (!mounted) return;
     if (authState is! AuthAuthenticated) {
-      _showComingSoon("Payment");
+      await _choosePaymentMethod();
       return;
     }
 
@@ -104,7 +127,50 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     }
     if (!mounted) return;
     setState(() => _confirmingDiscount = false);
-    _showComingSoon("Payment");
+    await _choosePaymentMethod();
+  }
+
+  /// FR-305: Wallet is offered as a payment method only when
+  /// DEFAULT+REWARD fully covers the total; otherwise skip the sheet and
+  /// go straight to ShurjoPay. A guest has no wallet, so always goes
+  /// straight to ShurjoPay. Neither FR-306 (wallet checkout) nor FR-307
+  /// (ShurjoPay checkout) exist yet, so every path ends in "coming soon" --
+  /// but which path (sheet vs. skip) is genuinely balance-driven.
+  Future<void> _choosePaymentMethod() async {
+    final authState = await ref.read(authNotifierProvider.future);
+    if (!mounted) return;
+
+    var wallets = const <Wallet>[];
+    if (authState is AuthAuthenticated) {
+      try {
+        wallets = await ref.read(walletsApiProvider).getMyWallets();
+      } on ApiException {
+        wallets = const [];
+      }
+      if (!mounted) return;
+    }
+
+    final total = _breakdown.total;
+    if (walletCoversTotal(wallets, total)) {
+      final spendable = spendableBalance(wallets);
+      final after = spendable - total;
+      final selected = await PaymentMethodSheet.show(context, [
+        PaymentMethodOption(
+          id: 'wallet',
+          label: 'Wallet',
+          subtitle:
+              'Balance ${_formatMoney(spendable)} · After: ${_formatMoney(after)}',
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+        const PaymentMethodOption(
+          id: 'shurjopay',
+          label: 'ShurjoPay',
+          icon: Icons.credit_card,
+        ),
+      ]);
+      if (!mounted || selected == null) return;
+    }
+    _showComingSoon('Payment');
   }
 
   @override
@@ -114,12 +180,7 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     final currencyAsync = ref.watch(currencyPreferenceProvider);
 
     final discount = _discount;
-    final breakdown = CheckoutBreakdown(
-      subtotal: product.retailPrice,
-      discount: discount != null
-          ? estimateDiscount(discount, product.retailPrice)
-          : const Money(0),
-    );
+    final breakdown = _breakdown;
 
     String money(Money amount) => switch ((rateAsync, currencyAsync)) {
           (AsyncData(value: final rate), AsyncData(value: final code)) =>
