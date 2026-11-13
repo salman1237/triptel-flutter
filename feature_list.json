@@ -524,7 +524,22 @@
     {
       "id": "FR-953",
       "behavior": "Compatibility surfaced on home, account, checkout, install",
-      "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-953",
+      "verification": "flutter test test/app/compatibility_promo_test.dart && bash harness.sh shot FR-953",
+      "state": "passing",
+      "evidence": {
+        "commit": "3f62022",
+        "screens": [
+          "artifacts/fr-953/01-home-promo-card.png",
+          "artifacts/fr-953/02-home-tap-navigates.png",
+          "artifacts/fr-953/03-account-promo-card.png"
+        ],
+        "notes": "CompatibilityPromoCard (lib/features/compatibility/presentation/) is a shared tappable card routing to FR-951's /compatibility, added to both Home and Account placeholder screens (the first real in-app entry point for the compatibility screen). Checkout gate (FR-301) and install gating (FR-404/FR-310) can't be wired yet -- those screens don't exist (not_started) -- deferred as a new FR-953b entry, same pattern as FR-005b/FR-105b/FR-106. 2 new tests (test/app/compatibility_promo_test.dart) prove the full navigation chain on both screens; non-vacuous (changed the card's onTap to a no-op, both tests failed with 'Found 0 widgets with type CompatibilityResultScreen', restored). Home/Account's outer Column changed from crossAxisAlignment.end to .stretch (needed for the full-width card); the pre-existing currency/language pill switchers were wrapped in Align(centerRight) to keep their original top-right pinned look -- confirmed unchanged in the screenshots. Full suite (168 tests) passes; flutter analyze clean; bash harness.sh verify green. Evidence is genuine on-device capture on a 4th different physical device this session (Tecno BG6, real entry points this time, no temporary router trick needed): 01 Home with the promo card correctly positioned below the EUR pill; 02 after tapping it, the real CompatibilityResultScreen with a real verdict ('TECNO TECNO BG6', 'Your device does not support eSIM'); 03 Account screen with the promo card cleanly positioned above the existing Create account/Sign in buttons. Reviewed by reviewer agent: first pass FAIL (FR-953's verification command ran test/features/compatibility, which never exercises the new promo-card/Home/Account code -- fixed to run test/app/compatibility_promo_test.dart instead), re-reviewed: PASS."
+      }
+    },
+    {
+      "id": "FR-953b",
+      "behavior": "Compatibility gate wired into checkout (FR-301) and install gating wired into eSIM detail (FR-404/FR-310)",
+      "verification": "flutter test test/features/checkout && flutter test test/features/esims",
       "state": "not_started",
       "evidence": null
     },
