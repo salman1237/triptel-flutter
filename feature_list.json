@@ -88,8 +88,12 @@
       "id": "FR-006b",
       "behavior": "BootstrapGate's splash/maintenance/error branches also respect the saved RTL language, not just normal app content",
       "verification": "flutter test test/features/bootstrap",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "692e4ac",
+        "screens": [],
+        "notes": "RtlScope previously only wrapped BootstrapGate's child (normal content); swapped composition order in main.dart (RtlScope now wraps BootstrapGate itself) so Directionality applies to all 4 branches. MaintenanceScreen now renders RTL for a saved Arabic language (always has real resolved bootstrap data). Splash and a true network error honestly stay LTR -- isRtlProvider depends on bootstrapProvider.future resolving, so there's no way to know is_rtl before that -- documented in rtl_scope.dart's updated comment, not a cover for an incomplete fix. No on-device evidence: forcing real maintenance_mode:true on the beta backend would affect real traffic, judged unsafe; relied on test/features/bootstrap/rtl_scope_integration_test.dart's 3 new widget tests, which construct the exact same composition as the fixed main.dart. Non-vacuous: reverted the test's composition order, got a real RTL/LTR mismatch failure reproducing the bug, restored. Full suite (231 tests, incl. widget_test.dart's real TriptelApp smoke test) green, flutter analyze clean, bash harness.sh verify green. Reviewer: PASS, independently reproduced the mutation-test failure and grepped for any other BootstrapGate consumer (none found)."
+      }
     },
     {
       "id": "FR-007",
