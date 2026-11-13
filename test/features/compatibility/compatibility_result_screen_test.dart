@@ -3,20 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
 import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/compatibility/presentation/compatibility_result_screen.dart';
 
+List<Override> _overrides(AsyncValue<EsimVerdict> verdict) => [
+      esimVerdictProvider.overrideWith((ref) {
+        return switch (verdict) {
+          AsyncData(:final value) => Future.value(value),
+          AsyncError(:final error) => Future<EsimVerdict>.error(error),
+          _ => Completer<EsimVerdict>().future,
+        };
+      }),
+    ];
+
 Widget _app(AsyncValue<EsimVerdict> verdict) => ProviderScope(
-      overrides: [
-        esimVerdictProvider.overrideWith((ref) {
-          return switch (verdict) {
-            AsyncData(:final value) => Future.value(value),
-            AsyncError(:final error) => Future<EsimVerdict>.error(error),
-            _ => Completer<EsimVerdict>().future,
-          };
-        }),
-      ],
+      overrides: _overrides(verdict),
       child: const MaterialApp(home: CompatibilityResultScreen()),
     );
 
@@ -77,5 +80,39 @@ void main() {
     expect(find.text("We couldn't check this device's eSIM support."),
         findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets('View supported devices navigates to /compatibility/devices',
+      (tester) async {
+    final router = GoRouter(
+      initialLocation: '/compatibility',
+      routes: [
+        GoRoute(
+          path: '/compatibility',
+          builder: (context, state) => const CompatibilityResultScreen(),
+        ),
+        GoRoute(
+          path: '/compatibility/devices',
+          builder: (context, state) => const Text('devices-placeholder'),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: _overrides(const AsyncData(EsimVerdict(
+          kind: EsimVerdictKind.notSupported,
+          deviceLabel: 'vivo V2344',
+          reason: 'This device has no eSIM hardware.',
+        ))),
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View supported devices'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('devices-placeholder'), findsOneWidget);
   });
 }

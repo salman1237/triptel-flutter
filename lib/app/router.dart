@@ -7,6 +7,7 @@ import '../features/auth/presentation/set_password_screen.dart';
 import '../features/auth/presentation/suspended_screen.dart';
 import '../features/catalog/presentation/home_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
+import '../features/compatibility/presentation/supported_devices_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
@@ -38,6 +39,9 @@ final appRouter = GoRouter(
     GoRoute(
         path: '/compatibility',
         builder: (context, state) => const CompatibilityResultScreen()),
+    GoRoute(
+        path: '/compatibility/devices',
+        builder: (context, state) => const SupportedDevicesScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),

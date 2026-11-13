@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
@@ -116,6 +117,12 @@ class _ResultBody extends StatelessWidget {
                   text: "Some eSIM devices are locked to a specific "
                       'carrier. Contact your provider to unlock it if you '
                       "can't install your eSIM.",
+                ),
+                const SizedBox(height: 20),
+                PillButton(
+                  label: 'View supported devices',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: () => context.push('/compatibility/devices'),
                 ),
               ],
             ),
