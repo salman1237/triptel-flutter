@@ -12,7 +12,7 @@ Session log. Read first at session start, update last at session end.
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
   passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
-  (D): FR-301 passing (first feature in a new `lib/features/checkout/`).
+  (D): FR-301, FR-302 passing.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -27,21 +27,65 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-301 (pre-checkout compatibility gate, new
-  `lib/features/checkout/`) just landed — next is **FR-302** (checkout
-  review screen: plan header, voucher row, price breakdown, sticky total
-  bar with "You save…", "Continue to payment" CTA). This is the real
-  destination for FR-204's "Continue" button (currently "coming soon"
-  after the FR-301 gate) — wire it once FR-302 exists. Revisit **FR-106**
+  array order. FR-302 (checkout review screen) just landed and is now the
+  real destination for FR-204's "Continue" (after FR-301's gate) — next is
+  **FR-303** (discount code — guest estimate, `POST /discounts/check`).
+  FR-302's voucher sheet already exists and currently shows "coming soon"
+  on Apply; FR-303 should wire it to the real endpoint. Revisit **FR-106**
   and **FR-953b** once enough of FR-301+ exists (FR-953b's checkout half
-  can start as soon as FR-301's gate — already built — has a real purchase
-  action to wire into, i.e. once FR-306+ exists).
+  can start once a real purchase action exists, i.e. once FR-306+ exists).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-302, checkout review screen):
+  - **FR-302 (checkout review screen):** new `CheckoutReviewScreen`
+    (`/checkout/review`, args passed via go_router `extra` since a
+    `Product` isn't URL-encodable): plan title+subtitle (reusing FR-204/
+    205's `planDataLabel`/`planCoverageLabel` composition), a voucher
+    `ListRow` (reused shared widget) opening a code-entry bottom sheet —
+    tapping Apply shows "coming soon" rather than calling a nonexistent
+    endpoint, since FR-303/304 (discount validation) don't exist yet — a
+    "Use reward credit" `Switch` that's permanently `value: false,
+    onChanged: null` (Design_System.md: display-only, the backend
+    decides, not the user), a breakdown card (new pure
+    `CheckoutBreakdown{subtotal, discount}` → `total`/`hasDiscount`,
+    Subtotal/conditional-discount-row/Total), and a `StickyTotalBar`
+    (reused) with "Continue to payment" (also "coming soon" — FR-305+
+    doesn't exist).
+  - Deliberately omitted two elements from Design_System.md's row
+    description / the Eskimo design reference: the "info pill" (a
+    cashback-% banner — `docs/API.md` has no cashback/rewards-percentage
+    concept at all, confirmed by grep, so a real one couldn't be built and
+    a fake one would mislead) and the "Eskimo Guarantee" wax-seal trust
+    badge (Eskimo-specific branding, not a generic pattern — CLAUDE.md/
+    Rules.md: follow the pattern, don't copy Eskimo's assets/copy).
+  - Wired as the real destination for `DestinationPlansScreen`'s (FR-204)
+    "Continue": `_Body`'s `onContinue` changed from `VoidCallback` to
+    `ValueChanged<Product>` so the selected product can be threaded
+    through FR-301's gate into `context.push('/checkout/review', extra:
+    CheckoutReviewArgs(...))`. The old "Continue shows coming soon" test
+    in `destination_plans_screen_test.dart` was replaced with one
+    asserting real navigation via a real `GoRouter`.
+  - 7 new tests (2 pure + 5 widget). Non-vacuous: broke
+    `CheckoutBreakdown.total` to ignore the discount, got a real failure,
+    restored. Full suite (255 tests) green; flutter analyze clean; bash
+    harness.sh verify green.
+  - On-device evidence (`artifacts/FR-302.png`) is genuine end-to-end:
+    Home → Malaysia → select a plan → Continue → FR-301's dialog → its own
+    Continue → lands on this real screen showing live BDT-converted
+    prices; a second (uncommitted) screenshot confirms the voucher sheet
+    opens live. Hit an unrelated snag capturing it: the test device's
+    screen had locked/gone idle between features and a blind tap landed
+    on the lock-screen camera shortcut — recovered by waking the device,
+    reinstalling (the running app had gone stale), and re-navigating; no
+    code issue, just a device-idle gotcha worth remembering for future
+    on-device captures after a long gap between actions.
+  - Reviewer: PASS first pass — independently re-ran the mutation test,
+    the full verification suite, and compared the screenshot against the
+    design reference. Commits: `4eac8f6` (feature), `3d26e18` (state).
 - 2026-11-13 — Session 10 continued (FR-301, first checkout feature):
   - **FR-301 (pre-checkout compatibility gate):** new
     `lib/features/checkout/{application,presentation}/`.
