@@ -66,8 +66,12 @@
       "id": "FR-005b",
       "behavior": "selectedCurrencyRateProvider has a direct provider-level test (not just resolveRate's unit test)",
       "verification": "flutter test test/core/money/currency_providers_test.dart",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "ee8646d",
+        "screens": [],
+        "notes": "Test-only follow-up, no UI/production code change. 3 new tests read selectedCurrencyRateProvider.future directly off a ProviderContainer: EUR defaults to 1.0, a non-EUR currency resolves its real rate (BDT 141.656046 from the sample fixture), and the rate recomputes after currencyPreferenceProvider.notifier.select() changes the currency. Previously only resolveRate's pure-function unit tests existed (test/core/money/currency_preference_test.dart); these are the first to prove the Riverpod wiring itself. Non-vacuous: broke the provider's body to `return 1.0;` unconditionally, got 2 real failures (BDT-rate and recompute-after-select tests), restored, green again (5/5). flutter analyze clean, full suite (226 tests) green, bash harness.sh verify green. Reviewer: PASS (independently re-ran the mutation test and confirmed byte-identical restore)."
+      }
     },
     {
       "id": "FR-006",
