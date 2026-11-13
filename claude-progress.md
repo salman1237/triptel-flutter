@@ -3,22 +3,72 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
-- **Phase:** Auth section (B) complete except blocked/deferred follow-ups
-  (FR-101..105, FR-107, FR-108, FR-109 done; FR-106 blocked).
+- **Phase:** Auth section (B) complete (FR-101..105, FR-107, FR-108, FR-109
+  done; FR-106 blocked). Compatibility (K): FR-950's decision logic done,
+  blocked only on a device/tooling issue (see Blocked section); FR-951/952 next.
 - **Active feature:** none.
-- **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-109 in feature_list.json order — compatibility detection
-  (FR-950..952), then catalog (FR-201+), then checkout (FR-301+ — revisit
-  **FR-106** then, once a real gated post-auth endpoint exists). Low-priority
-  follow-ups logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire
-  a real gated endpoint's 403 to Set Password once one exists), **FR-106**
-  (blocked on catalog/checkout).
+- **Next step:** run the `next-feature` loop: **FR-951** (compatibility
+  result screen — consumes FR-950's `esimVerdictProvider`, already built and
+  unit-tested even though FR-950 itself is `blocked`) and **FR-952**
+  (supported devices list), both verify via `bash harness.sh shot` (plain
+  `adb screencap`, unaffected by FR-950's `flutter test integration_test`
+  tooling issue). Then catalog (FR-201+), then checkout (FR-301+ — revisit
+  **FR-106** then, once a real gated post-auth endpoint exists). Retry
+  FR-950's on-device integration test opportunistically if the vivo
+  device/USB issue clears up. Low-priority follow-ups logged, not urgent:
+  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
+  Set Password once one exists), **FR-106** (blocked on catalog/checkout).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 (FR-950, blocked on device tooling):
+  - Built the pure decision logic for eSIM-support detection:
+    `lib/features/compatibility/{data,application}/` — `EsimSupportChannel`
+    wraps the pre-existing native `co.triptel.app/esim` channel
+    (`MainActivity.kt`/`AppDelegate.swift`, both written in session 0, not
+    touched this round); `evaluateEsimSupport()` is the pure verdict
+    function matching FR-950's decision table exactly (Android API<28 ->
+    unknown; no EUICC feature -> notSupported; EUICC feature + enabled ->
+    supported; EUICC feature present but disabled/locked -> **unknown**, not
+    notSupported, per Rules.md "unknown is not not supported"; iOS uses
+    `supportsEmbeddedSIM` when available, else falls back to
+    `supportsCellularPlan`, else unknown). iOS machine-id -> marketing-name
+    map for display. `esimVerdictProvider` is a plain (non-autoDispose)
+    `FutureProvider`, cached for the app session per Architecture.md.
+  - 18 unit/provider tests pass (`flutter test test/features/compatibility`),
+    `flutter analyze` clean, `bash harness.sh verify` green (149 tests
+    total). Proven non-vacuous: disabled the Android `enabled == true`
+    branch, got a real test failure, restored, green again. No device
+    signals ever reach the API (grepped for dio/http/ApiClient in the
+    feature folder — none), matching the NFR "device compatibility data
+    never leaves the device".
+  - **Blocked, not passing:** the FR's own verification command also
+    requires `flutter test integration_test/fr_950_test.dart -d
+    10EF1302BJ000R5` (a real on-device run of the native channel). This
+    failed identically 5 times in a row — `Error waiting for a debug
+    connection: The log reader stopped unexpectedly` — across an adb server
+    restart, a logcat buffer clear, enabling the vivo Developer Options
+    "USB debugging (Security settings)" toggle, and a full USB
+    disconnect/reconnect. Manually confirmed via `adb shell pidof` (stable
+    across repeated checks) and a logcat scan that the app itself launches
+    and runs fine — this is a `flutter_tools`<->`adb`<->vivo
+    logcat-streaming interaction issue on this machine/device, not a code
+    defect. The reviewer agent independently reproduced the same failure
+    mode on its own run (a 5th/6th data point) and confirmed PASS on
+    everything else. Set `blocked` with a detailed `blocked_reason`; will
+    retry once a different cable/port/device is available.
+  - Gotcha: on this vivo V2344 + Windows setup, `flutter test
+    integration_test/*.dart -d <device>` (which needs a live VM-service
+    debug connection via adb logcat) is unreliable, while plain `adb exec-out
+    screencap`/`adb shell am start`/`pidof` (used all session for UI
+    evidence) are completely reliable. Prefer the latter path for on-device
+    verification where the feature doesn't specifically need the Dart VM
+    attached; FR-951/952 verify via `harness.sh shot`, which uses the
+    reliable path.
+  - Commits: `9ccd83a` (feature), `25c05e1` (state).
 - 2026-11-13 — Session 9 continued (FR-109):
   - Suspended-account screen on a 403 "Account suspended" (API.md §0.1).
     New `AuthSuspended` AuthState variant; `postAuthRoute()` returns
