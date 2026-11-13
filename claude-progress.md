@@ -4,33 +4,83 @@ Session log. Read first at session start, update last at session end.
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
 - **Phase:** Auth section (B) complete (FR-101..105, FR-107, FR-108, FR-109
-  done; FR-106 blocked). Compatibility (K): FR-950 and FR-951 both passing;
-  FR-952 next.
-- **Active feature:** none.
-- **Test device note:** the vivo V2344 (serial `10EF1302BJ000R5`) has a
-  persistent `flutter_tools`<->`adb` logcat-streaming issue that blocks
-  `flutter test integration_test/*.dart -d <device>` specifically (plain
-  `adb screencap`/`am start`/`pidof` all work fine on it). An OPPO CPH2015
-  (serial `YP7HDIPFPBWGHM9H`, Android 9, also no eUICC) was connected this
-  session and that same integration test passed first try — use whichever
-  device is connected for `flutter test integration_test/`; don't assume
-  the vivo serial still applies.
-- **Next step:** run the `next-feature` loop: **FR-952** (supported devices
-  list, searchable by brand, EID check tip — verify via `bash harness.sh
-  shot FR-952`, the reliable `adb screencap` path). Then FR-953
-  ("compatibility everywhere it matters" — home promo, Account entry,
-  checkout gate, install gating — this is what finally gives
-  `/compatibility` a real in-app entry point). Then catalog (FR-201+), then
-  checkout (FR-301+ — revisit **FR-106** then, once a real gated post-auth
-  endpoint exists). Low-priority follow-ups logged, not urgent: **FR-005b**,
-  **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to Set Password
-  once one exists), **FR-106** (blocked on catalog/checkout).
+  done; FR-106 blocked). Compatibility (K): FR-950, FR-951, FR-952 all
+  passing; FR-953 next.
+- **Active feature:** none. **Loop paused by explicit user request at the
+  end of the FR-952 session — do not auto-continue to FR-953 without being
+  told to.**
+- **Test device note:** across this session three different physical
+  devices were connected at various points (vivo V2344 `10EF1302BJ000R5`,
+  OPPO CPH2015 `YP7HDIPFPBWGHM9H`, and a third device `109973842B010285`).
+  The vivo has a persistent `flutter_tools`<->`adb` logcat-streaming issue
+  that blocks `flutter test integration_test/*.dart -d <device>`
+  specifically (plain `adb screencap`/`am start`/`pidof` work fine on it) —
+  use whichever device is actually connected, don't assume a fixed serial.
+  If a differently-signed debug build is already installed on a newly
+  connected device, `adb install -r` fails with
+  `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
+- **Next step:** run the `next-feature` loop: **FR-953** ("compatibility
+  everywhere it matters" — home promo card, Account → "Check device
+  compatibility", checkout gate (FR-301, not built yet — may need to defer
+  that part), install gating (FR-404/FR-310, not built yet — same). This is
+  what finally gives `/compatibility` and `/compatibility/devices` a real
+  in-app entry point; home promo + Account entry are buildable now, checkout
+  gate/install gating parts should likely become `*b` follow-ups until
+  FR-301+/FR-404/FR-310 exist, same pattern as FR-005b/FR-105b.) Then
+  catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** then, once
+  a real gated post-auth endpoint exists). Low-priority follow-ups logged,
+  not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated
+  endpoint's 403 to Set Password once one exists), **FR-106** (blocked on
+  catalog/checkout).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-952, then stopped by user request):
+  - **FR-952 (supported devices list):** `SupportedDevicesScreen`
+    (`lib/features/compatibility/presentation/`) — curated device list by
+    brand (`lib/features/compatibility/data/models/compatible_device_group.dart`,
+    `CompatibleDeviceGroup`), faithfully ported from the web storefront's
+    `frontend/src/app/guides/compatible-phones/page.tsx` `DEVICES` constant
+    (brand labels shortened to match FR-952's literal "Apple · Samsung ·
+    Google · Other" wording; model strings copied verbatim since this is
+    factual device data, not marketing copy, and the FR text itself says
+    "ported from web"). Search is scoped to the selected brand
+    (`filterDeviceModels`, pure/tested in `device_search.dart`). `*#06#`
+    EID check tip and an OS settings-path fallback, both original Triptel
+    wording. FR-951's result screen got a new "View supported devices"
+    button linking here (`/compatibility/devices`), closing the loop its
+    own FR text described.
+  - **Real bug caught by on-device testing, not by any test file:** the
+    brand filter chip row (`SegmentedPill` wrapping 4 options) overflowed
+    horizontally on a real phone's screen width — visible as a
+    "RenderFlex overflowed" debug-mode error strip in the very first
+    screenshot captured. Fixed by wrapping it in a horizontally-scrollable
+    `SingleChildScrollView`. Added a regression test (`tester.view.physicalSize
+    = Size(360, 800)`, asserts `tester.takeException()` is null), proven
+    non-vacuous by removing the fix and confirming the exact same class of
+    overflow error, then restoring. **Lesson reinforced:** widget tests at
+    the default test viewport size don't catch layout overflow on narrower
+    real screens — worth a deliberate narrow-width test for any
+    horizontal `Row`/`SegmentedPill`-style layout with a variable number
+    of items.
+  - 35 compatibility tests pass (166 total suite-wide); `flutter analyze`
+    clean; `bash harness.sh verify` green (debug APK built). Evidence is
+    three genuine on-device screenshots (same temporary-`initialLocation`
+    capture technique as FR-951, reverted after capture, `/home` confirmed
+    still loading normally both times): default Apple-selected view with no
+    overflow, the chip row scrolled to reveal "Other", and "Other" selected
+    showing Huawei/Oppo/Sony/Motorola/Honor models.
+  - Reviewer agent independently reproduced the overflow-bug regression
+    test itself (not just read the code) before passing: PASS.
+  - Commits: `9a32625` (feature), `945ae70` (state).
+  - **User explicitly asked to stop the autonomous loop after this feature's
+    commit** — session ends here. Compatibility section (K) is now FR-950/
+    951/952 passing, FR-953 ("everywhere it matters") not started. Do not
+    pick up FR-953 automatically next session without being told to; it's
+    simply the logical next item in `feature_list.json` order, nothing more.
 - 2026-11-13 — Session 10 continued (FR-950 unblocked, FR-951):
   - **FR-950 unblocked -> passing.** A different physical device (OPPO
     CPH2015, Android 9/API 28, no eUICC, serial `YP7HDIPFPBWGHM9H`) was
