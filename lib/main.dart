@@ -23,8 +23,8 @@ class TriptelApp extends StatelessWidget {
       routerConfig: appRouter,
       builder: (context, child) => DeepLinkBridge(
         child: AuthRouteBridge(
-          child: BootstrapGate(
-            child: RtlScope(child: child ?? const SizedBox.shrink()),
+          child: RtlScope(
+            child: BootstrapGate(child: child ?? const SizedBox.shrink()),
           ),
         ),
       ),

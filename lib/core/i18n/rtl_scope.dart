@@ -2,15 +2,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'language_providers.dart';
 
-/// FR-006: wraps the app in the right [TextDirection] for the selected
-/// language (RTL for Arabic). Defaults to LTR while loading/on error rather
-/// than flashing a direction change later.
-///
-/// Known limitation: this only wraps `BootstrapGate`'s `child` (the normal
-/// app content), not its splash/maintenance/error branches, which always
-/// render LTR even if the user already has an RTL language saved. Rare in
-/// practice (maintenance mode is uncommon) — tracked as FR-006b rather than
-/// fixed inline.
+/// FR-006/FR-006b: wraps the app -- including `BootstrapGate`'s
+/// splash/maintenance/error branches, since this sits outside it in
+/// `main.dart` -- in the right [TextDirection] for the selected language
+/// (RTL for Arabic). Defaults to LTR while loading/on error rather than
+/// flashing a direction change later; splash and a true network error (no
+/// cached bootstrap data at all) have no way to know the backend's `is_rtl`
+/// flag for the saved language yet, so they stay LTR until bootstrap data
+/// (even cached/`fromCache`) resolves -- maintenance mode, which always has
+/// real bootstrap data, renders RTL correctly.
 class RtlScope extends ConsumerWidget {
   const RtlScope({super.key, required this.child});
 
