@@ -4,40 +4,82 @@ Session log. Read first at session start, update last at session end.
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
 - **Phase:** Auth section (B) complete (FR-101..105, FR-107, FR-108, FR-109
-  done; FR-106 blocked). Compatibility (K): FR-950, FR-951, FR-952 all
-  passing; FR-953 next.
-- **Active feature:** none. **Loop paused by explicit user request at the
-  end of the FR-952 session — do not auto-continue to FR-953 without being
-  told to.**
-- **Test device note:** across this session three different physical
-  devices were connected at various points (vivo V2344 `10EF1302BJ000R5`,
-  OPPO CPH2015 `YP7HDIPFPBWGHM9H`, and a third device `109973842B010285`).
-  The vivo has a persistent `flutter_tools`<->`adb` logcat-streaming issue
-  that blocks `flutter test integration_test/*.dart -d <device>`
+  done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
+  FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
+  deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
+- **Active feature:** none.
+- **Test device note:** across this session four different physical devices
+  were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
+  CPH2015 `YP7HDIPFPBWGHM9H`, a third device `109973842B010285`, and a Tecno
+  BG6). The vivo has a persistent `flutter_tools`<->`adb` logcat-streaming
+  issue that blocks `flutter test integration_test/*.dart -d <device>`
   specifically (plain `adb screencap`/`am start`/`pidof` work fine on it) —
   use whichever device is actually connected, don't assume a fixed serial.
   If a differently-signed debug build is already installed on a newly
   connected device, `adb install -r` fails with
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
-- **Next step:** run the `next-feature` loop: **FR-953** ("compatibility
-  everywhere it matters" — home promo card, Account → "Check device
-  compatibility", checkout gate (FR-301, not built yet — may need to defer
-  that part), install gating (FR-404/FR-310, not built yet — same). This is
-  what finally gives `/compatibility` and `/compatibility/devices` a real
-  in-app entry point; home promo + Account entry are buildable now, checkout
-  gate/install gating parts should likely become `*b` follow-ups until
-  FR-301+/FR-404/FR-310 exist, same pattern as FR-005b/FR-105b.) Then
-  catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** then, once
-  a real gated post-auth endpoint exists). Low-priority follow-ups logged,
-  not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated
-  endpoint's 403 to Set Password once one exists), **FR-106** (blocked on
-  catalog/checkout).
+- **Next step:** run the `next-feature` loop: pick the first `not_started`
+  item after the compatibility section in feature_list.json order —
+  catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** and
+  **FR-953b** then, once those screens exist). Low-priority follow-ups
+  logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire a real
+  gated endpoint's 403 to Set Password once one exists), **FR-106**
+  (blocked on catalog/checkout), **FR-953b** (compatibility gate wired into
+  checkout + install gating, once those screens exist).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-953, resumed by user request after
+  the FR-952 stop):
+  - **FR-953 (compatibility everywhere it matters):** new
+    `CompatibilityPromoCard` (`lib/features/compatibility/presentation/`),
+    shared between `HomeScreen` and `AccountScreen` — the first real in-app
+    entry point to `/compatibility`/`/compatibility/devices` (FR-951/952
+    were built route-first with no trigger, same pattern as FR-003/FR-109;
+    this closes that gap). Checkout gate (FR-301) and install gating
+    (FR-404/FR-310) can't be wired yet since neither screen exists yet
+    (both `not_started`) — deferred as a new `FR-953b` entry, same
+    incremental pattern as FR-005b/FR-105b/FR-106.
+  - Both `HomeScreen`/`AccountScreen` changed their outer `Column`'s
+    `crossAxisAlignment` from `.end` to `.stretch` to let the new full-width
+    card render correctly; the pre-existing currency/language pill
+    switchers were wrapped in `Align(alignment: Alignment.centerRight)` to
+    keep their original small, top-right-pinned look unchanged under the
+    new stretch — confirmed visually unchanged in the on-device screenshots.
+  - 2 new tests (`test/app/compatibility_promo_test.dart`) prove the full
+    navigation chain on both screens; non-vacuous (changed the card's
+    `onTap` to a no-op, both tests failed with "Found 0 widgets with type
+    CompatibilityResultScreen", restored). Full suite (168 tests) passes;
+    `flutter analyze` clean; `bash harness.sh verify` green.
+  - Evidence is genuine on-device capture on a 4th different physical
+    device this session (a Tecno BG6) — and for the first time, via the
+    *real* entry points (no temporary-`initialLocation` trick needed, since
+    FR-953 is exactly what made the route reachable by tapping through the
+    actual app): tapped the promo card on Home, landed on the real
+    `CompatibilityResultScreen` showing that device's real verdict ("TECNO
+    TECNO BG6", "Your device does not support eSIM"); switched to Account,
+    confirmed the card renders there too, cleanly positioned above the
+    existing Create account/Sign in buttons.
+  - Reviewer agent: first pass FAIL — FR-953's own declared verification
+    command (`flutter test test/features/compatibility && ...`) never
+    actually exercised the new promo-card/Home/Account code at all (that
+    test directory only contains the pre-existing FR-951/952 tests), which
+    would have violated WIP=1's "verification command must fail when the
+    feature is reverted" rule. Fixed by pointing the command at the real
+    test file (`flutter test test/app/compatibility_promo_test.dart`);
+    re-reviewed: PASS. **Lesson reinforced:** when a new feature's tests
+    land in a *different* directory than the FR's pre-filled
+    `feature_list.json` verification command assumes (e.g. a shared/cross-
+    screen component tested under `test/app/` rather than the feature's own
+    `test/features/<x>/`), double-check the verification string actually
+    points at the new test file before marking passing — don't just trust
+    whatever was pre-filled in the initial `feature_list.json` scaffold.
+  - Commits: `3f62022` (feature), `a006a6c` (state).
+  - Compatibility section (K) is now fully done except FR-953b, which waits
+    on checkout/eSIM-detail screens that don't exist yet.
 - 2026-11-13 — Session 10 continued (FR-952, then stopped by user request):
   - **FR-952 (supported devices list):** `SupportedDevicesScreen`
     (`lib/features/compatibility/presentation/`) — curated device list by
