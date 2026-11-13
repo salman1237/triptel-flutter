@@ -7,6 +7,7 @@ import '../../../core/money/currency_providers.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../checkout/presentation/pre_checkout_gate.dart';
 import '../application/catalog_providers.dart';
 import '../application/plan_shape.dart';
 import '../application/share_destination.dart';
@@ -65,7 +66,11 @@ class _DestinationPlansScreenState
               _selectedProductId = null;
             }),
             onProductSelected: (id) => setState(() => _selectedProductId = id),
-            onContinue: () => _comingSoon(context),
+            onContinue: () => runPreCheckoutCompatibilityGate(
+              context,
+              ref,
+              onContinue: () => _comingSoon(context),
+            ),
           ),
         AsyncError() => SafeArea(
             child: Padding(

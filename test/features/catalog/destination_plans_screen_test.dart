@@ -10,6 +10,14 @@ import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/catalog/presentation/destination_plans_screen.dart';
+import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
+import 'package:triptel/features/compatibility/application/esim_verdict.dart';
+
+const _supportedVerdict = EsimVerdict(
+  kind: EsimVerdictKind.supported,
+  deviceLabel: 'Pixel 8',
+  reason: 'eSIM is supported and enabled on this device.',
+);
 
 class _FakeSharePlatform extends SharePlatform with MockPlatformInterfaceMixin {
   ShareParams? lastParams;
@@ -64,6 +72,7 @@ Widget _app(List<Product> products) => ProviderScope(
         ),
         selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+        esimVerdictProvider.overrideWith((ref) async => _supportedVerdict),
       ],
       child: const MaterialApp(
         home: DestinationPlansScreen(slug: 'japan'),
