@@ -7,10 +7,10 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
-  Catalog (C): FR-201, FR-202, FR-203 passing (FR-201b — usage summary for
-  signed-in users with an active eSIM — and FR-202b — featured "Global"
-  package card — both deferred, not_started, need data/screens that don't
-  exist yet).
+  Catalog (C): FR-201, FR-202, FR-203, FR-204 passing (FR-201b — usage
+  summary for signed-in users with an active eSIM — and FR-202b — featured
+  "Global" package card — both deferred, not_started, need data/screens
+  that don't exist yet).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -25,14 +25,15 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-203 in feature_list.json order — FR-204 (destination plans
-  screen — once this exists, the remaining "coming soon" taps on
-  destination rows, both in Home's popular list and inside the explore
-  sheet, can finally be wired to real navigation), FR-205/206, then
-  checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once those
-  screens exist). Low-priority follow-ups logged, not urgent: **FR-005b**,
-  **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to Set
-  Password once one exists), **FR-106** (blocked on catalog/checkout),
+  item after FR-204 in feature_list.json order — FR-205 (plan detail /
+  coverage sheet — this one's trivial for non-regional products, since
+  FR-204's screen already shows "1 country"; the interesting case,
+  disambiguating titles, needs a look), FR-206 (shareable destination link),
+  then checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once
+  those screens exist; this also finally gives FR-204's "Continue" button
+  something real to do). Low-priority follow-ups logged, not urgent:
+  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
+  Set Password once one exists), **FR-106** (blocked on catalog/checkout),
   **FR-953b** (compatibility gate wired into checkout + install gating),
   **FR-201b** (signed-in usage-summary hero variant), **FR-202b** (featured
   "Global" package card — no API field identifies which regional entry to
@@ -43,6 +44,63 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-204, the biggest feature this
+  session):
+  - **FR-204 (destination plans screen):** `DestinationPlansScreen`
+    (`/explore/<slug>`) — curved purple header (same gradient as the
+    pre-existing `HeroHeader`, flag, name, `CurrencyPillSwitcher`); a
+    `SegmentedPill` plan-type toggle shown only when 2+ shapes genuinely
+    exist for the destination; `PlanWheelPicker` (reused) over the shape's
+    primary dimension (data size for Fixed, validity days for Day
+    Pass/Unlimited); a radio list of `PlanOptionTile` (reused) rows for
+    products matching the wheel's current value, sorted price-ascending;
+    "Recommended" suffix for `is_featured`; a sticky `StickyTotalBar`
+    (reused) whose "Continue" is genuinely disabled (`onPressed: null`,
+    not a visual trick) until a plan is selected, and shows "Checkout is
+    coming soon" when tapped since checkout (FR-301+) doesn't exist.
+  - New `Product`/`Destination` models (`GET /catalog/destinations/{slug}`,
+    API.md §3) and a pure `plan_shape.dart`: `planShape()` follows API.md's
+    exact detection table (checks `is_unlimited` BEFORE
+    `supplier_period_num`, so a hypothetical product with both set
+    correctly resolves to Unlimited, not Day Pass); `planDataLabel()`
+    computes the Day Pass PER-DAY share by dividing `dataAmountGb` by
+    `validityDays`, since the API documents that field as the *total* over
+    all days on a day pass, not a per-day figure. Money: `retailPrice` via
+    the pre-existing `Money.parseEur`; `product.currency` (which the beta
+    mislabels "USD") is never read anywhere.
+  - Closed the loop this session had been building toward since FR-202:
+    non-regional taps in the explore sheet, and Home's own "Popular
+    destinations" row taps, now navigate to this real screen instead of
+    showing "coming soon" — the first destination-row taps in the whole
+    session to land somewhere real rather than a placeholder snack.
+  - **First-pass reviewer FAIL, fixed same session (third time this
+    pattern has appeared):** FR-204's text and Design_System.md both list
+    "coverage" as a distinct required row fact (title, validity, per-day
+    label, coverage, price) — the first build's single caption slot only
+    showed data-label + validity, dropping coverage entirely. Fixed by
+    adding `planCoverageLabel()`: `GET /catalog/destinations/{slug}` can
+    only ever return a single country's own (non-regional) products
+    (confirmed against API.md §3's regional/`coverage_countries` rule), so
+    every row's coverage is always "1 country" in practice, with a
+    defensive fallback to the real `coverage_countries` length. **Pattern
+    now seen three times this session** (FR-953's stale verification
+    command, FR-203's missing row-level subtitle, now this): an FR's
+    literal text enumerating several distinct UI facts is easy to
+    half-satisfy by overloading one existing slot/field with only some of
+    them. Worth explicitly counting the named facts in an FR against what
+    actually renders before calling a row/screen "done," not just
+    checking that *something* appears in roughly the right place.
+  - 24 new tests; non-vacuous twice (`planShape`'s `isUnlimited` check,
+    then separately `planCoverageLabel`'s fallback). Full suite (217
+    tests) passes; `flutter analyze` clean; `bash harness.sh verify`
+    green. On-device evidence (OPPO device, live beta data, reached via a
+    real in-app tap — no router hack needed): Japan's real plan-type tabs
+    (confirming it genuinely has all three shapes), the data-size wheel,
+    a matching plan at a real EUR price with "100 MB · 7 days · 1
+    country"; plan selection updating the radio + CTA; the Unlimited tab
+    showing two real distinct matches at the same validity (the
+    multiple-matches-per-wheel-value case).
+  - Commits: `1c8a25c` (feature), `b247ba4` (state).
 - 2026-11-13 — Session 10 continued (FR-203):
   - **FR-203 (regional list with coverage sheet):**
     `CatalogApi.getCoverageCountries(iso2)` (new) calls `GET
