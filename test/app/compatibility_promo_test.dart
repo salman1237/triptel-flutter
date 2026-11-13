@@ -5,6 +5,7 @@ import 'package:triptel/app/router.dart';
 import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
 import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
 import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
+import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
 import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/compatibility/presentation/compatibility_promo_card.dart';
@@ -41,6 +42,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
                 reason: 'This device has no eSIM hardware.',
               ),
             )),
+        popularCountriesProvider.overrideWith((ref) async => const []),
       ],
       child: const TriptelApp(),
     ),
@@ -64,18 +66,13 @@ void main() {
   });
 
   testWidgets(
-      'FR-953: Account also shows the compatibility promo card and it navigates',
+      "FR-953: Account doesn't duplicate the compatibility promo card (Home-only, by request)",
       (tester) async {
     await _pumpApp(tester);
 
     await tester.tap(find.text('Account'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(CompatibilityPromoCard), findsOneWidget);
-
-    await tester.tap(find.byType(CompatibilityPromoCard));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(CompatibilityResultScreen), findsOneWidget);
+    expect(find.byType(CompatibilityPromoCard), findsNothing);
   });
 }

@@ -41,6 +41,7 @@ class AppShell extends StatelessWidget {
                 for (var i = 0; i < _tabs.length; i++)
                   Expanded(
                     child: _TabButton(
+                      key: ValueKey('tab-${_tabs[i].label}'),
                       icon: _tabs[i].icon,
                       selectedIcon: _tabs[i].selectedIcon,
                       label: _tabs[i].label,
@@ -62,6 +63,7 @@ class AppShell extends StatelessWidget {
 
 class _TabButton extends StatelessWidget {
   const _TabButton({
+    super.key,
     required this.icon,
     required this.selectedIcon,
     required this.label,

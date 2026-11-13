@@ -5,6 +5,7 @@ import 'package:triptel/core/deeplink/deep_link_providers.dart';
 import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
 import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
 import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
+import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/tracking/presentation/tracking_screen.dart';
 import 'package:triptel/main.dart';
 
@@ -26,6 +27,7 @@ void main() {
             fromCache: false,
           ),
         ),
+        popularCountriesProvider.overrideWith((ref) async => const []),
       ],
     );
     addTearDown(container.dispose);

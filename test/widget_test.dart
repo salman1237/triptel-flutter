@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
 import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
 import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
+import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/main.dart';
 
 void main() {
@@ -25,6 +26,9 @@ void main() {
               fromCache: false,
             ),
           ),
+          // Avoids a real Dio network call during the test (Home's hero
+          // renders its popular-destinations list eagerly).
+          popularCountriesProvider.overrideWith((ref) async => const []),
         ],
         child: const TriptelApp(),
       ),

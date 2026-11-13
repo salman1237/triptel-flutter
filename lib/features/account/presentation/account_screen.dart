@@ -7,12 +7,11 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../auth/application/auth_providers.dart';
 import '../../auth/application/auth_state.dart';
-import '../../compatibility/presentation/compatibility_promo_card.dart';
 
 /// Account tab placeholder. Real greeting card/grouped list lands in FR-1001;
-/// hosts FR-006's language pill, FR-953's compatibility entry point (part of
-/// FR-1001's eventual "Support" group), and, until FR-102/FR-1001 land, the
-/// register entry point so FR-101 is actually reachable in the app.
+/// hosts FR-006's language pill and, until FR-102/FR-1001 land, the register
+/// entry point so FR-101 is actually reachable in the app. The compatibility
+/// entry point lives on Home only (not duplicated here) -- see FR-953.
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
@@ -31,7 +30,6 @@ class AccountScreen extends ConsumerWidget {
             child: LanguagePillSwitcher(),
           ),
           const SizedBox(height: 16),
-          const CompatibilityPromoCard(),
           const EmptyState(
             icon: Icons.person_outline,
             message: 'Account — profile and settings are coming in FR-1001.',
