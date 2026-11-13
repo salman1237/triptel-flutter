@@ -7,10 +7,11 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
-  Catalog (C): FR-201, FR-202, FR-203, FR-204, FR-205 passing (FR-201b —
-  usage summary for signed-in users with an active eSIM — and FR-202b —
-  featured "Global" package card — both deferred, not_started, need
-  data/screens that don't exist yet).
+  Catalog (C): FR-201 through FR-206 all passing (FR-201b — usage summary
+  for signed-in users with an active eSIM — and FR-202b — featured
+  "Global" package card — both `blocked`, not just deferred; see reasons
+  in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
+  passing; FR-105b blocked (no real gated endpoint exists yet).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -25,22 +26,61 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order (the prior session's "low-priority, not urgent" skip of
-  FR-005b/006b/105b was a deviation from CLAUDE.md's "first `not_started`
-  item" rule — corrected this session: FR-005b built this session; next is
-  **FR-006b** (BootstrapGate's splash/maintenance/error branches respecting
-  saved RTL — buildable now, not blocked), then **FR-105b** (needs a real
-  gated endpoint, may still be legitimately deferred — check), then
-  **FR-201b**/**FR-202b** (need data/screens that don't exist), then
-  **FR-301+** checkout (revisit **FR-106** and **FR-953b** once those
-  screens exist; also finally gives FR-204's "Continue" button something
-  real to do).
+  array order. FR-005b and FR-006b (both genuinely buildable, not blocked)
+  built this session. FR-105b, FR-201b, FR-202b checked and found
+  genuinely blocked (reasons in their `feature_list.json` entries: FR-105b
+  needs a real require_password_changed-gated endpoint, which only exists
+  on checkout/wallet money-moving calls, all not_started; FR-201b needs
+  FR-402/403/801 usage data; FR-202b is blocked on the backend itself —
+  `CountryResponse` has no featured-package field). Next real
+  `not_started` item is **FR-301** (pre-checkout compatibility gate
+  dialog) — the start of the checkout section (D). Revisit **FR-106** and
+  **FR-953b** once enough of FR-301+ exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-006b, then FR-105b/FR-201b/FR-202b
+  checked and marked `blocked`):
+  - **FR-006b (RTL in BootstrapGate's non-content branches):** `RtlScope`
+    previously only wrapped `BootstrapGate`'s `child` (normal signed-in
+    content), so splash/error/maintenance always rendered LTR even with a
+    saved RTL language. Fixed by swapping the composition order in
+    `main.dart`: `RtlScope(child: BootstrapGate(child: ...))` instead of
+    the reverse, so `Directionality` now wraps all 4 of `BootstrapGate`'s
+    branches. `MaintenanceScreen` now renders RTL correctly (it always has
+    real resolved bootstrap data). Splash and a true network error
+    honestly stay LTR — `isRtlProvider` can't know `is_rtl` before
+    `bootstrapProvider` resolves — documented in `rtl_scope.dart`'s updated
+    comment, not a cover for an incomplete fix. No on-device evidence:
+    forcing real `maintenance_mode:true` on the live beta backend would
+    affect real traffic, judged unsafe; relied on
+    `test/features/bootstrap/rtl_scope_integration_test.dart`'s 3 new
+    widget tests instead, which construct the exact same composition as
+    the fixed `main.dart`. Non-vacuous: reverted the test's composition
+    order, got a real RTL/LTR mismatch reproducing the bug, restored. Full
+    suite (231 tests, incl. `widget_test.dart`'s real `TriptelApp` smoke
+    test) green. Reviewer: PASS, independently reproduced the mutation
+    test and grepped for any other `BootstrapGate` consumer (none found).
+    Commits: `692e4ac` (feature), `a36917e` (state).
+  - **FR-105b, FR-201b, FR-202b marked `blocked`** (were `not_started`,
+    silently skipped by a prior session without a blocked_reason — see
+    the 2026-11-13 DECISIONS.md entry on returning to strict order).
+    Checked each for real: FR-105b needs a real
+    `require_password_changed`-gated endpoint, which per `docs/API.md`'s
+    own error text ("before buying or moving money") only exists on
+    checkout (FR-301+) or wallet top-up/withdraw (FR-601+/FR-701+) calls —
+    all `not_started`, so there's genuinely no producer to wire navigation
+    to yet. FR-201b needs real eSIM usage data (FR-402/403) and referral
+    context (FR-801) — also all `not_started`. FR-202b is blocked on the
+    backend itself: `GET /catalog/countries` returns `CountryResponse`
+    rows with no `is_featured`-equivalent field (that only exists on
+    `ProductResponse`) — no API-driven way to pick a featured regional
+    entry without a backend change. All three now carry a `blocked_reason`
+    instead of sitting silently `not_started`. Commits: `e3de2cb`
+    (FR-105b), `3a2bf63` (FR-201b/FR-202b).
 - 2026-11-13 — Session 10 continued (FR-206, FR-005b):
   - **FR-206 (shareable destination link):** new share `IconButton` in
     `DestinationPlansScreen`'s header, calling `SharePlus.instance.share`
