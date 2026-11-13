@@ -230,8 +230,16 @@
       "id": "FR-952",
       "behavior": "Supported devices list by brand, searchable, EID tip",
       "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-952",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "9a32625",
+        "screens": [
+          "artifacts/fr-952/01-on-device-supported-devices.png",
+          "artifacts/fr-952/02-brand-chips-scrolled.png",
+          "artifacts/fr-952/03-other-brand-selected.png"
+        ],
+        "notes": "SupportedDevicesScreen: curated device list by brand (Apple/Samsung/Google/Other, lib/features/compatibility/data/models/compatible_device_group.dart), faithfully ported from the web storefront's guides/compatible-phones page.tsx DEVICES constant (verified line-by-line by the reviewer). Searchable within the selected brand (filterDeviceModels, pure/tested), *#06# EID check tip, OS settings-path fallback. FR-951's result screen now has a 'View supported devices' button linking here. 35 compatibility tests pass; flutter analyze clean; bash harness.sh verify green (166 tests). On-device testing on a real phone caught a genuine bug: the brand chip row overflowed horizontally (RenderFlex overflow) on that screen width -- fixed by wrapping SegmentedPill in a horizontally-scrollable container, with a regression test (360px test width) proven non-vacuous by removing the fix, confirming the test failed with the same overflow error, then restoring. Screenshots are genuine on-device captures (same temporary-initialLocation technique as FR-951, reverted after capture, confirmed /home still loads normally): 01 shows Apple selected with no overflow, 02 shows the chip row scrolled to reveal 'Other', 03 shows 'Other' selected with Huawei/Oppo/Sony models. Reviewed by reviewer agent, including an independent reproduction of the overflow-fix regression test: PASS."
+      }
     },
     {
       "id": "FR-201",
