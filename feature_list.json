@@ -265,7 +265,8 @@
       "id": "FR-201b",
       "behavior": "Signed-in users with an active eSIM see a usage summary card instead of the hero",
       "verification": "flutter test test/features/catalog",
-      "state": "not_started",
+      "state": "blocked",
+      "blocked_reason": "Needs real eSIM usage data (FR-402/FR-403, My eSIMs list/usage) and the referral promo context (FR-801) -- all not_started. There's no real producer for 'has an active eSIM with usage totals' yet, so this card would have nothing genuine to show. Revisit once FR-402/FR-403 exist.",
       "evidence": null
     },
     {
@@ -283,7 +284,8 @@
       "id": "FR-202b",
       "behavior": "Featured 'Global' package card at the top of the explore sheet (needs product-level price/country-count data, not just the country list)",
       "verification": "flutter test test/features/catalog",
-      "state": "not_started",
+      "state": "blocked",
+      "blocked_reason": "GET /catalog/countries (the list this sheet renders) returns CountryResponse rows, which have no is_featured-equivalent field -- that only exists on ProductResponse per docs/API.md. There's no API-driven way to pick which regional entry to feature without a backend change. Blocked on the backend, not just app-side sequencing -- revisit if the backend adds a featured/price field to the country-list endpoint.",
       "evidence": null
     },
     {
