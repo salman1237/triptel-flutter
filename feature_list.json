@@ -336,8 +336,12 @@
       "id": "FR-301",
       "behavior": "Pre-checkout compatibility gate dialog (never blocks)",
       "verification": "flutter test test/features/checkout && bash harness.sh shot FR-301",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "25cf240",
+        "screens": ["artifacts/FR-301.png"],
+        "notes": "New lib/features/checkout/ (first feature in checkout section D). runPreCheckoutCompatibilityGate gates DestinationPlansScreen's Continue on FR-950's cached esimVerdictProvider: supported proceeds straight through; notSupported shows the 'Buy Now, Use Later!' dialog (icon/title/subtitle/body, Continue/View Supported Devices/Cancel per Design_System.md); unknown shows a softer 'We couldn't confirm eSIM support' note (Rules.md: unknown != not supported) with no secondary button. Never hard-blocks: a verdict-check error also proceeds directly. View Supported Devices reuses the existing /compatibility/devices route (FR-952), no new route invented. 10 new tests (3 pure + 7 widget, real GoRouter/real taps); non-vacuous (broke notSupported's branch to proceed, got real failures, restored). Full suite (241 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-301.png) is genuine: reached via real navigation (Home -> Japan -> select plan -> Continue) on a device with no eSIM hardware -- the real dialog fired matching the design reference; a second screenshot (not committed, kept local in .harness/) confirms tapping the dialog's own Continue reaches the pre-existing 'Checkout is coming soon' snack, proving the never-blocks property end-to-end. Reviewer: PASS, independently re-ran the mutation test and all verification commands."
+      }
     },
     {
       "id": "FR-302",
