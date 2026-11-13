@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/money/currency_pill_switcher.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -10,25 +11,16 @@ import 'explore_sheet.dart';
 
 /// FR-201 Home: dark hero (search entry + quick actions), promo cards,
 /// popular destinations. The search pill and "Buy data" both open FR-202's
-/// explore sheet. Destination-row taps (within the sheet or the popular
-/// list below) still show a "coming soon" snack, since the destination
-/// plans screen (FR-204) doesn't exist yet -- same reasoning as FR-105b:
-/// don't route to a path that doesn't exist. "My eSIMs" and "Top up" are
-/// deliberately not quick actions here -- the bottom tab bar already covers
-/// "My eSIMs", and "Top up" would today just land on the same Wallet tab
-/// (FR-408's real top-up flow doesn't exist yet) -- both would be redundant
-/// duplicate buttons rather than real shortcuts. Revisit once FR-408 gives
-/// "Top up" something distinct to do. Signed-in users'
-/// usage-summary-instead-of-hero variant needs FR-402/403 (not built) ->
-/// deferred as FR-201b.
+/// explore sheet. Destination-row taps now navigate to FR-204's plans
+/// screen. "My eSIMs" and "Top up" are deliberately not quick actions here
+/// -- the bottom tab bar already covers "My eSIMs", and "Top up" would
+/// today just land on the same Wallet tab (FR-408's real top-up flow
+/// doesn't exist yet) -- both would be redundant duplicate buttons rather
+/// than real shortcuts. Revisit once FR-408 gives "Top up" something
+/// distinct to do. Signed-in users' usage-summary-instead-of-hero variant
+/// needs FR-402/403 (not built) -> deferred as FR-201b.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
-
-  void _comingSoon(BuildContext context, String what) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$what is coming soon')),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -95,7 +87,8 @@ class HomeScreen extends ConsumerWidget {
                           CountryRow(
                             name: country.nameEn,
                             flagUrl: country.flagUrl,
-                            onTap: () => _comingSoon(context, country.nameEn),
+                            onTap: () =>
+                                context.push('/explore/${country.slug}'),
                           ),
                       ],
                     ),

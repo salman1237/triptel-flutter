@@ -5,6 +5,7 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/auth/presentation/set_password_screen.dart';
 import '../features/auth/presentation/suspended_screen.dart';
+import '../features/catalog/presentation/destination_plans_screen.dart';
 import '../features/catalog/presentation/home_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
 import '../features/compatibility/presentation/supported_devices_screen.dart';
@@ -42,6 +43,11 @@ final appRouter = GoRouter(
     GoRoute(
         path: '/compatibility/devices',
         builder: (context, state) => const SupportedDevicesScreen()),
+    GoRoute(
+      path: '/explore/:slug',
+      builder: (context, state) =>
+          DestinationPlansScreen(slug: state.pathParameters['slug']!),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           AppShell(navigationShell: navigationShell),

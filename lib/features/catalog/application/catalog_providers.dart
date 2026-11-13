@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/catalog_api.dart';
 import '../data/models/country.dart';
+import '../data/models/destination.dart';
 
 final catalogApiProvider =
     Provider<CatalogApi>((ref) => CatalogApiImpl(ref.watch(apiClientProvider)));
@@ -23,4 +24,10 @@ final allCountriesProvider = FutureProvider<List<Country>>((ref) {
 final coverageCountriesProvider =
     FutureProvider.family<List<String>, String>((ref, iso2) {
   return ref.watch(catalogApiProvider).getCoverageCountries(iso2);
+});
+
+/// FR-204: a destination's products for the plans screen, keyed by slug.
+final destinationProvider =
+    FutureProvider.family<Destination, String>((ref, slug) {
+  return ref.watch(catalogApiProvider).getDestination(slug);
 });

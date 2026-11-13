@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
@@ -12,6 +13,8 @@ import 'coverage_sheet.dart';
 /// FR-202: full-height destination search sheet. The featured "Global"
 /// package card needs product-level data (price, country count framing)
 /// this screen's plain country list doesn't have -- deferred as FR-202b.
+/// Non-regional taps now open FR-204's plans screen; regional taps open
+/// FR-203's coverage sheet.
 Future<void> showExploreSheet(BuildContext context) {
   return showModalBottomSheet(
     context: context,
@@ -62,17 +65,12 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
     });
   }
 
-  void _comingSoon(String name) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$name plans are coming soon')),
-    );
-  }
-
   void _onCountryTap(Country country) {
     if (country.isRegional) {
       showCoverageSheet(context, iso2: country.iso2, name: country.nameEn);
     } else {
-      _comingSoon(country.nameEn);
+      Navigator.of(context).maybePop();
+      context.push('/explore/${country.slug}');
     }
   }
 

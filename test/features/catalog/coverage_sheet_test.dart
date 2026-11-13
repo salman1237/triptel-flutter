@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
+import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/presentation/coverage_sheet.dart';
 
 class _FakeCatalogApi implements CatalogApi {
@@ -23,6 +24,9 @@ class _FakeCatalogApi implements CatalogApi {
     lastIso2 = iso2;
     return coverage;
   }
+
+  @override
+  Future<Destination> getDestination(String slug) => throw UnimplementedError();
 }
 
 Widget _app(_FakeCatalogApi fake) => ProviderScope(

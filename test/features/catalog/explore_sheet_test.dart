@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
+import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/presentation/explore_sheet.dart';
 
 const _japan = Country(
@@ -51,15 +53,19 @@ class _FakeCatalogApi implements CatalogApi {
   @override
   Future<List<String>> getCoverageCountries(String iso2) async =>
       const ['Australia', 'United Kingdom', 'United States'];
+
+  @override
+  Future<Destination> getDestination(String slug) => throw UnimplementedError();
 }
 
 Widget _app({List<Country>? all}) {
   final fake = _FakeCatalogApi(all ?? const [_japan, _bangladesh, _regional]);
-  return ProviderScope(
-    overrides: [catalogApiProvider.overrideWithValue(fake)],
-    child: MaterialApp(
-      home: Builder(
-        builder: (context) => Scaffold(
+  final router = GoRouter(
+    initialLocation: '/home',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => Scaffold(
           body: Center(
             child: ElevatedButton(
               onPressed: () => showExploreSheet(context),
@@ -68,7 +74,16 @@ Widget _app({List<Country>? all}) {
           ),
         ),
       ),
-    ),
+      GoRoute(
+        path: '/explore/:slug',
+        builder: (context, state) =>
+            Text('plans-placeholder-${state.pathParameters['slug']}'),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [catalogApiProvider.overrideWithValue(fake)],
+    child: MaterialApp.router(routerConfig: router),
   );
 }
 
@@ -172,15 +187,16 @@ void main() {
     expect(find.textContaining('coming soon'), findsNothing);
   });
 
-  testWidgets('tapping a non-regional entry still shows "coming soon"',
-      (tester) async {
+  testWidgets(
+      'tapping a non-regional entry closes the sheet and navigates to '
+      "FR-204's plans screen", (tester) async {
     await tester.pumpWidget(_app());
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Bangladesh'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    expect(find.text('plans-placeholder-bangladesh'), findsOneWidget);
   });
 }

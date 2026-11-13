@@ -39,6 +39,11 @@ Widget _app({
       GoRoute(
           path: '/wallet',
           builder: (context, state) => const Text('wallet-placeholder')),
+      GoRoute(
+        path: '/explore/:slug',
+        builder: (context, state) =>
+            Text('plans-placeholder-${state.pathParameters['slug']}'),
+      ),
     ],
   );
 
@@ -99,15 +104,15 @@ void main() {
   });
 
   testWidgets(
-      "a popular-destination row tap still shows 'coming soon' (FR-204 doesn't exist yet)",
+      "a popular-destination row tap navigates to FR-204's plans screen",
       (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Japan'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    expect(find.text('plans-placeholder-japan'), findsOneWidget);
   });
 
   testWidgets('shows a retry error state when the provider throws',
