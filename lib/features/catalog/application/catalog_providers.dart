@@ -11,3 +11,10 @@ final catalogApiProvider =
 final popularCountriesProvider = FutureProvider<List<Country>>((ref) {
   return ref.watch(catalogApiProvider).getCountries(popularOnly: true);
 });
+
+/// FR-202's full catalog (Country + Regional tabs, A-Z list), cached for the
+/// app session -- the explore sheet can be opened/closed repeatedly without
+/// re-fetching.
+final allCountriesProvider = FutureProvider<List<Country>>((ref) {
+  return ref.watch(catalogApiProvider).getCountries();
+});

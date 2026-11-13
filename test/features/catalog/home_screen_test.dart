@@ -51,6 +51,7 @@ Widget _app({
           _ => Completer<List<Country>>().future,
         };
       }),
+      allCountriesProvider.overrideWith((ref) async => _countries),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -76,19 +77,36 @@ void main() {
     expect(find.text('Buy data'), findsOneWidget);
   });
 
-  testWidgets(
-      'Buy data, search, and destination taps show "coming soon" instead of a dead/unsafe nav',
-      (tester) async {
+  testWidgets('Buy data opens the FR-202 explore sheet', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Buy data'));
-    await tester.pump();
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search countries'), findsOneWidget);
+  });
+
+  testWidgets('tapping the search pill also opens the explore sheet',
+      (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('home-search-entry')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search countries'), findsOneWidget);
+  });
+
+  testWidgets(
+      "a popular-destination row tap still shows 'coming soon' (FR-204 doesn't exist yet)",
+      (tester) async {
+    await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Japan'));
     await tester.pump();
+
     expect(find.textContaining('coming soon'), findsOneWidget);
   });
 

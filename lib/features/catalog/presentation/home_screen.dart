@@ -6,19 +6,21 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../compatibility/presentation/compatibility_promo_card.dart';
 import '../application/catalog_providers.dart';
+import 'explore_sheet.dart';
 
 /// FR-201 Home: dark hero (search entry + quick actions), promo cards,
-/// popular destinations. The destination search sheet (FR-202) and
-/// destination plans screen (FR-204) don't exist yet, so search/destination
-/// taps show a "coming soon" snack instead of a dead or unsafe navigation
-/// (same reasoning as FR-105b: don't route to a route that doesn't exist).
-/// "My eSIMs" and "Top up" are deliberately not quick actions here -- the
-/// bottom tab bar already covers "My eSIMs", and "Top up" would today just
-/// land on the same Wallet tab (FR-408's real top-up flow doesn't exist
-/// yet) -- both would be redundant duplicate buttons rather than real
-/// shortcuts. Revisit once FR-408 gives "Top up" something distinct to do.
-/// Signed-in users' usage-summary-instead-of-hero variant needs FR-402/403
-/// (not built) -> deferred as FR-201b.
+/// popular destinations. The search pill and "Buy data" both open FR-202's
+/// explore sheet. Destination-row taps (within the sheet or the popular
+/// list below) still show a "coming soon" snack, since the destination
+/// plans screen (FR-204) doesn't exist yet -- same reasoning as FR-105b:
+/// don't route to a path that doesn't exist. "My eSIMs" and "Top up" are
+/// deliberately not quick actions here -- the bottom tab bar already covers
+/// "My eSIMs", and "Top up" would today just land on the same Wallet tab
+/// (FR-408's real top-up flow doesn't exist yet) -- both would be redundant
+/// duplicate buttons rather than real shortcuts. Revisit once FR-408 gives
+/// "Top up" something distinct to do. Signed-in users'
+/// usage-summary-instead-of-hero variant needs FR-402/403 (not built) ->
+/// deferred as FR-201b.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -43,7 +45,8 @@ class HomeScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => _comingSoon(context, 'Destination search'),
+                    key: const ValueKey('home-search-entry'),
+                    onTap: () => showExploreSheet(context),
                     child: const AbsorbPointer(
                       child: SearchPill(hintText: 'Find your destination'),
                     ),
@@ -58,7 +61,7 @@ class HomeScreen extends ConsumerWidget {
                 _QuickAction(
                   icon: Icons.add_circle_outline,
                   label: 'Buy data',
-                  onTap: () => _comingSoon(context, 'Buying data'),
+                  onTap: () => showExploreSheet(context),
                 ),
               ],
             ),
