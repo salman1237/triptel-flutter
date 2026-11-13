@@ -368,9 +368,13 @@
     {
       "id": "FR-304",
       "behavior": "Authoritative discount via /discounts/preview",
-      "verification": "flutter test test/features/checkout",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-304",
+      "state": "passing",
+      "evidence": {
+        "commit": "603b3ef",
+        "screens": ["artifacts/FR-304.png"],
+        "notes": "Adds DiscountsApi.preview() (POST /discounts/preview, auth) wired into checkout review's 'Continue to payment': when a discount is applied and the user is signed in, re-confirms it authoritatively (codes can expire between FR-303's guest estimate and now) before proceeding -- invalid clears the discount and shows the reason via SnackBar, keeping the user on review (never proceeds); a thrown ApiException (e.g. 404 Product not found) shows its message the same way; valid falls through to the still-nonexistent 'coming soon' (FR-305+). A guest skips the check entirely (no sign-in-and-resume flow yet, FR-106, deferred) -- disclosed limitation, not a silent gap. Found and fixed a real bug while building this: ref.read(authNotifierProvider).valueOrNull returned null/AsyncLoading on first access since nothing else in the screen watches that provider; switched to awaiting authNotifierProvider.future, which properly awaits AsyncNotifier.build(). 9 new tests (2 model-parsing against a real captured beta invalid-preview fixture + a fixture from API.md's documented example since no valid code exists on beta, same disclosed pattern as FR-303 + 5 FR-304-specific widget tests covering no-discount-skip/guest-skip/valid-proceeds/invalid-blocks/404-blocks, plus 2 pre-existing FR-303 tests retained). Non-vacuous: broke the invalid-preview branch, got a real failure, restored. Full suite (266 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-304.png): signed in on a real device with a real beta account, reached checkout live (Home -> Japan -> plan -> FR-301 gate -> review), opened the real voucher sheet and got FR-303's live 'That discount code isn't valid.' -- no valid discount code exists on beta (confirmed via curl), so the live UI can never reach the branch that actually calls /discounts/preview; this is disclosed, not overclaimed. The signed-in authoritative-check logic itself (valid/invalid/404) is fully covered by widget tests using the two real/disclosed fixtures. Reviewer: PASS -- also disclosed and recovered from its own accidental 'git checkout' that discarded uncommitted changes mid-review; independently verified post-recovery via flutter analyze/format/full test suite/harness verify, and I separately diffed every file against what I'd written before committing."
+      }
     },
     {
       "id": "FR-305",
