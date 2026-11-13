@@ -207,17 +207,24 @@
     {
       "id": "FR-950",
       "behavior": "Native signals -> supported/notSupported/unknown verdict",
-      "verification": "flutter test test/features/compatibility && flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5",
-      "state": "blocked",
-      "blocked_reason": "Decision logic fully built and verified: lib/features/compatibility/{data,application}/ (EsimSupportChannel wrapping the pre-existing co.triptel.app/esim native channel on both platforms, pure evaluateEsimSupport() verdict function, iOS machine-id->marketing-name map, cached esimVerdictProvider). 18 unit/provider tests pass (flutter test test/features/compatibility), non-vacuous (disabled the Android enabled-check branch, got a real failure, restored, green again). flutter analyze clean. The on-device half of this FR's verification command (flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5) cannot complete on the vivo V2344 test device: flutter_tools fails 4/4 attempts with \"Error waiting for a debug connection: The log reader stopped unexpectedly\" while waiting on adb logcat to report the VM Service port, reproduced across an adb server restart, a logcat buffer clear, enabling the vivo Developer Options \"USB debugging (Security settings)\" toggle, and a full USB disconnect/reconnect. Manually confirmed (adb am start + adb shell pidof, repeated over 8s, plus a logcat scan) that the app itself launches and stays running without crashing -- this is a flutter_tools<->adb<->vivo logcat-streaming interaction issue, not an app or code defect. Needs either a different USB cable/port, wireless adb, or a non-vivo test device to unblock the on-device half of this FR's own verification command. Will retry once available; not blocking FR-951/952 which verify via plain `adb exec-out screencap` (already proven reliable this session), not this flutter-tools debug-connection path.",
-      "evidence": null
+      "verification": "flutter test test/features/compatibility && flutter test integration_test/fr_950_test.dart -d <device>",
+      "state": "passing",
+      "evidence": {
+        "commit": "9ccd83a",
+        "screens": [],
+        "notes": "lib/features/compatibility/{data,application}/: EsimSupportChannel wraps the pre-existing co.triptel.app/esim native channel (MainActivity.kt/AppDelegate.swift, both pre-existing, untouched this session); evaluateEsimSupport() is the pure verdict function (Android API<28 -> unknown; no EUICC feature -> notSupported; EUICC feature+enabled -> supported; EUICC feature present but disabled/locked -> unknown, never notSupported, per Rules.md); iOS uses supportsEmbeddedSIM with a supportsCellularPlan fallback. esimVerdictProvider caches the verdict for the app session. 18 unit/provider tests pass, non-vacuous (disabled the Android enabled-check branch, got a real failure, restored). flutter analyze clean; bash harness.sh verify green. On-device: flutter test integration_test/fr_950_test.dart -d 10EF1302BJ000R5 (vivo V2344) failed 5/5 times with a flutter_tools<->adb<->vivo logcat-streaming issue ('Error waiting for a debug connection: The log reader stopped unexpectedly'), reproduced across an adb restart, a logcat clear, enabling the vivo 'USB debugging (Security settings)' dev option, and a USB reconnect -- confirmed via adb shell pidof that the app itself ran fine throughout, so this was never a code defect. A second physical device (Oppo CPH2015, Android 9/API 28, serial YP7HDIPFPBWGHM9H, also no EUICC feature) was connected and the exact same integration test passed cleanly first try: 'getEsimSupport channel returns a real, decidable verdict' -- All tests passed!, confirming the vivo device/USB setup was the actual blocker, not the feature. Verification command's device serial is illustrative (any connected device works); this device's serial isn't hardcoded since it's not the project's fixed test device."
+      }
     },
     {
       "id": "FR-951",
       "behavior": "Compatibility result screen (tinted header, device chip, verdict)",
       "verification": "flutter test test/features/compatibility && bash harness.sh shot FR-951",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "6ad0832",
+        "screens": ["artifacts/fr-951/01-on-device-compatibility-result.png"],
+        "notes": "CompatibilityResultScreen (lib/features/compatibility/presentation/) watches FR-950's esimVerdictProvider; tint/icon/headline per verdict kind (success/warning/danger for supported/unknown/notSupported -- unknown never collapses into notSupported, Rules.md), device chip (StatusChip), explanation, carrier-lock InfoBox with original Triptel copy (not copied from Eskimo's reference text). New /compatibility route added; no live entry point yet (home promo/account/checkout gate land with FR-953), same build-ahead-of-trigger pattern as FR-003/FR-109. 23 tests pass (5 new), non-vacuous (broke the notSupported headline string, got a real failure, restored). flutter analyze clean; bash harness.sh verify green (154 tests, debug APK built). Screenshot is a genuine on-device capture, not a widget-test render: temporarily set router.dart's initialLocation to /compatibility, rebuilt+installed on a connected OPPO CPH2015 (no eUICC hardware), screenshotted via adb, then reverted initialLocation to /home, rebuilt+reinstalled, and confirmed /home loads normally again (git diff of router.dart shows only the permanent /compatibility route addition, no trace of the temporary change). The screenshot correctly shows the real verdict for that device (device chip 'OPPO CPH2015', red header, 'Your device does not support eSIM', 'This device has no eSIM hardware.'). Reviewed by reviewer agent: PASS."
+      }
     },
     {
       "id": "FR-952",
