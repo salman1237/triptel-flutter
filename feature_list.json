@@ -347,8 +347,12 @@
       "id": "FR-302",
       "behavior": "Checkout review screen with breakdown and sticky total bar",
       "verification": "flutter test test/features/checkout && bash harness.sh shot FR-302",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "4eac8f6",
+        "screens": ["artifacts/FR-302.png"],
+        "notes": "New CheckoutReviewScreen (/checkout/review): plan header (title+subtitle, reusing FR-204/205's composition), voucher ListRow (chevron) opening a code-entry sheet (Apply shows 'coming soon' -- FR-303/304 discount validation doesn't exist), a display-only 'Use reward credit' Switch (value:false, onChanged:null, per Design_System.md's note the backend decides), a breakdown card (Subtotal/conditional discount row/Total via new pure CheckoutBreakdown), and a StickyTotalBar with 'Continue to payment' (also 'coming soon' -- FR-305+ doesn't exist). Omits Design_System.md's 'info pill' (Eskimo's cashback-% banner -- no such concept in docs/API.md, confirmed via grep) and the Eskimo-branded 'Guarantee' wax-seal badge (Eskimo-specific trust branding, not a generic pattern) rather than fabricating either. Wired as the real destination for DestinationPlansScreen's (FR-204) 'Continue', after FR-301's compatibility gate -- real go_router navigation (/checkout/review with a CheckoutReviewArgs extra), not a test-only override. 7 new tests (2 pure + 5 widget); non-vacuous (broke CheckoutBreakdown.total to ignore discount, got a real failure, restored). Full suite (255 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-302.png) is genuine end-to-end: Home -> Malaysia -> select plan -> Continue -> FR-301's dialog -> its Continue -> lands here showing real BDT-converted prices; a second (uncommitted) screenshot confirms the voucher sheet opens live. Reviewer: PASS, independently re-ran the mutation test and the full verification suite, compared the screenshot against the design reference."
+      }
     },
     {
       "id": "FR-303",
