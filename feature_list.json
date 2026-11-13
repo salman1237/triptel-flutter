@@ -313,9 +313,13 @@
     {
       "id": "FR-206",
       "behavior": "Share destination link",
-      "verification": "flutter test test/features/catalog",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/catalog && bash harness.sh shot FR-206",
+      "state": "passing",
+      "evidence": {
+        "commit": "87f1ea6",
+        "screens": ["artifacts/FR-206.png"],
+        "notes": "New share IconButton in DestinationPlansScreen's header, calling SharePlus.instance.share with the pure destinationShareUrl(slug) ('https://triptel.co/explore/<slug>'). On-device evidence (artifacts/FR-206.png) shows the real Android native share sheet opened via genuine navigation (Home -> Japan -> share icon), displaying the exact URL 'https://triptel.co/explore/japan'. Widget test fakes SharePlatform (plugin_platform_interface's documented MockPlatformInterfaceMixin pattern) to assert the real ShareParams captured from a real tap. Reviewer: PASS."
+      }
     },
     {
       "id": "FR-301",
