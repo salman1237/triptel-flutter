@@ -4,10 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/network/api_exception.dart';
+import 'package:triptel/features/auth/application/auth_providers.dart';
+import 'package:triptel/features/auth/application/auth_state.dart';
+import 'package:triptel/features/auth/data/models/auth_token.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/checkout/application/discounts_providers.dart';
 import 'package:triptel/features/checkout/data/discounts_api.dart';
 import 'package:triptel/features/checkout/data/models/discount_check_result.dart';
+import 'package:triptel/features/checkout/data/models/discount_preview_result.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 
 class _FixedCurrency extends CurrencyPreferenceNotifier {
@@ -15,15 +19,43 @@ class _FixedCurrency extends CurrencyPreferenceNotifier {
   Future<String> build() async => 'EUR';
 }
 
-class _FakeDiscountsApi implements DiscountsApi {
-  _FakeDiscountsApi(this._result);
+class _FixedAuth extends AuthNotifier {
+  _FixedAuth(this._state);
+  final AuthState _state;
 
-  final Object _result; // DiscountCheckResult or an Exception to throw.
+  @override
+  Future<AuthState> build() async => _state;
+}
+
+const _signedInToken = AuthToken(
+  accessToken: 'jwt',
+  tokenType: 'bearer',
+  role: 'USER',
+  userId: 'user-1',
+  username: 'alice',
+  mustChangePassword: false,
+);
+
+class _FakeDiscountsApi implements DiscountsApi {
+  _FakeDiscountsApi({Object? checkResult, Object? previewResult})
+      : _checkResult = checkResult,
+        _previewResult = previewResult;
+
+  final Object? _checkResult; // DiscountCheckResult or an Exception.
+  final Object? _previewResult; // DiscountPreviewResult or an Exception.
 
   @override
   Future<DiscountCheckResult> check(String code) async {
-    if (_result is Exception) throw _result;
-    return _result as DiscountCheckResult;
+    final result = _checkResult;
+    if (result is Exception) throw result;
+    return result as DiscountCheckResult;
+  }
+
+  @override
+  Future<DiscountPreviewResult> preview(String code, String productId) async {
+    final result = _previewResult;
+    if (result is Exception) throw result;
+    return result as DiscountPreviewResult;
   }
 }
 
@@ -39,13 +71,21 @@ const _product = Product(
   isFeatured: false,
 );
 
-Widget _app({Object? discountResult}) => ProviderScope(
+Widget _app({
+  Object? discountResult,
+  Object? previewResult,
+  AuthState authState = const AuthUnauthenticated(),
+}) =>
+    ProviderScope(
       overrides: [
         selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
-        if (discountResult != null)
-          discountsApiProvider
-              .overrideWithValue(_FakeDiscountsApi(discountResult)),
+        authNotifierProvider.overrideWith(() => _FixedAuth(authState)),
+        if (discountResult != null || previewResult != null)
+          discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
+            checkResult: discountResult,
+            previewResult: previewResult,
+          )),
       ],
       child: const MaterialApp(
         home: CheckoutReviewScreen(
@@ -186,5 +226,129 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+  });
+
+  group('FR-304: authoritative re-check before charging', () {
+    testWidgets(
+        'no discount applied: Continue to payment skips the authoritative '
+        'check entirely and shows "coming soon"', (tester) async {
+      await tester.pumpWidget(_app(
+          authState: const AuthAuthenticated(
+        _signedInToken,
+      )));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a guest with a discount applied skips the authoritative check '
+        '(no auth, no sign-in-and-resume flow yet) and still proceeds',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        discountResult: const DiscountCheckResult(
+          valid: true,
+          code: 'WELCOME',
+          discountType: 'PERCENT',
+          value: '10',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await _openSheetAndApply(tester, 'WELCOME');
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        'signed in with a still-valid discount: the real preview call '
+        'confirms it, then proceeds to "coming soon"', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        discountResult: const DiscountCheckResult(
+          valid: true,
+          code: 'WELCOME',
+          discountType: 'PERCENT',
+          value: '10',
+        ),
+        previewResult: const DiscountPreviewResult(
+          valid: true,
+          code: 'WELCOME',
+          discountAmount: Money(50),
+          listPrice: Money(500),
+          total: Money(450),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await _openSheetAndApply(tester, 'WELCOME');
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+
+    testWidgets(
+        'signed in but the code became invalid by checkout time: shows '
+        'the reason, clears the discount, and never proceeds', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        discountResult: const DiscountCheckResult(
+          valid: true,
+          code: 'WELCOME',
+          discountType: 'PERCENT',
+          value: '10',
+        ),
+        previewResult: const DiscountPreviewResult(
+          valid: false,
+          reason: 'That code has expired.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await _openSheetAndApply(tester, 'WELCOME');
+      expect(find.byKey(const ValueKey('discount-row')), findsOneWidget);
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 750));
+
+      expect(find.text('That code has expired.'), findsOneWidget);
+      expect(find.textContaining('Payment is coming soon'), findsNothing);
+      expect(find.byKey(const ValueKey('discount-row')), findsNothing);
+      expect(find.text('Add a voucher code'), findsOneWidget);
+    });
+
+    testWidgets(
+        'signed in, a network/404 error during the authoritative check: '
+        'shows the error and never proceeds', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        discountResult: const DiscountCheckResult(
+          valid: true,
+          code: 'WELCOME',
+          discountType: 'PERCENT',
+          value: '10',
+        ),
+        previewResult: const ApiException(
+          statusCode: 404,
+          message: 'Product not found or inactive',
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await _openSheetAndApply(tester, 'WELCOME');
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Product not found or inactive'), findsOneWidget);
+      expect(find.textContaining('Payment is coming soon'), findsNothing);
+    });
   });
 }

@@ -8,6 +8,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../auth/application/auth_state.dart';
 import '../../catalog/application/plan_shape.dart';
 import '../../catalog/data/models/product.dart';
 import '../application/checkout_breakdown.dart';
@@ -24,14 +26,16 @@ class CheckoutReviewArgs {
   final String countryName;
 }
 
-/// FR-302/FR-303: checkout review screen (Design_System.md §57). Plan
-/// header, voucher row (opens code entry, wired to FR-303's real
+/// FR-302/FR-303/FR-304: checkout review screen (Design_System.md §57).
+/// Plan header, voucher row (opens code entry, wired to FR-303's real
 /// `POST /discounts/check` guest estimate -- a scoped code says "exact
 /// savings confirmed when you sign in" rather than applying silently), a
 /// reward-credit toggle row (display-only per Design_System.md's own note:
 /// the backend decides whether REWARD balance is spent, not the user), a
 /// price breakdown card, and a sticky bottom bar with "Continue to payment"
-/// (FR-305+ doesn't exist yet).
+/// (FR-305+ doesn't exist yet) which runs FR-304's authoritative
+/// `/discounts/preview` re-check first when a discount is applied and the
+/// user is signed in.
 class CheckoutReviewScreen extends ConsumerStatefulWidget {
   const CheckoutReviewScreen({super.key, required this.args});
 
@@ -44,10 +48,63 @@ class CheckoutReviewScreen extends ConsumerStatefulWidget {
 
 class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   DiscountCheckResult? _discount;
+  bool _confirmingDiscount = false;
 
-  void _showComingSoon(BuildContext context, String what) {
+  void _showComingSoon(String what) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$what is coming soon')));
+        .showSnackBar(SnackBar(content: Text("$what is coming soon")));
+  }
+
+  /// FR-304: before charging (the one real "about to pay" trigger that
+  /// exists today, since FR-305's payment chooser doesn't), authoritatively
+  /// re-confirm an applied discount via `POST /discounts/preview` -- codes
+  /// can expire or become invalid between FR-303's guest estimate and now.
+  /// Invalid -> show the reason and keep the user on review (never
+  /// proceeds). Skipped for a guest: the endpoint requires auth, and
+  /// there's no sign-in-and-resume flow yet (FR-106, deferred). Awaits
+  /// `authNotifierProvider.future` rather than reading
+  /// `ref.read(authNotifierProvider).valueOrNull` -- the latter returned
+  /// null/AsyncLoading on first access here since nothing else in this
+  /// screen watches the provider, so its AsyncNotifier.build() hadn't
+  /// resolved yet; `.future` properly awaits it.
+  Future<void> _onContinueToPayment() async {
+    final discount = _discount;
+    if (discount == null || !discount.valid || discount.code == null) {
+      _showComingSoon("Payment");
+      return;
+    }
+    final authState = await ref.read(authNotifierProvider.future);
+    if (!mounted) return;
+    if (authState is! AuthAuthenticated) {
+      _showComingSoon("Payment");
+      return;
+    }
+
+    setState(() => _confirmingDiscount = true);
+    try {
+      final preview = await ref
+          .read(discountsApiProvider)
+          .preview(discount.code!, widget.args.product.id);
+      if (!mounted) return;
+      if (!preview.valid) {
+        setState(() {
+          _discount = null;
+          _confirmingDiscount = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(preview.reason ?? "That code is no longer valid.")));
+        return;
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _confirmingDiscount = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _confirmingDiscount = false);
+    _showComingSoon("Payment");
   }
 
   @override
@@ -67,16 +124,16 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     String money(Money amount) => switch ((rateAsync, currencyAsync)) {
           (AsyncData(value: final rate), AsyncData(value: final code)) =>
             formatMoney(amount, currencyCode: code, rateToBase: rate),
-          _ => '',
+          _ => "",
         };
 
     return Scaffold(
-      key: const ValueKey('checkout-review-screen'),
+      key: const ValueKey("checkout-review-screen"),
       backgroundColor: AppColors.lilac50,
       appBar: AppBar(
         backgroundColor: AppColors.lilac50,
         elevation: 0,
-        title: const Text('Checkout'),
+        title: const Text("Checkout"),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: AppSpacing.gutter),
@@ -101,8 +158,8 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${planDataLabel(product)} · ${product.validityDays} '
-                      'days · ${planCoverageLabel(product)}',
+                      "${planDataLabel(product)} · ${product.validityDays} "
+                      "days · ${planCoverageLabel(product)}",
                       textAlign: TextAlign.center,
                       style: AppTypography.body(color: AppColors.inkMuted),
                     ),
@@ -110,11 +167,11 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
                     ListGroup(
                       children: [
                         ListRow(
-                          key: const ValueKey('voucher-row'),
+                          key: const ValueKey("voucher-row"),
                           icon: Icons.local_offer_outlined,
                           title: discount != null && discount.valid
-                              ? 'Voucher applied'
-                              : 'Add a voucher code',
+                              ? "Voucher applied"
+                              : "Add a voucher code",
                           subtitle: discount != null && discount.valid
                               ? discount.code
                               : null,
@@ -126,7 +183,7 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: InfoBox(
-                          text: 'Exact savings confirmed when you sign in.',
+                          text: "Exact savings confirmed when you sign in.",
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -144,11 +201,11 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
                               color: AppColors.primary, size: 22),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Text('Use reward credit',
+                            child: Text("Use reward credit",
                                 style: AppTypography.body()),
                           ),
                           Switch(
-                            key: const ValueKey('reward-credit-toggle'),
+                            key: const ValueKey("reward-credit-toggle"),
                             value: false,
                             onChanged: null,
                           ),
@@ -166,19 +223,19 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
                       child: Column(
                         children: [
                           _BreakdownRow(
-                            label: 'Subtotal',
+                            label: "Subtotal",
                             value: money(breakdown.subtotal),
                           ),
                           if (breakdown.hasDiscount)
                             _BreakdownRow(
-                              key: const ValueKey('discount-row'),
-                              label: 'Voucher',
-                              value: '- ${money(breakdown.discount)}',
+                              key: const ValueKey("discount-row"),
+                              label: "Voucher",
+                              value: "- ${money(breakdown.discount)}",
                               valueColor: AppColors.success,
                             ),
                           const Divider(height: 24, color: AppColors.line),
                           _BreakdownRow(
-                            label: 'Total',
+                            label: "Total",
                             value: money(breakdown.total),
                             bold: true,
                           ),
@@ -194,8 +251,9 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
               savingsText: breakdown.hasDiscount
                   ? "You've saved ${money(breakdown.discount)}"
                   : null,
-              ctaLabel: 'Continue to payment',
-              onPressed: () => _showComingSoon(context, 'Payment'),
+              ctaLabel:
+                  _confirmingDiscount ? "Checking…" : "Continue to payment",
+              onPressed: _confirmingDiscount ? null : _onContinueToPayment,
             ),
           ],
         ),
@@ -285,7 +343,7 @@ class _VoucherSheetState extends ConsumerState<_VoucherSheet> {
       } else {
         setState(() {
           _checking = false;
-          _errorText = result.reason ?? "That code isn't valid.";
+          _errorText = result.reason ?? "That code is not valid.";
         });
       }
     } on ApiException catch (e) {
@@ -311,14 +369,14 @@ class _VoucherSheetState extends ConsumerState<_VoucherSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Voucher code', style: AppTypography.headline()),
+          Text("Voucher code", style: AppTypography.headline()),
           const SizedBox(height: 16),
           TextField(
-            key: const ValueKey('voucher-code-field'),
+            key: const ValueKey("voucher-code-field"),
             controller: _controller,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
-              hintText: 'Enter code',
+              hintText: "Enter code",
               filled: true,
               fillColor: AppColors.surface,
               errorText: _errorText,
@@ -326,8 +384,8 @@ class _VoucherSheetState extends ConsumerState<_VoucherSheet> {
           ),
           const SizedBox(height: 16),
           PillButton(
-            key: const ValueKey('voucher-apply-button'),
-            label: _checking ? 'Checking…' : 'Apply',
+            key: const ValueKey("voucher-apply-button"),
+            label: _checking ? "Checking…" : "Apply",
             onPressed: _checking ? null : _apply,
           ),
         ],
