@@ -357,9 +357,13 @@
     {
       "id": "FR-303",
       "behavior": "Guest discount estimate via /discounts/check",
-      "verification": "flutter test test/features/checkout",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/checkout && bash harness.sh shot FR-303",
+      "state": "passing",
+      "evidence": {
+        "commit": "5e22fe3",
+        "screens": ["artifacts/FR-303.png"],
+        "notes": "Wires FR-302's voucher sheet to the real public POST /discounts/check (no auth required, always 200 -- valid:false is a normal response, not an exception). New DiscountCheckResult keeps 'value' as the API's raw string (unit depends on discount_type: percent number for PERCENT, EUR amount otherwise); pure estimateDiscount() implements API.md section 4's exact formula (PERCENT: percent*price/100 capped by max_discount_amount then by price; else: parse as EUR capped by price). CheckoutReviewScreen now holds discount state: valid code -> 'Voucher applied' + updates the breakdown/sticky bar; scoped valid code -> InfoBox 'Exact savings confirmed when you sign in.'; invalid code -> reason shown inline via the field's errorText, sheet stays open; thrown ApiException -> message shown inline, never crashes. 8 new tests (2 model-parsing against a real captured beta invalid-code fixture + a fixture built from API.md's own documented example since no valid code exists on beta today, disclosed not fabricated; 6 estimateDiscount unit tests) plus rewritten widget tests with a fake DiscountsApi covering valid/scoped/invalid/exception paths. Non-vacuous: disabled the max_discount_amount cap, got a real failure, restored. Full suite green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-303.png) is a genuine live round-trip to the real beta backend: typed 'WELCOME' in the real voucher sheet (Home -> Malaysia -> plan -> FR-301 gate -> checkout review), got 'That discount code isn't valid.' -- the exact text the live API returns, confirmed via curl. No valid code exists on beta to demonstrate the applied-discount path live; disclosed, not overclaimed. Reviewer: PASS, independently re-ran the mutation test and the full verify suite."
+      }
     },
     {
       "id": "FR-304",
