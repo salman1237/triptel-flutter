@@ -10,6 +10,7 @@ import '../application/catalog_providers.dart';
 import '../application/plan_shape.dart';
 import '../data/models/destination.dart';
 import '../data/models/product.dart';
+import 'plan_detail_sheet.dart';
 
 /// FR-204: destination plans screen (`/explore/<slug>`). Plan-type toggle
 /// (only shapes that actually exist for this destination), a wheel picker
@@ -188,16 +189,30 @@ class _Body extends StatelessWidget {
                                   currencyCode: code, rateToBase: rate),
                             _ => '',
                           };
-                          return PlanOptionTile(
-                            title: product.isFeatured
-                                ? '${product.titleEn}  ·  Recommended'
-                                : product.titleEn,
-                            priceText: priceText,
-                            coverageLabel: '${planDataLabel(product)} · '
-                                '${product.validityDays} days · '
-                                '${planCoverageLabel(product)}',
-                            selected: product.id == selectedProductId,
-                            onTap: () => onProductSelected(product.id),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              PlanOptionTile(
+                                title: product.isFeatured
+                                    ? '${product.titleEn}  ·  Recommended'
+                                    : product.titleEn,
+                                priceText: priceText,
+                                coverageLabel: '${planDataLabel(product)} · '
+                                    '${product.validityDays} days · '
+                                    '${planCoverageLabel(product)}',
+                                selected: product.id == selectedProductId,
+                                onTap: () => onProductSelected(product.id),
+                              ),
+                              TextButton(
+                                key: ValueKey('plan-details-${product.id}'),
+                                onPressed: () => showPlanDetailSheet(
+                                  context,
+                                  product: product,
+                                  countryName: destination.country.nameEn,
+                                ),
+                                child: const Text('Plan details'),
+                              ),
+                            ],
                           );
                         },
                       ),

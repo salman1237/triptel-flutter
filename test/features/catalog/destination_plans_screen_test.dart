@@ -106,6 +106,17 @@ void main() {
     expect(find.textContaining('Recommended'), findsOneWidget);
   });
 
+  testWidgets('tapping "Plan details" opens FR-205\'s detail sheet',
+      (tester) async {
+    await tester.pumpWidget(_app([_fixed(gb: 1, days: 7)]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Plan details'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Japan · 1 country'), findsOneWidget);
+  });
+
   testWidgets(
       'selecting a plan then tapping Continue shows "coming soon" '
       '(checkout, FR-301+, does not exist yet)', (tester) async {
