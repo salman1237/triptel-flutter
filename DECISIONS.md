@@ -1,6 +1,21 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-13 — Returned to strict feature_list.json array order
+A prior session had deprioritized FR-005b/FR-006b/FR-105b as "low-priority,
+not urgent" and jumped ahead to FR-201+ without marking them `blocked` or
+logging the deviation here. **Why reverting to strict order:** CLAUDE.md's
+loop says "pick the active item, else the **first** `not_started` item" —
+none of these three are actually blocked (FR-005b/FR-006b are pure
+test/wiring follow-ups buildable right now; FR-105b needs a real
+password-change-gated endpoint, not yet confirmed blocked or not). Silently
+skipping `not_started` items by judgment risks them never getting revisited.
+Built FR-005b this session under strict order; FR-006b is next.
+**Revisit if:** a `not_started` item turns out to be genuinely blocked on
+something only the user/backend can provide — then mark it `blocked` with
+`blocked_reason` (per CLAUDE.md) instead of silently skipping it, so the
+array order stays trustworthy.
+
 ## 2026-11-12 — Added an Android https intent-filter for track links, without autoVerify
 While building FR-007, `https://triptel.co/track/<token>` test intents couldn't
 reach the app at all — `AndroidManifest.xml` only ever registered the
