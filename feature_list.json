@@ -292,8 +292,12 @@
       "id": "FR-204",
       "behavior": "Plans screen: plan-type toggle, wheel picker, radio plans, Continue",
       "verification": "flutter test test/features/catalog && bash harness.sh shot FR-204",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "1c8a25c",
+        "screens": ["artifacts/fr-204/01-plans-screen-fixed.png", "artifacts/fr-204/02-plan-selected.png", "artifacts/fr-204/03-unlimited-tab.png"],
+        "notes": "DestinationPlansScreen (/explore/<slug>): curved header (flag/name/currency pill, same gradient as HeroHeader), plan-type toggle (SegmentedPill, only shown when 2+ shapes exist among the destination's products), PlanWheelPicker over the shape's primary dimension (data size for Fixed, validity days for Day Pass/Unlimited), a radio list of PlanOptionTile rows for products matching the wheel value (sorted price ascending), 'Recommended' suffix for is_featured, sticky Continue bar disabled until a plan is selected. Checkout (FR-301+) doesn't exist, so Continue shows 'coming soon' rather than routing to a nonexistent path. Plan-shape detection (planShape, plan_shape.dart) and the day-pass per-day math (dataAmountGb/validityDays, since the API's dataAmountGb on a day pass is the TOTAL over all days) follow API.md section 3's table exactly; Money.parseEur/formatMoney handle EUR-only pricing, never reading product.currency (beta mislabels these 'USD'). Non-regional taps in FR-202's explore sheet and Home's popular-destinations list now navigate here instead of 'coming soon'. test/fixtures/catalog_japan_destination.json is a real captured beta response (75 products, confirmed to include all 3 plan shapes). 24 new tests; non-vacuous twice (broke planShape's isUnlimited check, got multiple real failures, restored; separately for the coverage-label fix below). Full suite (217 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, reached via a real in-app tap from Home's popular destinations (OPPO device, live beta data): 01 shows Japan's curved header, all 3 plan-type tabs (confirming Japan genuinely has Fixed/Day Pass/Unlimited products), the data-size wheel, and a matching plan row; 02 shows the same row radio-selected with the CTA now reading 'Continue'; 03 shows the Unlimited tab with two real matching plans at the same validity (confirming the multiple-matches-per-wheel-value case). Reviewed by reviewer agent: first pass FAIL (the row's 'coverage' fact, explicitly required by both FR-204's text and Design_System.md, was missing entirely -- the single caption slot only showed data-label+validity) -- fixed by adding planCoverageLabel() (every product here is non-regional per API.md section 3, so coverage is always '1 country' in practice, with a defensive fallback to the real coverage_countries length), re-reviewed: PASS."
+      }
     },
     {
       "id": "FR-205",
