@@ -7,8 +7,10 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
-  Catalog (C): FR-201 passing (FR-201b — usage summary for signed-in users
-  with an active eSIM — deferred, not_started, needs FR-402/403/FR-801).
+  Catalog (C): FR-201, FR-202 passing (FR-201b — usage summary for
+  signed-in users with an active eSIM — and FR-202b — featured "Global"
+  package card — both deferred, not_started, need data/screens that don't
+  exist yet).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -23,22 +25,65 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-201 in feature_list.json order — FR-202 (destination
-  search sheet), FR-203 (regional list), FR-204 (destination plans
-  screen), FR-205/206, then checkout (FR-301+ — revisit **FR-106** and
-  **FR-953b** then, once those screens exist). Once FR-202/204 land, Home's
-  "coming soon" snacks (search pill, "Buy data", destination row taps) can
-  be wired to real navigation. Low-priority follow-ups logged, not urgent:
-  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
-  Set Password once one exists), **FR-106** (blocked on catalog/checkout),
+  item after FR-202 in feature_list.json order — FR-203 (regional list:
+  each regional pseudo-country's "(N countries)" parsed out of its name,
+  "N countries" link to a coverage list sheet), then FR-204 (destination
+  plans screen — once this exists, the remaining "coming soon" taps on
+  destination rows, both in Home's popular list and inside the explore
+  sheet, can finally be wired to real navigation), FR-205/206, then
+  checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once those
+  screens exist). Low-priority follow-ups logged, not urgent: **FR-005b**,
+  **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to Set
+  Password once one exists), **FR-106** (blocked on catalog/checkout),
   **FR-953b** (compatibility gate wired into checkout + install gating),
-  **FR-201b** (signed-in usage-summary hero variant).
+  **FR-201b** (signed-in usage-summary hero variant), **FR-202b** (featured
+  "Global" package card — no API field identifies which regional entry to
+  feature yet).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-202):
+  - **FR-202 (destination search sheet):** new `ExploreSheet`
+    (`lib/features/catalog/presentation/explore_sheet.dart`), a full-height
+    `showModalBottomSheet`: search pill, horizontally-scrollable
+    `SegmentedPill` for Country/Regional (same overflow-safety precaution
+    as FR-952, which had a real bug there), a "Popular" flag-chip row, and
+    an A-Z sectioned list. Pure split/grouping logic in
+    `country_grouping.dart` (`countryTabEntries`/`regionalTabEntries` by
+    `Country.isRegional`, `groupByFirstLetter`). Search is genuinely
+    debounced (400ms `Timer`, cancelled per keystroke) against the real
+    `GET /catalog/countries?search=`, not client-side filtering.
+  - Home's search pill and "Buy data" quick action now open this sheet
+    instead of showing "coming soon" — the first of this session's several
+    `_comingSoon` placeholders to get upgraded to a real destination, now
+    that FR-202 exists (same FR-105b-style reasoning used throughout:
+    don't route to what doesn't exist, do route once it does).
+    Destination-row taps (both in the sheet and in Home's own "Popular
+    destinations" list) still show "coming soon", since FR-204
+    (destination plans screen) still doesn't exist.
+  - Design_System.md's Explore row also specs a featured "Global" package
+    card at the top of the sheet; deferred as `FR-202b` — confirmed via
+    API.md that `CountryResponse` has no `is_featured`-equivalent field
+    (only `ProductResponse` does), so there's no API-driven signal for
+    which regional entry (there's a real "Global (120+ areas)" one in the
+    beta catalog) should be featured yet.
+  - 9 new tests (21 total in `test/features/catalog`); non-vacuous
+    (inverted `countryTabEntries`' region predicate, got a real failure,
+    restored). Full suite (189 tests) passes; `flutter analyze` clean;
+    `bash harness.sh verify` green.
+  - On-device evidence reached via a real in-app tap for the first time
+    this session for a catalog sub-screen (no temporary-router hack
+    needed, unlike FR-951/952/201's early captures): the Country tab with
+    real popular chips and a real A-Z list, the Regional tab with real
+    package names and globe icons, and a live debounced search for
+    "japan" returning real results (including regional packages
+    containing Japan) — confirming it genuinely hits the live API.
+  - Reviewer agent: PASS on the first pass (no fix-then-re-review cycle
+    needed this time).
+  - Commits: `0dec26b` (feature), `1eed366` (state).
 - 2026-11-13 — Session 10 continued (FR-201, plus user-driven UX trims):
   - **FR-201 (Home):** first catalog feature, built from scratch —
     `lib/features/catalog/{data,application,presentation}/`. `Country`
