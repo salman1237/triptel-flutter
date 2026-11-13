@@ -165,7 +165,8 @@
       "id": "FR-105b",
       "behavior": "A real require_password_changed-gated endpoint's 403 actually routes to Set Password (ApiException.mustChangePassword is wired to navigation, not just a dormant getter)",
       "verification": "flutter test test/features/auth",
-      "state": "not_started",
+      "state": "blocked",
+      "blocked_reason": "docs/API.md line 39 says the require_password_changed 403 is 'Returned by every require_password_changed endpoint' but doesn't name one -- the only endpoints this applies to per the error text itself ('before buying or moving money') are checkout (FR-301+) and wallet top-up/withdraw (FR-601+/FR-701+), all not_started. There's no real producer (an actual gated API call) to wire ApiException.mustChangePassword's navigation to yet, same reasoning as FR-007/FR-106's deferrals. Revisit when FR-301 or FR-601/FR-701 exist -- wire the real 403 interception + navigation then, same incremental pattern.",
       "evidence": null
     },
     {
