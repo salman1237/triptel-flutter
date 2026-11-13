@@ -12,7 +12,7 @@ Session log. Read first at session start, update last at session end.
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
   passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
-  (D): FR-301, FR-302 passing.
+  (D): FR-301, FR-302, FR-303 passing.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -27,19 +27,63 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-302 (checkout review screen) just landed and is now the
-  real destination for FR-204's "Continue" (after FR-301's gate) — next is
-  **FR-303** (discount code — guest estimate, `POST /discounts/check`).
-  FR-302's voucher sheet already exists and currently shows "coming soon"
-  on Apply; FR-303 should wire it to the real endpoint. Revisit **FR-106**
-  and **FR-953b** once enough of FR-301+ exists (FR-953b's checkout half
-  can start once a real purchase action exists, i.e. once FR-306+ exists).
+  array order. FR-303 (discount code guest estimate) just landed, wiring
+  FR-302's voucher sheet to the real `/discounts/check` — next is
+  **FR-304** (discount code — authoritative, `POST /discounts/preview`,
+  auth-required, called before actually charging). No valid discount code
+  currently exists on the beta environment (confirmed via curl on both
+  "WELCOME" and a random string) — same limitation will apply to FR-304;
+  disclose it the same way. Revisit **FR-106** and **FR-953b** once enough
+  of FR-301+ exists (FR-953b's checkout half can start once a real
+  purchase action exists, i.e. once FR-306+ exists).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-303, discount code guest estimate):
+  - **FR-303:** wires FR-302's voucher code sheet (previously a "coming
+    soon" placeholder) to the real public `POST /discounts/check`
+    endpoint (no auth required, always HTTP 200 — `valid:false` is a
+    normal response, never a thrown exception). New
+    `DiscountCheckResult` deliberately keeps `value` as the API's raw
+    string rather than parsing it into `Money`, since its unit depends on
+    `discount_type` (a percentage number for `PERCENT`, a EUR amount
+    string otherwise) — only `maxDiscountAmount` is eagerly parsed since
+    it's unconditionally EUR. New pure `estimateDiscount()` implements
+    API.md §4's exact formula (PERCENT: `price*value/100` capped by
+    `max_discount_amount` then by price; else: parsed as EUR, capped by
+    price).
+  - `CheckoutReviewScreen` converted to a `ConsumerStatefulWidget` holding
+    discount state: a valid code shows "Voucher applied" + the code and
+    updates the breakdown/sticky bar; a `scoped:true` valid code adds an
+    `InfoBox` reading "Exact savings confirmed when you sign in." (FR-303's
+    literal requirement); an invalid code shows its `reason` inline via
+    the text field's `errorText` and keeps the sheet open; a thrown
+    `ApiException` shows its message the same way — neither crashes.
+  - Fixture note (disclosed, not hidden): captured a real invalid-code
+    response from beta via curl (both "WELCOME" and a random string came
+    back `{"valid":false,...}` — no valid discount code currently exists
+    on beta), but had to construct the valid-PERCENT-response fixture
+    from `docs/API.md`'s own documented example verbatim, since no live
+    valid code exists to capture. Same limitation will recur for FR-304.
+  - 8 new tests (2 model-parsing + 6 `estimateDiscount` unit tests) plus
+    a rewritten widget-test suite using a `_FakeDiscountsApi` covering
+    valid/scoped/invalid/exception paths distinctly. Non-vacuous: disabled
+    the `max_discount_amount` cap, got a real failure, restored. Full
+    suite green; flutter analyze clean; bash harness.sh verify green.
+  - On-device evidence (`artifacts/FR-303.png`) is a genuine live
+    round-trip to the real beta backend: typed "WELCOME" in the real
+    voucher sheet (reached via Home → Malaysia → plan → FR-301's gate →
+    checkout review), got "That discount code isn't valid." — the exact
+    text the live API returns. The applied-discount success path has no
+    live demonstration (no valid code exists on beta) and is disclosed as
+    such, not overclaimed.
+  - Reviewer: PASS first pass — independently reproduced the mutation
+    test (verified the restoration was byte-identical afterward) and the
+    full verification suite. Commits: `5e22fe3` (feature), `dd03d8f`
+    (state).
 - 2026-11-13 — Session 10 continued (FR-302, checkout review screen):
   - **FR-302 (checkout review screen):** new `CheckoutReviewScreen`
     (`/checkout/review`, args passed via go_router `extra` since a
