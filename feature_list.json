@@ -263,6 +263,17 @@
       "id": "FR-202",
       "behavior": "Destination search sheet with Country/Regional toggle and A-Z list",
       "verification": "flutter test test/features/catalog && bash harness.sh shot FR-202",
+      "state": "passing",
+      "evidence": {
+        "commit": "0dec26b",
+        "screens": ["artifacts/fr-202/01-explore-sheet-country.png", "artifacts/fr-202/02-explore-sheet-regional.png", "artifacts/fr-202/03-search-results.png", "artifacts/fr-202/04-home-after.png"],
+        "notes": "ExploreSheet (lib/features/catalog/presentation/) -- full-height modal via showModalBottomSheet. countryTabEntries/regionalTabEntries (country_grouping.dart, pure/tested) split by Country.isRegional per API.md section 3; groupByFirstLetter does case-insensitive A-Z sectioning. Popular chips reuse FlagAvatar; Country/Regional toggle reuses SegmentedPill (wrapped in a horizontally-scrollable container, same precaution as FR-952 after that session's real overflow bug). Search is debounced (400ms Timer, cancelled on each keystroke) calling the real GET /catalog/countries?search= via the existing CatalogApi -- not a cached provider, since each keystroke is a fresh query. Home's search pill and 'Buy data' now open this sheet instead of showing 'coming soon', since it's now safe to route there (FR-105b-style reasoning: don't route to what doesn't exist, do route once it does); destination-row taps (in the sheet and in Home's own popular list) still show 'coming soon' since FR-204 doesn't exist yet. Featured 'Global' package card (Design_System.md's Explore row) deferred as FR-202b -- CountryResponse has no is_featured-equivalent field (that only exists on ProductResponse per API.md), so there's no API-driven way to pick one yet. 9 new tests (21 total in test/features/catalog); non-vacuous (inverted countryTabEntries' isRegional predicate, got a real failure, restored). Full suite (189 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, reached via a real in-app tap (no temporary router hack needed, unlike FR-951/952): 01 shows the sheet with Country tab selected, real popular chips (Bangladesh/China/Japan), and a real A-Z list (Afghanistan, Aland Islands, Albania...) with live flag images; 02 shows the Regional tab with real package names (Africa, Asia (12 areas), AUKUS(3 countries)) and globe icons; 03 shows a live debounced search for 'japan' returning real results including regional packages containing Japan -- confirming it genuinely hits the live API, not canned data; 04 confirms Home renders normally underneath after closing the sheet. Reviewed by reviewer agent: PASS."
+      }
+    },
+    {
+      "id": "FR-202b",
+      "behavior": "Featured 'Global' package card at the top of the explore sheet (needs product-level price/country-count data, not just the country list)",
+      "verification": "flutter test test/features/catalog",
       "state": "not_started",
       "evidence": null
     },
