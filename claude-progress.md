@@ -24,24 +24,55 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after FR-205 in feature_list.json order — FR-206 (shareable
-  destination link; `share_plus: ^12.0.2` already in `pubspec.yaml`), then
-  checkout (FR-301+ — revisit **FR-106** and **FR-953b** then, once those
-  screens exist; this also finally gives FR-204's "Continue" button
-  something real to do). Low-priority follow-ups logged, not urgent:
-  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
-  Set Password once one exists), **FR-106** (blocked on catalog/checkout),
-  **FR-953b** (compatibility gate wired into checkout + install gating),
-  **FR-201b** (signed-in usage-summary hero variant), **FR-202b** (featured
-  "Global" package card — no API field identifies which regional entry to
-  feature yet).
+- **Next step:** run the `next-feature` loop, strict feature_list.json
+  array order (the prior session's "low-priority, not urgent" skip of
+  FR-005b/006b/105b was a deviation from CLAUDE.md's "first `not_started`
+  item" rule — corrected this session: FR-005b built this session; next is
+  **FR-006b** (BootstrapGate's splash/maintenance/error branches respecting
+  saved RTL — buildable now, not blocked), then **FR-105b** (needs a real
+  gated endpoint, may still be legitimately deferred — check), then
+  **FR-201b**/**FR-202b** (need data/screens that don't exist), then
+  **FR-301+** checkout (revisit **FR-106** and **FR-953b** once those
+  screens exist; also finally gives FR-204's "Continue" button something
+  real to do).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-206, FR-005b):
+  - **FR-206 (shareable destination link):** new share `IconButton` in
+    `DestinationPlansScreen`'s header, calling `SharePlus.instance.share`
+    with the pure `destinationShareUrl(slug)` helper
+    (`https://triptel.co/explore/<slug>`). Widget test fakes `SharePlatform`
+    via `plugin_platform_interface`'s documented `MockPlatformInterfaceMixin`
+    pattern (added `plugin_platform_interface` and
+    `share_plus_platform_interface` as dev_dependencies — both already
+    transitive deps of `share_plus`, just made explicit for test code) to
+    assert on the real `ShareParams` captured from a real tap. Non-vacuous:
+    broke the URL to a wrong domain, got 3 real test failures, restored.
+    On-device evidence (`artifacts/FR-206.png`) shows the actual Android
+    native share sheet, reached via genuine navigation, displaying
+    `https://triptel.co/explore/japan`. Reviewer: PASS first pass. Commits:
+    `87f1ea6` (feature), `f26c1ac` (state).
+  - **FR-005b (test-quality follow-up):** added 3 tests reading
+    `selectedCurrencyRateProvider.future` directly (EUR default, a real
+    non-EUR rate, recompute after `select()`) — previously only
+    `resolveRate`'s pure-function tests existed, not the provider's own
+    Riverpod wiring. No UI/production change, no device evidence needed.
+    Non-vacuous: broke the provider to always return 1.0, got 2 real
+    failures, restored. Reviewer: PASS, independently re-ran the mutation
+    test itself. Commits: `ee8646d` (feature), `6910fb6` (state).
+  - **Process correction:** the previous session's "low-priority, not
+    urgent" skip of FR-005b/FR-006b/FR-105b (deferring them past FR-201+ in
+    practice) wasn't actually blocked — just deprioritized by judgment call,
+    without logging that deviation in DECISIONS.md. Per CLAUDE.md's strict
+    "pick the active item, else the first `not_started` item" rule, this
+    session picked FR-005b next (first `not_started` in array order) rather
+    than continuing to skip ahead. FR-105b may still turn out to be
+    legitimately blocked (it needs a real gated endpoint) — check when
+    reached, and only mark `blocked` with a reason if so, don't just skip.
 - 2026-11-13 — Session 10 continued (FR-205):
   - **FR-205 (plan detail/coverage sheet):** new `plan_detail_sheet.dart`
     — a modal bottom sheet opened via a new "Plan details" `TextButton`
