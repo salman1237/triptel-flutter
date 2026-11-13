@@ -7,6 +7,8 @@ Session log. Read first at session start, update last at session end.
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
   deferred, not_started, needs FR-301+/FR-404/FR-310 to exist first).
+  Catalog (C): FR-201 passing (FR-201b — usage summary for signed-in users
+  with an active eSIM — deferred, not_started, needs FR-402/403/FR-801).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -18,20 +20,104 @@ Session log. Read first at session start, update last at session end.
   If a differently-signed debug build is already installed on a newly
   connected device, `adb install -r` fails with
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
+  Also watch for the device going `unauthorized` after an adb server
+  restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop: pick the first `not_started`
-  item after the compatibility section in feature_list.json order —
-  catalog (FR-201+), then checkout (FR-301+ — revisit **FR-106** and
-  **FR-953b** then, once those screens exist). Low-priority follow-ups
-  logged, not urgent: **FR-005b**, **FR-006b**, **FR-105b** (wire a real
-  gated endpoint's 403 to Set Password once one exists), **FR-106**
-  (blocked on catalog/checkout), **FR-953b** (compatibility gate wired into
-  checkout + install gating, once those screens exist).
+  item after FR-201 in feature_list.json order — FR-202 (destination
+  search sheet), FR-203 (regional list), FR-204 (destination plans
+  screen), FR-205/206, then checkout (FR-301+ — revisit **FR-106** and
+  **FR-953b** then, once those screens exist). Once FR-202/204 land, Home's
+  "coming soon" snacks (search pill, "Buy data", destination row taps) can
+  be wired to real navigation. Low-priority follow-ups logged, not urgent:
+  **FR-005b**, **FR-006b**, **FR-105b** (wire a real gated endpoint's 403 to
+  Set Password once one exists), **FR-106** (blocked on catalog/checkout),
+  **FR-953b** (compatibility gate wired into checkout + install gating),
+  **FR-201b** (signed-in usage-summary hero variant).
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-13 — Session 10 continued (FR-201, plus user-driven UX trims):
+  - **FR-201 (Home):** first catalog feature, built from scratch —
+    `lib/features/catalog/{data,application,presentation}/`. `Country`
+    model for `GET /catalog/countries` rows (API.md §3);
+    `CatalogApiImpl.getCountries({search, popularOnly})`;
+    `popularCountriesProvider` (cached for the session, same pattern as
+    FR-950's `esimVerdictProvider`). `HomeScreen` rebuilt: `HeroHeader`
+    (reused, pre-existing dark-gradient component) with a search pill and
+    a "Buy data" quick action, the `CompatibilityPromoCard` (FR-953,
+    reused not duplicated), and a real "Popular destinations" list via
+    `CountryRow` (shared, pre-existing) fed by live beta data.
+  - Destination search (FR-202) and the destination plans screen (FR-204)
+    don't exist yet, so the search pill / "Buy data" / destination-row
+    taps show a "`<thing>` is coming soon" snackbar instead of routing to
+    a path that doesn't exist (same reasoning as FR-105b). The referral
+    promo card and "signed-in users with an active eSIM see a usage
+    summary instead of the hero" sub-behavior need FR-801/FR-402/403
+    (none built) — deferred as a new `FR-201b` entry.
+  - `test/fixtures/catalog_popular_countries.json` is a real captured
+    response from `curl https://beta.triptel.co/api/v1/catalog/countries
+    ?popular_only=true` (11 real countries), backing `Country.fromJson`'s
+    test. 10 new tests; non-vacuous (broke `popularOnly: true`→`false` in
+    the provider, broke the "My eSIMs" quick action's `onTap`, got real
+    failures both times, restored).
+  - **Gotcha:** all 5 pre-existing full-`TriptelApp` tests (`widget_test.dart`,
+    `shell_test.dart`, `deep_link_routing_test.dart`, `auth_route_bridge_test.dart`,
+    `compatibility_promo_test.dart`) needed
+    `popularCountriesProvider.overrideWith((ref) async => const [])` added
+    — without it, `HomeScreen`'s real provider fires an unmocked `Dio` call
+    during the test, leaving a pending `Timer` that fails Flutter's
+    teardown invariant check. Same category of fix as FR-953's
+    `esimVerdictProvider` override, just one provider further down the
+    dependency chain. **Lesson:** any new eagerly-watched real-network
+    provider on `HomeScreen` (or any screen reachable from the full-app
+    test harness) needs this treatment preemptively, not just on first
+    failure.
+  - **Gotcha:** `lib/app/app_shell.dart`'s bottom-nav tab buttons had no
+    keys; adding a "My eSIMs" hero quick action with the identical label
+    as the "My eSIMs" bottom tab made `find.text('My eSIMs')` ambiguous in
+    `shell_test.dart` (2 matches). Fixed by giving each `_TabButton` a
+    `ValueKey('tab-<label>')` and updating the test to use `find.byKey`.
+    Worth remembering for any future screen content that might echo a
+    bottom-tab label.
+  - **User feedback mid-build** (unprompted, after seeing the on-device
+    screenshots): flagged that the hero's "My eSIMs" quick action
+    literally duplicated the bottom tab right below it (same label, same
+    destination), and asked why "Check device compatibility" appeared on
+    both Home and Account when FR-953 only strictly needed one real entry
+    point. Also separately asked where "Buy data" and "Top up" actually
+    navigated to, surfacing that "Top up" silently landed on the exact
+    same `/wallet` route as the "Wallet" bottom tab (different label, same
+    destination, since FR-408's real top-up flow doesn't exist yet).
+    Resolved via `AskUserQuestion`: removed "My eSIMs" and "Top up" from
+    the hero (left only "Buy data", which still has a real distinct
+    "coming soon" purpose since FR-202 doesn't exist); removed the
+    `CompatibilityPromoCard` from Account, keeping it on Home only.
+    Updated both features' tests accordingly (asserting absence instead of
+    presence+navigation) and FR-953's already-committed `feature_list.json`
+    evidence notes (which had gone stale the moment the Account card was
+    removed) with an explicit "UPDATE" paragraph rather than silently
+    rewriting history. Recaptured both affected on-device screenshots.
+    **Lesson reinforced:** a feature matching its FR's literal text isn't
+    the same as it making UX sense once actually seen on a real device —
+    the user caught real redundant-button UX smell purely from screenshots
+    that passed every automated check. Worth proactively asking "does this
+    duplicate an existing nav target?" before adding new shortcut buttons,
+    not just after being asked.
+  - Reviewer agent (run twice — once on the original FR-201 build, once
+    after the three UX trims together with FR-953's Account-card removal):
+    both PASS, the second catching one real issue (FR-953's evidence notes
+    were stale after the Account-card removal) which was fixed before
+    committing.
+  - Full suite (178 tests) passes; `flutter analyze` clean; `bash
+    harness.sh verify` green throughout. On-device evidence (OPPO device,
+    live beta data): real flag images loaded for the popular-destinations
+    list, working "coming soon" snackbars, real navigation to My eSIMs via
+    the (now sole) hero action path, and the final Account screen
+    confirmed to no longer show the compatibility card.
+  - Commits: `16c0a30` (feature), `01444b9` (state).
 - 2026-11-13 — Session 10 continued (FR-953, resumed by user request after
   the FR-952 stop):
   - **FR-953 (compatibility everywhere it matters):** new
