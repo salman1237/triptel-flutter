@@ -1,6 +1,23 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-14 — Independently re-verified a reviewer's self-disclosed recovery
+The FR-304 reviewer accidentally ran `git checkout --` on an uncommitted file
+mid-review (wiping the session's own in-progress edits), disclosed the mistake
+immediately, and reconstructed the file by hand from content it had already
+read, claiming the reconstruction was behaviorally identical. **Why re-verify
+rather than trust the disclosure:** a reviewer's own account of its recovery
+is still a claim, not a given — especially right after it admits a mistake.
+Read the restored file myself, diffed it line-by-line against what I actually
+wrote earlier in the session, confirmed the logic was intact (only cosmetic
+differences: double vs single quotes, a stray Unicode curly apostrophe, and
+missing doc comments, which I restored), then reran analyze/format/full test
+suite/harness verify before committing. No data was actually lost this time,
+but the check was worth doing regardless. **Revisit if:** a reviewer (or any
+subagent) discloses a destructive action on uncommitted work — always
+independently verify the recovery before acting on its PASS/FAIL verdict;
+never commit on the strength of the subagent's own "I checked, it's fine."
+
 ## 2026-11-13 — Returned to strict feature_list.json array order
 A prior session had deprioritized FR-005b/FR-006b/FR-105b as "low-priority,
 not urgent" and jumped ahead to FR-201+ without marking them `blocked` or
