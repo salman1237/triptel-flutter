@@ -18,7 +18,12 @@ Session log. Read first at session start, update last at session end.
   model, WalletsApi) started ahead of FR-601, same incremental pattern
   as FR-007. **FR-307** (ShurjoPay checkout) also now passing — real
   WebView against the beta ShurjoPay sandbox gateway, backed out
-  cleanly without completing any payment.
+  cleanly without completing any payment. **FR-308** (provisioning
+  progress step list) also now passing — a second small real purchase
+  (Order ORD-20261114-6D7389) proved the new `OrderStatusScreen` wiring
+  end-to-end; the actual step-list screen itself was screenshotted via
+  a temporary, never-committed local rig (see DECISIONS.md) since the
+  real purchase completed too fast to catch it mid-poll.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -33,19 +38,63 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-306 and FR-307 (wallet + ShurjoPay checkout) are both
-  passing now — next is whatever immediately follows FR-307 in
-  `feature_list.json` (check it fresh; likely provisioning-progress/
-  My eSIMs territory). No valid discount code exists on beta (confirmed
-  via curl) — keep disclosing that limitation for any future
-  discount-related work. Revisit **FR-106** and **FR-953b** now that a
-  real purchase action (FR-306) exists.
+  array order. FR-306, FR-307, FR-308 (wallet checkout, ShurjoPay
+  checkout, provisioning progress) are all passing now — next is
+  **FR-309** (still-preparing state after the poll window times out).
+  FR-310 (purchase success: QR/install/copy) and FR-311 (purchase
+  failure/refund message) follow it, then FR-401 (eSIM QR component).
+  No valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work.
+  Revisit **FR-106** and **FR-953b** now that a real purchase action
+  (FR-306) exists. **Caution:** FR-310/FR-311 will likely need their
+  own on-device evidence of a real completed/failed order — check
+  whether the existing FR-306/307/308 purchases already provide enough
+  evidence before asking for another real purchase; ask the user first
+  if a new one is genuinely needed, same as FR-306/308's approvals.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-308, provisioning progress step list):
+  - New `OrderStatusScreen` pushed after a real order exists (wallet or
+    ShurjoPay checkout), showing "Payment confirmed -> Reserving your eSIM ->
+    Preparing QR" (Functional_Requirements.md's exact wording) while FR-306's
+    `pollOrderUntilDone` runs underneath it, completely unchanged. Since
+    API.md §6 only exposes order-level status, not sub-progress within
+    `PROCESSING`, the step shown advances on elapsed wall-clock time (new
+    pure `provisioningStepForElapsed`: <3s/<10s/else) -- an honestly-cosmetic
+    progress indicator, not a claim about real backend sub-state.
+  - New pure `ProvisioningProgressView` (checkmark/spinner/outlined-circle
+    per step, theme tokens only). New injectable `orderStatusLauncherProvider`
+    (same DI seam as FR-307's `shurjoPayLauncherProvider`): the real
+    implementation pushes `OrderStatusScreen` and resolves a `Completer<Order>`
+    with the poll's final order or its error, guarded against double-completion.
+  - Wired into both `_checkoutWithWallet` and `_checkoutWithShurjoPay` in
+    place of the direct `pollOrderUntilDone` call; `_showOrderResult` and all
+    error handling are unchanged from FR-306/307 -- confirmed no FR-309/310/311
+    terminal-state UI was built ahead of schedule.
+  - 10 new tests; full checkout suite now 73 tests, full project suite green,
+    `flutter analyze` clean, `bash harness.sh verify` green. Non-vacuous:
+    temporarily short-circuited the step function, got real failures, restored.
+  - On-device evidence needed a **second** small real purchase (Order
+    ORD-20261114-6D7389), explicitly approved by the user via AskUserQuestion
+    specifically for this feature. The purchase completed provisioning too
+    fast on this device/connection to screenshot the step-list screen itself
+    mid-poll -- the first evidence attempt only caught the pre-existing
+    checkout screen before/after, which the reviewer correctly caught and
+    failed on its first pass (every other check passed). Recaptured correctly
+    via a temporary, **never-committed** local-only rig: `lib/main.dart` was
+    briefly rewritten to bypass the router and push `OrderStatusScreen`
+    directly against an offline fake `OrdersApi` (no network calls, no money
+    moved), screenshotted showing the real "Setting up your eSIM" screen with
+    "Payment confirmed" spinning, then reverted via `git checkout` and
+    confirmed byte-identical to HEAD before rebuilding/reinstalling the real
+    app and re-running `bash harness.sh verify` green. See DECISIONS.md.
+  - Reviewer: FAIL on first pass (screenshot evidence showed the wrong
+    screen), corrected, re-reviewed: PASS.
+  - Commits: `17e0647` (feature code), `b32a956` (state → passing).
 - 2026-11-14 — Session 10 continued (FR-307, ShurjoPay checkout):
   - New `OrdersApi.initiateShurjoPay` (`POST /payments/shurjopay/order-initiate`
     — `product_id`, `payment_method: SHURJOPAY`, `discount_code`, `mobile: true`

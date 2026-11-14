@@ -1,6 +1,34 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-14 — Temporary, never-committed main.dart rig to screenshot a too-fast transient screen
+FR-308's new `OrderStatusScreen` only appears for the seconds between a real
+order existing and the real poll resolving it -- on this device/connection
+the real beta purchase provisioned too fast to screenshot it mid-poll twice
+in a row, and the reviewer correctly failed the first attempt's evidence
+(it showed the surrounding checkout screen instead). Rather than ask for a
+third real purchase with no better odds of catching the timing, temporarily
+rewrote `lib/main.dart` (local working tree only, never staged or committed)
+to bypass the router and push `OrderStatusScreen` directly against an
+offline fake `OrdersApi` held at `PROCESSING` for a few calls -- zero network
+calls, zero money moved, real Flutter engine rendering on the real device.
+Screenshotted, then reverted with `git checkout -- lib/main.dart` and
+independently confirmed (by both the builder and the re-review) byte-identical
+to HEAD before rebuilding/reinstalling the real app and re-running
+`bash harness.sh verify` green. **Why:** this captures genuine on-device
+rendering evidence of the feature's own UI without spending more real money
+on a purchase that's about *provisioning speed*, not about this screen's
+correctness -- the screen's code is already exercised by real polling via
+the committed widget tests (`order_status_screen_test.dart`); the live
+purchase's job was proving the *wiring* (launcher provider, Completer,
+checkout_review_screen integration), which it did. **Revisit if:** this
+pattern gets reused carelessly to avoid real purchases where a real purchase
+is actually what's needed for evidence (e.g. proving a real payment-method
+sheet balance, or a real refund) -- it's only appropriate for a transient
+screen whose own rendering doesn't depend on real backend data, and the
+underlying wiring must already have been proven with a real purchase first
+(as it was here, via FR-306/307/308's prior approved purchases).
+
 ## 2026-11-14 — FR-307 evidence stops at the ShurjoPay sandbox page, no simulated success
 For FR-307's on-device evidence, opened a real `order-initiate` call and the
 real WebView against beta's ShurjoPay **sandbox** gateway, then backed out via
