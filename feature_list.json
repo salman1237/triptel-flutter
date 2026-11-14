@@ -446,8 +446,12 @@
       "id": "FR-311",
       "behavior": "Failure only on FAILED, refund message",
       "verification": "flutter test test/features/checkout",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "90c828c",
+        "screens": [],
+        "notes": "This behavior already existed as a side effect of FR-306's original work (the order.isFailed branch in _showOrderResult already fired only on the explicit FAILED status and already showed a refund message) -- this feature formalizes and locks it in rather than introducing new UI. No logic or message-string change: git diff confirms only a 4-line clarifying doc comment was added to checkout_review_screen.dart. Confirmed Order.isFailed (data/models/order.dart) is exactly status == 'FAILED' -- CANCELLED is correctly NOT treated as a failure, consistent with API.md section 6's documented poll rule ('Stop on COMPLETED or FAILED. Anything else, including timeout, = Setting up your eSIM') -- CANCELLED falls through to the same still-preparing (FR-309) branch as PENDING/PAID/PROCESSING would. 5 new dedicated tests: an explicit FAILED order shows the exact refund message and does NOT land on FR-310's PurchaseSuccessScreen; a parameterized check over PENDING/PAID/PROCESSING/CANCELLED each confirms none of them ever show 'failed'/'refunded' text, each draining the full real orderPollSchedule (same pattern as the pre-existing FR-309 test) since a single non-terminal status repeats for the whole poll window. Full checkout suite now 90 tests, full project suite green, flutter analyze clean (zero issues, not even info-level lints), bash harness.sh verify green. Non-vacuous: temporarily made Order.isFailed also match CANCELLED, got a real test failure (the new CANCELLED-specific test), restored. No on-device screenshot evidence required -- this feature's own verification command is test-only (flutter test test/features/checkout, no bash harness.sh shot clause), confirmed by reading feature_list.json's own verification field before and after. Reviewer: PASS (confirmed the diff is doc-comment-only against the already-reviewed FR-310 logic, confirmed CANCELLED's non-failure treatment is consistent with API.md's actual documented poll rule rather than an assumption, traced the real code path proving the CANCELLED test is non-vacuous, confirmed no pre-existing FR-306..310 assertion was loosened)."
+      }
     },
     {
       "id": "FR-401",
