@@ -19,7 +19,10 @@ import '../application/checkout_breakdown.dart';
 import '../application/discounts_providers.dart';
 import '../application/order_poll.dart';
 import '../application/orders_providers.dart';
+import '../application/shurjopay_launcher.dart';
 import '../data/models/discount_check_result.dart';
+import '../data/models/order.dart';
+import '../data/models/shurjopay_checkout.dart';
 
 /// Arguments for `/checkout/review` -- go_router's `extra`, since a [Product]
 /// isn't URL-encodable (Architecture.md's routing table has no query params
@@ -55,11 +58,6 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   DiscountCheckResult? _discount;
   bool _confirmingDiscount = false;
   bool _placingOrder = false;
-
-  void _showComingSoon(String what) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text("$what is coming soon")));
-  }
 
   CheckoutBreakdown get _breakdown {
     final discount = _discount;
@@ -150,10 +148,9 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
 
   /// FR-305: Wallet is offered as a payment method only when
   /// DEFAULT+REWARD fully covers the total; otherwise skip the sheet and
-  /// go straight to ShurjoPay. A guest has no wallet, so always goes
-  /// straight to ShurjoPay. FR-307 (ShurjoPay checkout) doesn't exist yet,
-  /// so selecting it (or skipping straight to it) still ends in "coming
-  /// soon"; selecting Wallet now runs FR-306's real checkout.
+  /// go straight to FR-307's real ShurjoPay checkout. A guest has no
+  /// wallet, so always goes straight to ShurjoPay too. Selecting Wallet
+  /// runs FR-306's real checkout instead.
   Future<void> _choosePaymentMethod() async {
     final authState = await _resolveAuthState();
     if (!mounted) return;
@@ -192,7 +189,17 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
         return;
       }
     }
-    _showComingSoon('Payment');
+    await _checkoutWithShurjoPay();
+  }
+
+  void _showOrderResult(Order order) {
+    final message = order.isCompleted
+        ? 'Order ${order.orderNo}: your eSIM is ready!'
+        : order.isFailed
+            ? 'Order ${order.orderNo}: failed -- refunded to your wallet.'
+            : 'Order ${order.orderNo}: still setting up your eSIM.';
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// FR-306: `POST /orders/checkout` (wallet only) then poll
@@ -211,13 +218,53 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
       final finalOrder = await pollOrderUntilDone(api, order.id);
       if (!mounted) return;
       setState(() => _placingOrder = false);
-      final message = finalOrder.isCompleted
-          ? 'Order ${finalOrder.orderNo}: your eSIM is ready!'
-          : finalOrder.isFailed
-              ? 'Order ${finalOrder.orderNo}: failed -- refunded to your wallet.'
-              : 'Order ${finalOrder.orderNo}: still setting up your eSIM.';
+      _showOrderResult(finalOrder);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _placingOrder = false);
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// FR-307: `POST /payments/shurjopay/order-initiate` (mobile: true), open
+  /// the real `checkout_url` in an in-app WebView, and wait for it to pop
+  /// with the parsed terminal redirect. The redirect is a hint, not proof
+  /// (API.md §9) -- either way, once the WebView closes with a redirect,
+  /// re-poll the real order via FR-306's `pollOrderUntilDone`. Backing out
+  /// of the WebView without a terminal redirect (`callback == null`) just
+  /// returns to review with no order to poll.
+  Future<void> _checkoutWithShurjoPay() async {
+    final discount = _discount;
+    setState(() => _placingOrder = true);
+    ShurjoPayCheckout checkout;
+    try {
+      checkout = await ref.read(ordersApiProvider).initiateShurjoPay(
+            productId: widget.args.product.id,
+            discountCode:
+                discount != null && discount.valid ? discount.code : null,
+          );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _placingOrder = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _placingOrder = false);
+
+    final launch = ref.read(shurjoPayLauncherProvider);
+    final callback = await launch(context, checkout.checkoutUrl);
+    if (!mounted || callback == null) return;
+
+    setState(() => _placingOrder = true);
+    try {
+      final api = ref.read(ordersApiProvider);
+      final finalOrder = await pollOrderUntilDone(api, checkout.orderId);
+      if (!mounted) return;
+      setState(() => _placingOrder = false);
+      _showOrderResult(finalOrder);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _placingOrder = false);

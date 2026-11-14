@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/checkout/application/order_poll.dart';
 import 'package:triptel/features/checkout/data/models/order.dart';
+import 'package:triptel/features/checkout/data/models/shurjopay_checkout.dart';
 import 'package:triptel/features/checkout/data/orders_api.dart';
 
 Order _order(String status) => Order(
@@ -23,6 +24,11 @@ class _ScriptedOrdersApi implements OrdersApi {
 
   @override
   Future<Order> checkout({required String productId, String? discountCode}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ShurjoPayCheckout> initiateShurjoPay(
+          {required String productId, String? discountCode}) =>
       throw UnimplementedError();
 
   @override

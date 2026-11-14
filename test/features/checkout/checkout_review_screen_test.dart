@@ -13,8 +13,11 @@ import 'package:triptel/features/checkout/data/discounts_api.dart';
 import 'package:triptel/features/checkout/data/models/discount_check_result.dart';
 import 'package:triptel/features/checkout/application/order_poll_schedule.dart';
 import 'package:triptel/features/checkout/application/orders_providers.dart';
+import 'package:triptel/features/checkout/application/shurjopay_callback.dart';
+import 'package:triptel/features/checkout/application/shurjopay_launcher.dart';
 import 'package:triptel/features/checkout/data/models/discount_preview_result.dart';
 import 'package:triptel/features/checkout/data/models/order.dart';
+import 'package:triptel/features/checkout/data/models/shurjopay_checkout.dart';
 import 'package:triptel/features/checkout/data/orders_api.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
@@ -91,13 +94,19 @@ Order _order(String status) => Order(
     );
 
 class _FakeOrdersApi implements OrdersApi {
-  _FakeOrdersApi({Object? checkoutResult, List<String>? pollStatuses})
+  _FakeOrdersApi(
+      {Object? checkoutResult,
+      List<String>? pollStatuses,
+      Object? shurjoPayResult})
       : _checkoutResult = checkoutResult,
-        _pollStatuses = pollStatuses ?? const ['COMPLETED'];
+        _pollStatuses = pollStatuses ?? const ['COMPLETED'],
+        _shurjoPayResult = shurjoPayResult;
 
   final Object? _checkoutResult; // Order or Exception.
   final List<String> _pollStatuses;
+  final Object? _shurjoPayResult; // ShurjoPayCheckout or Exception.
   var _getOrderCalls = 0;
+  var initiateShurjoPayCalls = 0;
 
   @override
   Future<Order> checkout(
@@ -105,6 +114,20 @@ class _FakeOrdersApi implements OrdersApi {
     final result = _checkoutResult;
     if (result is Exception) throw result;
     return result as Order? ?? _order(_pollStatuses.first);
+  }
+
+  @override
+  Future<ShurjoPayCheckout> initiateShurjoPay(
+      {required String productId, String? discountCode}) async {
+    initiateShurjoPayCalls++;
+    final result = _shurjoPayResult;
+    if (result is Exception) throw result;
+    return result as ShurjoPayCheckout? ??
+        const ShurjoPayCheckout(
+          orderId: 'order-1',
+          orderNo: 'ORD-TEST-1',
+          checkoutUrl: 'https://shurjopay.example/checkout',
+        );
   }
 
   @override
@@ -135,6 +158,10 @@ Widget _app({
   List<Wallet> wallets = const [],
   Object? checkoutResult,
   List<String>? pollStatuses,
+  Object? shurjoPayResult,
+  ShurjoPayCallback? shurjoPayLauncherResult =
+      const ShurjoPayCallback(orderId: 'order-1', failed: false),
+  _FakeOrdersApi? ordersApi,
 }) =>
     ProviderScope(
       overrides: [
@@ -142,10 +169,14 @@ Widget _app({
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
         authNotifierProvider.overrideWith(() => _FixedAuth(authState)),
         walletsApiProvider.overrideWithValue(_FakeWalletsApi(wallets)),
-        ordersApiProvider.overrideWithValue(_FakeOrdersApi(
-          checkoutResult: checkoutResult,
-          pollStatuses: pollStatuses,
-        )),
+        ordersApiProvider.overrideWithValue(ordersApi ??
+            _FakeOrdersApi(
+              checkoutResult: checkoutResult,
+              pollStatuses: pollStatuses,
+              shurjoPayResult: shurjoPayResult,
+            )),
+        shurjoPayLauncherProvider
+            .overrideWithValue((context, url) async => shurjoPayLauncherResult),
         if (discountResult != null || previewResult != null)
           discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
             checkResult: discountResult,
@@ -282,21 +313,24 @@ void main() {
   });
 
   testWidgets(
-      'tapping "Continue to payment" shows "coming soon" (FR-305+ does not '
-      'exist yet)', (tester) async {
+      'tapping "Continue to payment" (guest, no wallet) runs the real '
+      'ShurjoPay checkout and shows the real order result', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Continue to payment'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
     await tester.pump();
 
-    expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+    expect(find.textContaining('eSIM is ready'), findsOneWidget);
   });
 
   group('FR-304: authoritative re-check before charging', () {
     testWidgets(
         'no discount applied: Continue to payment skips the authoritative '
-        'check entirely and shows "coming soon"', (tester) async {
+        'check entirely and still runs the real checkout', (tester) async {
       await tester.pumpWidget(_app(
           authState: const AuthAuthenticated(
         _signedInToken,
@@ -304,9 +338,11 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
       await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
@@ -325,14 +361,16 @@ void main() {
       await _openSheetAndApply(tester, 'WELCOME');
 
       await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
       await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
         'signed in with a still-valid discount: the real preview call '
-        'confirms it, then proceeds to "coming soon"', (tester) async {
+        'confirms it, then proceeds to the real checkout', (tester) async {
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),
         discountResult: const DiscountCheckResult(
@@ -354,9 +392,11 @@ void main() {
 
       await tester.tap(find.text('Continue to payment'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
       await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
@@ -419,21 +459,24 @@ void main() {
 
   group('FR-305: payment method choice', () {
     testWidgets(
-        'a guest always skips straight to ShurjoPay (no wallet, no sheet)',
-        (tester) async {
+        'a guest always skips straight to ShurjoPay (no wallet, no sheet) '
+        'and runs the real FR-307 checkout', (tester) async {
       await tester.pumpWidget(_app());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Continue to payment'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
 
       expect(find.text('Choose payment method'), findsNothing);
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
         "signed in but the wallet doesn't cover the total: skips straight "
-        'to ShurjoPay, no sheet', (tester) async {
+        'to ShurjoPay, no sheet, and runs the real FR-307 checkout',
+        (tester) async {
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),
         wallets: const [
@@ -443,10 +486,12 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Continue to payment'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
 
       expect(find.text('Choose payment method'), findsNothing);
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
@@ -501,6 +546,7 @@ void main() {
     testWidgets(
         'a wallet-fetch error treats the guest the same as no wallet -- '
         'skips straight to ShurjoPay, never crashes', (tester) async {
+      final ordersApi = _FakeOrdersApi();
       await tester.pumpWidget(ProviderScope(
         overrides: [
           selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
@@ -508,6 +554,9 @@ void main() {
           authNotifierProvider.overrideWith(
               () => _FixedAuth(const AuthAuthenticated(_signedInToken))),
           walletsApiProvider.overrideWithValue(_ThrowingWalletsApi()),
+          ordersApiProvider.overrideWithValue(ordersApi),
+          shurjoPayLauncherProvider.overrideWithValue((context, url) async =>
+              const ShurjoPayCallback(orderId: 'order-1', failed: false)),
         ],
         child: const MaterialApp(
           home: CheckoutReviewScreen(
@@ -521,7 +570,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Choose payment method'), findsNothing);
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(ordersApi.initiateShurjoPayCalls, 1);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
   });
 
@@ -626,13 +676,16 @@ void main() {
     });
 
     testWidgets(
-        'selecting ShurjoPay never calls the orders API, "coming '
-        'soon" only (FR-307 does not exist yet)', (tester) async {
+        'selecting ShurjoPay in the sheet now runs the real FR-307 '
+        'checkout instead of the old "coming soon" placeholder',
+        (tester) async {
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),
         wallets: const [
           Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
         ],
+        shurjoPayLauncherResult:
+            const ShurjoPayCallback(orderId: 'order-1', failed: false),
       ));
       await tester.pumpAndSettle();
 
@@ -643,8 +696,157 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('coming soon'), findsNothing);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+    });
+  });
+
+  group('FR-307: ShurjoPay checkout', () {
+    testWidgets(
+        "signed in, wallet doesn't cover the total: skips straight to "
+        'ShurjoPay, opens the WebView, and polls the real order on a '
+        'successful callback', (tester) async {
+      final ordersApi = _FakeOrdersApi(pollStatuses: const ['COMPLETED']);
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(10), isFrozen: false),
+        ],
+        ordersApi: ordersApi,
+        shurjoPayLauncherResult:
+            const ShurjoPayCallback(orderId: 'order-1', failed: false),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Choose payment method'), findsNothing);
+      expect(ordersApi.initiateShurjoPayCalls, 1);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(find.textContaining('eSIM is ready'), findsOneWidget);
+    });
+
+    testWidgets(
+        'backing out of the WebView without a terminal redirect '
+        'returns to review without polling anything', (tester) async {
+      final ordersApi = _FakeOrdersApi();
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(10), isFrozen: false),
+        ],
+        ordersApi: ordersApi,
+        shurjoPayLauncherResult: null,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+
+      expect(ordersApi.initiateShurjoPayCalls, 1);
       expect(find.textContaining('ORD-TEST-1'), findsNothing);
+      expect(
+          find.byKey(const ValueKey('checkout-review-screen')), findsOneWidget);
+    });
+
+    testWidgets(
+        'a callback flagged failed=true is still just a hint: the app '
+        're-polls the real order and reports its actual outcome', (tester) async {
+      final ordersApi = _FakeOrdersApi(pollStatuses: const ['COMPLETED']);
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(10), isFrozen: false),
+        ],
+        ordersApi: ordersApi,
+        shurjoPayLauncherResult: const ShurjoPayCallback(
+          orderId: 'order-1',
+          failed: true,
+          reason: 'user_cancelled',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(find.textContaining('eSIM is ready'), findsOneWidget);
+    });
+
+    testWidgets(
+        'order-initiate failure (e.g. 502 gateway error) shows the real '
+        'message, never crashes', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(10), isFrozen: false),
+        ],
+        shurjoPayResult: const ApiException(
+          statusCode: 502,
+          message: 'Could not start ShurjoPay checkout: gateway error',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Could not start ShurjoPay checkout: gateway error'),
+          findsOneWidget);
+    });
+
+    test(
+        'isShurjoPayCallbackUrl recognizes the real triptel:// '
+        'payment-callback redirect and nothing else', () {
+      expect(
+          isShurjoPayCallbackUrl(
+              Uri.parse('triptel://payment-callback?order=abc')),
+          isTrue);
+      expect(isShurjoPayCallbackUrl(Uri.parse('https://triptel.co/wallet')),
+          isFalse);
+      expect(
+          isShurjoPayCallbackUrl(Uri.parse('triptel://other-path')), isFalse);
+    });
+
+    test('parseShurjoPayCallback extracts the order id on success', () {
+      final callback = parseShurjoPayCallback(
+          Uri.parse('triptel://payment-callback?order=abc-123'));
+      expect(callback.orderId, 'abc-123');
+      expect(callback.failed, isFalse);
+    });
+
+    test('parseShurjoPayCallback extracts failure + reason', () {
+      final callback = parseShurjoPayCallback(Uri.parse(
+          'triptel://payment-callback?payment=failed&reason=declined'));
+      expect(callback.failed, isTrue);
+      expect(callback.reason, 'declined');
+      expect(callback.orderId, isNull);
+    });
+
+    test(
+        'ShurjoPayCheckout.fromJson accepts both checkout_url and '
+        'checkoutUrl casings (API.md: "also try checkoutUrl")', () {
+      final a = ShurjoPayCheckout.fromJson(const {
+        'order_id': 'o1',
+        'order_no': 'ORD-1',
+        'checkout_url': 'https://shurjopay.example/a',
+      });
+      expect(a.checkoutUrl, 'https://shurjopay.example/a');
+
+      final b = ShurjoPayCheckout.fromJson(const {
+        'order_id': 'o1',
+        'order_no': 'ORD-1',
+        'checkoutUrl': 'https://shurjopay.example/b',
+      });
+      expect(b.checkoutUrl, 'https://shurjopay.example/b');
     });
   });
 
@@ -654,15 +856,18 @@ void main() {
     testWidgets(
         'a transient error resolving the signed-in session (e.g. a '
         'network hiccup refreshing GET /auth/me) is treated like a guest '
-        '-- still proceeds to "coming soon" instead of doing nothing',
-        (tester) async {
+        '-- still proceeds to a real checkout attempt instead of doing '
+        'nothing', (tester) async {
+      final ordersApi = _FakeOrdersApi();
       await tester.pumpWidget(ProviderScope(
         overrides: [
           selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
           currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
           authNotifierProvider.overrideWith(_ErroringAuth.new),
           walletsApiProvider.overrideWithValue(_FakeWalletsApi(const [])),
-          ordersApiProvider.overrideWithValue(_FakeOrdersApi()),
+          ordersApiProvider.overrideWithValue(ordersApi),
+          shurjoPayLauncherProvider.overrideWithValue((context, url) async =>
+              const ShurjoPayCallback(orderId: 'order-1', failed: false)),
         ],
         child: const MaterialApp(
           home: CheckoutReviewScreen(
@@ -675,8 +880,12 @@ void main() {
       await tester.tap(find.text('Continue to payment'));
       await tester.pump();
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(ordersApi.initiateShurjoPayCalls, 1);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
   });
 }
