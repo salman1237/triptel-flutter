@@ -38,13 +38,10 @@ jobs:
           flutter build apk --release
           --dart-define=API_BASE_URL=https://beta.triptel.co/api/v1
 
-      - name: Rename APK with commit SHA
+      - name: Rename APK
         run: |
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             "dist/triptel-${GITHUB_SHA::7}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             dist/triptel-latest.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/triptel-latest.apk
 
       - name: Publish to the rolling "latest" release
         uses: softprops/action-gh-release@v2
@@ -55,6 +52,4 @@ jobs:
             Automatically built from commit ${{ github.sha }} on `main`.
             Debug-signed beta build (`API_BASE_URL=https://beta.triptel.co/api/v1`) --
             not a store release.
-          files: |
-            dist/triptel-latest.apk
-            dist/triptel-${{ github.sha }}.apk
+          files: dist/triptel-latest.apk
