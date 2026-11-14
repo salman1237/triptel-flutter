@@ -192,12 +192,17 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     await _checkoutWithShurjoPay();
   }
 
+  /// FR-309: anything other than `COMPLETED`/`FAILED` once the poll window
+  /// (API.md section 6, ~170s) runs out is "still preparing", never an
+  /// error (Rules.md) -- the backend keeps provisioning in the background
+  /// and emails the eSIM when ready.
   void _showOrderResult(Order order) {
     final message = order.isCompleted
         ? 'Order ${order.orderNo}: your eSIM is ready!'
         : order.isFailed
             ? 'Order ${order.orderNo}: failed -- refunded to your wallet.'
-            : 'Order ${order.orderNo}: still setting up your eSIM.';
+            : "We're still setting up your eSIM -- it will appear in My "
+                'eSIMs and arrive by email.';
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }

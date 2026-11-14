@@ -627,8 +627,9 @@ void main() {
     });
 
     testWidgets(
-        'still-PROCESSING after polling is reported as "still setting up", '
-        'never as a failure (Rules.md)', (tester) async {
+        'still-PROCESSING after polling exhausts the schedule is reported '
+        "as FR-309's still-preparing message, never as a failure "
+        '(Rules.md)', (tester) async {
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),
         wallets: const [
@@ -649,7 +650,10 @@ void main() {
       }
       await tester.pump();
 
-      expect(find.textContaining('still setting up'), findsOneWidget);
+      expect(
+          find.text("We're still setting up your eSIM -- it will appear "
+              'in My eSIMs and arrive by email.'),
+          findsOneWidget);
       expect(find.textContaining('failed'), findsNothing);
     });
 
