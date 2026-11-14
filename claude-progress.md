@@ -26,8 +26,14 @@ Session log. Read first at session start, update last at session end.
   real purchase completed too fast to catch it mid-poll. **FR-309**
   (still-preparing message) also now passing — a pure text change,
   evidenced via the same temporary-rig technique (no real purchase or
-  real ~170s wait needed this time either).
-- **Active feature:** none.
+  real ~170s wait needed this time either). **FR-401** (EsimQr
+  component) also now passing — pulled forward out of array order
+  since FR-310 depends on it (same precedent as the wallet layer ahead
+  of FR-601); the component already existed from earlier scaffolding
+  and needed only tests, no source changes.
+- **Active feature:** none. Session paused here at the user's explicit
+  request ("stop after committing this feature") right after FR-401 —
+  FR-310 is next, not yet started.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
   CPH2015 `YP7HDIPFPBWGHM9H`, a third device `109973842B010285`, and a Tecno
@@ -40,12 +46,13 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** run the `next-feature` loop, strict feature_list.json
+- **Next step:** resume the `next-feature` loop, strict feature_list.json
   array order. FR-306 through FR-309 (wallet checkout, ShurjoPay
-  checkout, provisioning progress, still-preparing message) are all
-  passing now — next is **FR-310** (purchase success: QR/install/copy).
-  FR-311 (purchase failure/refund message) follows it, then FR-401
-  (eSIM QR component).
+  checkout, provisioning progress, still-preparing message) and FR-401
+  (eSIM QR component, pulled forward since FR-310 needs it) are all
+  passing now — next is **FR-310** (purchase success: QR/install/copy),
+  which can now use the already-tested `EsimQr` widget directly. FR-311
+  (purchase failure/refund message) follows it.
   No valid discount code exists on beta (confirmed via curl) — keep
   disclosing that limitation for any future discount-related work.
   Revisit **FR-106** and **FR-953b** now that a real purchase action
@@ -60,6 +67,34 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-401, EsimQr component, pulled forward):
+  - `lib/core/widgets/esim_qr.dart` already existed from earlier scaffolding,
+    unused and untested, with `feature_list.json` still showing it
+    `not_started`. Pulled forward out of strict array order (the loop was on
+    FR-310 "Purchase success: QR...", which depends on it) -- same precedent
+    as the wallet layer built ahead of FR-601.
+  - No source change needed: the component already satisfied FR-401 exactly
+    (error correction H, `logoFraction = 0.22`, white circular disc via
+    `AppColors.surface`, generic `logo` slot with no hardcoded brand art).
+    Only tests were missing.
+  - 5 new tests in `test/features/esims/esim_qr_test.dart`. "Damage test
+    decodes" is satisfied geometrically rather than via pixel decode (no
+    QR-decode dependency in this project, honestly disclosed in the test
+    file's doc comment): the logo disc's area as a fraction of the whole QR
+    is ~5.16% at the default size, comfortably under EC level H's commonly-
+    cited ~30% damage tolerance; asserted under a conservative 15% threshold
+    at three representative sizes.
+  - `flutter test test/features/esims` (5/5) and `flutter analyze` both
+    green. Non-vacuous: temporarily changed EC level to L (real failure) and
+    `logoFraction` to 0.5 (two real failures), both restored.
+  - On-device evidence via the same temporary-rig technique as FR-308/309
+    (standalone `EsimQr` render, Flutter's own logo as an honestly-disclosed
+    placeholder for the real app mark, which isn't wired up yet and is out
+    of scope for this narrow component-only feature). Reverted cleanly.
+  - Reviewer: PASS.
+  - Commits: `cc2c150` (feature code), `f14abe0` (state → passing).
+  - **Session paused here at the user's explicit request** ("stop after
+    committing this feature") -- the loop did not continue to FR-310.
 - 2026-11-14 — Session 10 continued (FR-309, still-preparing message):
   - Pure text change: the existing "neither COMPLETED nor FAILED" branch of
     `_showOrderResult` now shows Functional_Requirements.md's exact wording,

@@ -1,6 +1,25 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-14 — Pulled FR-401 forward ahead of FR-310, same precedent as the wallet layer
+`feature_list.json`'s strict array order had the loop on FR-310 ("Purchase
+success: QR, install links, copy codes"), which explicitly depends on FR-401
+("EsimQr: EC level H, 22% logo, white disc"). `lib/core/widgets/esim_qr.dart`
+already existed from earlier scaffolding but was unused, untested, and still
+listed `not_started`. **What I did:** built/tested FR-401 on its own first
+(no source change needed, only tests), marked it `passing`, then returned to
+FR-310 next -- rather than build FR-310 against an unverified dependency, or
+build a one-off QR widget duplicate inline just to avoid reordering.
+**Why:** this mirrors the already-logged precedent of building the wallet
+data layer ahead of FR-601 -- a hard dependency is a legitimate reason to
+pull a later feature forward, as long as it's logged here and the
+pulled-forward feature still gets its own full build/verify/review/commit
+cycle rather than being silently bundled into the dependent feature's work.
+**Revisit if:** a future feature needs something several sections further
+ahead than a one-step pull -- at that point, prefer actually reordering
+`feature_list.json`'s remaining entries explicitly (with a note) over
+repeatedly pulling individual items forward ad hoc.
+
 ## 2026-11-14 — Temporary, never-committed main.dart rig to screenshot a too-fast transient screen
 FR-308's new `OrderStatusScreen` only appears for the seconds between a real
 order existing and the real poll resolving it -- on this device/connection
