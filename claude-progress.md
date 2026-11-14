@@ -23,7 +23,10 @@ Session log. Read first at session start, update last at session end.
   (Order ORD-20261114-6D7389) proved the new `OrderStatusScreen` wiring
   end-to-end; the actual step-list screen itself was screenshotted via
   a temporary, never-committed local rig (see DECISIONS.md) since the
-  real purchase completed too fast to catch it mid-poll.
+  real purchase completed too fast to catch it mid-poll. **FR-309**
+  (still-preparing message) also now passing — a pure text change,
+  evidenced via the same temporary-rig technique (no real purchase or
+  real ~170s wait needed this time either).
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -38,11 +41,11 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-306, FR-307, FR-308 (wallet checkout, ShurjoPay
-  checkout, provisioning progress) are all passing now — next is
-  **FR-309** (still-preparing state after the poll window times out).
-  FR-310 (purchase success: QR/install/copy) and FR-311 (purchase
-  failure/refund message) follow it, then FR-401 (eSIM QR component).
+  array order. FR-306 through FR-309 (wallet checkout, ShurjoPay
+  checkout, provisioning progress, still-preparing message) are all
+  passing now — next is **FR-310** (purchase success: QR/install/copy).
+  FR-311 (purchase failure/refund message) follows it, then FR-401
+  (eSIM QR component).
   No valid discount code exists on beta (confirmed via curl) — keep
   disclosing that limitation for any future discount-related work.
   Revisit **FR-106** and **FR-953b** now that a real purchase action
@@ -57,6 +60,23 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-309, still-preparing message):
+  - Pure text change: the existing "neither COMPLETED nor FAILED" branch of
+    `_showOrderResult` now shows Functional_Requirements.md's exact wording,
+    "We're still setting up your eSIM -- it will appear in My eSIMs and
+    arrive by email." instead of a generic placeholder. Still reached only
+    when both `isCompleted`/`isFailed` are false; FR-310/311's branches
+    (COMPLETED/FAILED) untouched.
+  - One existing test updated to assert the exact text (stricter than its
+    prior substring check); full checkout suite still 73 tests (no new test
+    files needed for a string change), green; `flutter analyze` clean;
+    `bash harness.sh verify` green. Non-vacuous: temporarily swapped in a
+    placeholder string, got a real failure, restored.
+  - On-device evidence reused FR-308's temporary-rig technique (no real
+    purchase, no real ~170s wait) -- the real SnackBar text rendered on the
+    real device, screenshot saved, rig reverted and confirmed zero drift.
+  - Reviewer: PASS.
+  - Commits: `fadff38` (feature code), `dc23da5` (state → passing).
 - 2026-11-14 — Session 10 continued (FR-308, provisioning progress step list):
   - New `OrderStatusScreen` pushed after a real order exists (wallet or
     ShurjoPay checkout), showing "Payment confirmed -> Reserving your eSIM ->
