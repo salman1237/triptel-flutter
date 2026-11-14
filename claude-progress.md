@@ -3,6 +3,14 @@ Session log. Read first at session start, update last at session end.
 
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
+- **CI:** `.github/workflows/release-apk.yml` builds `flutter build apk --release`
+  (beta API) on every push to `main` and publishes it to the repo's "latest"
+  GitHub Release (https://github.com/salman1237/triptel-flutter/releases/tag/latest,
+  asset `triptel-latest.apk`, ~50MB). The APK itself is never committed to git --
+  the debug build is ~250MB, over GitHub's 100MB hard file-size limit, and a
+  growing binary in every commit would bloat this public repo's clone size
+  forever. Requires JDK 17 pinned via `actions/setup-java` (ubuntu-latest's
+  default JDK is too new for Gradle 8.11.1's build scripts).
 - **Phase:** Auth section (B) complete (FR-101..105, FR-107, FR-108, FR-109
   done; FR-106 blocked). Compatibility (K) section complete: FR-950, FR-951,
   FR-952, FR-953 all passing (FR-953b — checkout gate/install gating —
