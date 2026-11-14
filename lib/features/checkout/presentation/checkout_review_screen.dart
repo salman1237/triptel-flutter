@@ -199,6 +199,10 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   /// and emails the eSIM when ready.
   /// FR-310: a completed order goes to the real purchase-success screen
   /// (QR, 1-tap install, copy code, "Go to My eSIMs") instead of a snack.
+  /// FR-311: failure is reported only on the explicit `FAILED` status
+  /// (`order.isFailed`, never inferred from `CANCELLED`/anything else --
+  /// API.md section 6's poll only ever stops early on `COMPLETED`/`FAILED`),
+  /// and always states the refund to the wallet.
   void _showOrderResult(Order order) {
     if (order.isCompleted) {
       Navigator.of(context).push(MaterialPageRoute(

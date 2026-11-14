@@ -916,6 +916,72 @@ void main() {
     });
   });
 
+  group('FR-311: purchase failure', () {
+    testWidgets('an explicit FAILED order states the refund to wallet',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        pollStatuses: const ['FAILED'],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Order ORD-TEST-1: failed -- refunded to your wallet.'),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('purchase-success-screen')), findsNothing);
+    });
+
+    for (final nonFailedStatus in [
+      'PENDING',
+      'PAID',
+      'PROCESSING',
+      'CANCELLED'
+    ]) {
+      testWidgets(
+          '$nonFailedStatus is never reported as a failure (only the '
+          'explicit FAILED status is, API.md section 6)', (tester) async {
+        await tester.pumpWidget(_app(
+          authState: const AuthAuthenticated(_signedInToken),
+          wallets: const [
+            Wallet(
+                walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+          ],
+          pollStatuses: [nonFailedStatus],
+        ));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Continue to payment'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Wallet'));
+        await tester.pump(const Duration(milliseconds: 300));
+        // Every poll keeps returning the same non-terminal status, so this
+        // drains the full schedule (API.md section 6's real timing) before
+        // the final snack appears -- same pattern as the FR-309 test above.
+        for (final delay in orderPollSchedule()) {
+          await tester.pump(delay);
+        }
+        await tester.pump();
+
+        expect(find.textContaining('failed'), findsNothing);
+        expect(find.textContaining('refunded'), findsNothing);
+        expect(
+            find.text("We're still setting up your eSIM -- it will appear "
+                'in My eSIMs and arrive by email.'),
+            findsOneWidget);
+      });
+    }
+  });
+
   group(
       'auth resolution failure never silently aborts "Continue to '
       'payment"', () {
