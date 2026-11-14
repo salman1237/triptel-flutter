@@ -38,10 +38,16 @@ Session log. Read first at session start, update last at session end.
   component) also now passing — pulled forward out of array order
   since FR-310 depends on it (same precedent as the wallet layer ahead
   of FR-601); the component already existed from earlier scaffolding
-  and needed only tests, no source changes.
-- **Active feature:** none. Session paused here at the user's explicit
-  request ("stop after committing this feature") right after FR-401 —
-  FR-310 is next, not yet started.
+  and needed only tests, no source changes. **FR-310** (purchase
+  success screen) also now passing — QR (reusing FR-401's EsimQr),
+  a 1-tap install button double-gated on a valid LPA: string and
+  FR-950's compatibility verdict, copy activation code, "Go to My
+  eSIMs". On-device evidence used synthetic order data (via the same
+  temp-rig technique) instead of a third real purchase, since this
+  screen's rendering only depends on the Order object's contents, not
+  how it was obtained — and a real purchase would only risk a real
+  ICCID/LPA/QR secret in a screenshot for no extra test signal.
+- **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
   CPH2015 `YP7HDIPFPBWGHM9H`, a third device `109973842B010285`, and a Tecno
@@ -54,27 +60,61 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** resume the `next-feature` loop, strict feature_list.json
-  array order. FR-306 through FR-309 (wallet checkout, ShurjoPay
-  checkout, provisioning progress, still-preparing message) and FR-401
-  (eSIM QR component, pulled forward since FR-310 needs it) are all
-  passing now — next is **FR-310** (purchase success: QR/install/copy),
-  which can now use the already-tested `EsimQr` widget directly. FR-311
-  (purchase failure/refund message) follows it.
-  No valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work.
-  Revisit **FR-106** and **FR-953b** now that a real purchase action
-  (FR-306) exists. **Caution:** FR-310/FR-311 will likely need their
-  own on-device evidence of a real completed/failed order — check
-  whether the existing FR-306/307/308 purchases already provide enough
-  evidence before asking for another real purchase; ask the user first
-  if a new one is genuinely needed, same as FR-306/308's approvals.
+- **Next step:** run the `next-feature` loop, strict feature_list.json
+  array order. FR-306 through FR-310 and FR-401 are all passing now —
+  next is **FR-311** (purchase failure: only on explicit `FAILED`,
+  states the refund to wallet). This one is a text/branch change in
+  the same `_showOrderResult` method FR-309/310 already touched (the
+  `isFailed` branch specifically) — likely no new screen needed, just
+  richer messaging than the current one-line SnackBar. On-device
+  evidence for a real FAILED order is hard to trigger on demand (no
+  known way to force a real backend failure); prefer the FR-310
+  precedent (synthetic data via the temp-rig) over asking for another
+  real purchase, since a FAILED outcome especially shouldn't be forced
+  by trying to make a real purchase fail. No valid discount code exists
+  on beta (confirmed via curl) — keep disclosing that limitation for
+  any future discount-related work. Revisit **FR-106** and **FR-953b**
+  now that a real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-310, purchase success screen):
+  - New `PurchaseSuccessScreen` replaces the plain SnackBar for a `COMPLETED`
+    order: the already-built `EsimQr` (FR-401) rendered from
+    `esim_profile.qrCodeData` (falling back to `lpaString` per API.md), a
+    "1-tap install" button double-gated on both a valid `LPA:`-prefixed
+    string (new pure `buildInstallUrl`, matching API.md's documented
+    `esimsetup.apple.com`/`esimsetup.android.com` client-side install-link
+    table exactly -- no native platform channel needed) AND FR-950's
+    already-passing `esimVerdictProvider` reporting `supported` -- reused at
+    its intended call site per that provider's own doc comment. "Copy
+    activation code" copies `lpaString`; "Go to My eSIMs" navigates there.
+  - New injectable `urlLauncherProvider` (same DI seam as FR-307/308's
+    launchers) keeps the install button testable without the real
+    `url_launcher` platform channel.
+  - FAILED (FR-311) and still-preparing (FR-309) branches of
+    `_showOrderResult` are byte-identical to before -- confirmed via diff,
+    no regression.
+  - 12 new tests; full checkout suite now 85 tests, full project suite
+    green, `flutter analyze` clean, `bash harness.sh verify` green.
+    Non-vacuous: hardcoded the install-URL host (2 real failures) and
+    dropped half the install button's `&&` gate (2 more real failures),
+    both restored.
+  - On-device evidence deliberately used a **synthetic** order/`esim_profile`
+    (fake ICCID, `.invalid`-domain LPA string) via the same temporary,
+    never-committed local-rig technique as FR-308/309/401, instead of a
+    third real purchase -- this screen's rendering depends only on the
+    `Order` object's contents, not how it was obtained, so a real purchase
+    would only risk a real ICCID/LPA/QR secret ending up in a screenshot in
+    this public repo for zero extra test signal. The real device (no
+    eUICC) correctly showed the "not eSIM-compatible" gating via the
+    **real** native FR-950 channel (not mocked); a second screenshot
+    confirms a genuine on-device clipboard copy.
+  - Reviewer: PASS.
+  - Commits: `953260f` (feature code), `4bf418c` (state → passing).
 - 2026-11-14 — Session 10 continued (FR-401, EsimQr component, pulled forward):
   - `lib/core/widgets/esim_qr.dart` already existed from earlier scaffolding,
     unused and untested, with `feature_list.json` still showing it
