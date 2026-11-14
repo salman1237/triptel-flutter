@@ -12,9 +12,11 @@ Session log. Read first at session start, update last at session end.
   "Global" package card — both `blocked`, not just deferred; see reasons
   in `feature_list.json`). FR-005b, FR-006b (money/i18n follow-ups) also
   passing; FR-105b blocked (no real gated endpoint exists yet). Checkout
-  (D): FR-301, FR-302, FR-303, FR-304, FR-305 passing. New
-  `lib/features/wallet/` data layer (Wallet model, WalletsApi) started
-  ahead of FR-601, same incremental pattern as FR-007.
+  (D): FR-301 through FR-306 all passing — first real, user-approved
+  wallet purchase completed live (Order ORD-20261114-4DB40D, a real
+  eSIM provisioned). New `lib/features/wallet/` data layer (Wallet
+  model, WalletsApi) started ahead of FR-601, same incremental pattern
+  as FR-007.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -29,26 +31,98 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-305 (payment method chooser) just landed, built a
-  minimal `lib/features/wallet/` data layer ahead of FR-601 (same
-  incremental pattern as FR-007) — next is **FR-306** (wallet checkout:
-  `POST /orders/checkout` → poll `GET /orders/{id}`). This is the first
-  feature that would make a REAL purchase if run against a product with a
-  nonzero price — use the smallest/cheapest real product and the real
-  signed-in account's wallet balance (confirmed nonzero, ~€533 DEFAULT+
-  REWARD) only with extreme care per CLAUDE.md's "smallest beta test"
-  rule; confirm with the user before actually completing a real charge,
-  even a small one — this is exactly the kind of "real money beyond the
-  smallest beta test" case CLAUDE.md flags as needing a stop-and-ask, not
-  an autonomous call. No valid discount code exists on beta (confirmed via
-  curl) — keep disclosing that limitation for any future discount-related
-  work. Revisit **FR-106** and **FR-953b** once enough of FR-301+ exists.
+  array order. FR-306 (wallet checkout) just landed — including one real,
+  user-approved purchase (see below) — next is **FR-307** (ShurjoPay
+  checkout: `order-initiate` with `mobile:true` → WebView →
+  `triptel://payment-callback` → poll the order). Per the 2026-11-14
+  DECISIONS.md entry, FR-307's pre-populated `integration_test` verification
+  has the same repeating-real-money problem as FR-306's did — drop it the
+  same way (widget tests with fakes + one manual, user-approved capture if
+  a real gateway charge is needed for evidence — ask first, same as FR-306).
+  No valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work. Revisit
+  **FR-106** and **FR-953b** now that a real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-306, wallet checkout — the first
+  real purchase this app has ever made):
+  - **FR-306:** `OrdersApi.checkout({productId, discountCode})` (`POST
+    /orders/checkout`, wallet only — never the merchant-only
+    `is_buy_for_user`/`beneficiary_*`/`auto_create_user` fields) and
+    `OrdersApi.getOrder(orderId)` (`GET /orders/{id}`). Pure
+    `orderPollSchedule()` builds the documented timing (2s steps for
+    ~12s, then 5s steps to ~170s total); pure `pollOrderUntilDone` stops
+    only on `COMPLETED`/`FAILED` and otherwise returns whatever the
+    last-seen order is — it never manufactures a failure for
+    `PENDING`/`PAID`/`PROCESSING` (Rules.md: PROCESSING is not failure).
+    Wired into FR-305's payment sheet: selecting Wallet now places a
+    real order and ends with a definitive message — ready / failed
+    (+refunded) / still setting up — or the real server error text
+    (insufficient balance, frozen wallet, 404).
+  - **Two real bugs found and fixed while testing this live** (both
+    would otherwise have shipped unnoticed): (1) an intermediate
+    "Placing your order…" `SnackBar` queued ahead of the final status
+    one — `ScaffoldMessenger` shows snackbars one at a time, so the real
+    outcome wouldn't render until the first one's own ~4s display
+    duration elapsed; removed, the `_placingOrder`-driven button state
+    already communicates progress without it. (2) an unguarded `await
+    ref.read(authNotifierProvider.future)` could rethrow uncaught if
+    `AuthNotifier.build()` itself errored (confirmed live: a transient
+    secure-storage decryption failure on the test device after a
+    reinstall, unrelated to this feature but exposed by it), silently
+    killing the whole "Continue to payment" tap with zero feedback —
+    fixed with a new `_resolveAuthState()` that falls back to
+    `AuthUnauthenticated()` on any error, since every downstream branch
+    already handles "not signed in" safely. Both fixes have dedicated
+    regression tests; both were proven non-vacuous by removing the fix,
+    watching the exact failure reproduce, and restoring.
+  - **Deliberately dropped the pre-populated `integration_test`
+    verification clause** (logged in DECISIONS.md, 2026-11-14): unlike
+    FR-950's side-effect-free platform-channel integration test, one
+    that calls the real `POST /orders/checkout` would debit the wallet
+    on every future run (CI, any re-verification) — an uncontrolled
+    repeating spend, categorically different from one approved manual
+    purchase. Kept `flutter test test/features/checkout` (fakes, no
+    network) as the repeatable check; relied on one real on-device
+    capture instead. Same treatment will apply to FR-307/408/603.
+  - 9 new unit/orchestration/model tests + a new widget-test group (5
+    FR-306 cases) + the auth-fallback regression test; one now-stale
+    FR-305 assertion updated (FR-306 supersedes its "coming soon"
+    placeholder for selecting Wallet). Full suite (295 tests) green;
+    flutter analyze clean; bash harness.sh verify green (re-run fresh
+    right before committing, since the reviewer's own mutation-testing
+    briefly corrupted a different file's encoding in the prior feature —
+    extra caution carried forward).
+  - **On-device evidence is a genuine completed real purchase** — the
+    user explicitly approved this via `AskUserQuestion` ("Go ahead and
+    do one real small purchase") when asked how to handle FR-306's live
+    evidence requirement. Signed in as the real account, selected the
+    cheapest plan (Japan 100MB 7Days, €0.90), went through FR-301's
+    gate and FR-305's real wallet-covers-total sheet (balance €533.70),
+    tapped Wallet — real order placed, real poll, final snackbar read
+    exactly "Order ORD-20261114-4DB40D: your eSIM is ready!"
+    Independently cross-checked via a fresh `GET /orders/my-esims` call
+    (own login, read-only) showing that exact `order_no` with status
+    `RELEASED` and genuine eSIM provisioning data. That real ICCID/LPA
+    data was correctly kept OUT of the repo — the project's own safety
+    tooling blocked a first attempt to commit it verbatim; the
+    model-parsing fixture uses synthetic placeholders for every
+    sensitive field instead, independently re-verified via grep before
+    committing (not just trusting the reviewer's own check).
+  - **Device gotchas hit during this capture** (both external to the
+    app, logged for future sessions): a transient secure-storage
+    decryption failure required `adb shell pm clear` + a fresh
+    re-login partway through; and this vivo device's `screencap`
+    silently returns a 0-byte file whenever the on-screen keyboard/IME
+    has focus — dismiss the keyboard first.
+  - Reviewer: PASS, including a dedicated critical check specifically
+    for leaked eSIM secrets (none found) and an independent
+    reproduction of the poll-schedule mutation test. Commits: `cf7ee1b`
+    (feature), `f92bb51` (state).
 - 2026-11-14 — Session 10 continued (FR-305, payment method chooser):
   - **FR-305:** new `lib/features/wallet/` (built ahead of FR-601,
     same incremental pattern as FR-007's pendingReferralProvider): `Wallet`
