@@ -1,0 +1,52 @@
+name: Build and publish APK
+
+# Builds a release APK against the beta API on every push to main and
+# publishes it to a rolling "latest" GitHub Release -- the binary never
+# lives in git history (GitHub hard-blocks files over 100MB, and a growing
+# APK in every commit would bloat this public repo's clone size forever).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.1"
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Build release APK (beta API)
+        run: >
+          flutter build apk --release
+          --dart-define=API_BASE_URL=https://beta.triptel.co/api/v1
+
+      - name: Rename APK with commit SHA
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "dist/triptel-${GITHUB_SHA::7}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             dist/triptel-latest.apk
+
+      - name: Publish to the rolling "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build (${{ github.sha }})
+          body: |
+            Automatically built from commit ${{ github.sha }} on `main`.
+            Debug-signed beta build (`API_BASE_URL=https://beta.triptel.co/api/v1`) --
+            not a store release.
+          files: |
+            dist/triptel-latest.apk
+            dist/triptel-${{ github.sha }}.apk
