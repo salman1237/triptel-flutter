@@ -424,8 +424,12 @@
       "id": "FR-309",
       "behavior": "Still-preparing state after poll window",
       "verification": "flutter test test/features/checkout && bash harness.sh shot FR-309",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "fadff38",
+        "screens": ["artifacts/FR-309.png"],
+        "notes": "Pure text-message change to the existing 'neither COMPLETED nor FAILED' branch of _showOrderResult (checkout_review_screen.dart), from a generic placeholder to Functional_Requirements.md's exact wording: \"We're still setting up your eSIM -- it will appear in My eSIMs and arrive by email.\" Still reached only when both order.isCompleted and order.isFailed are false (genuinely PENDING/PAID/PROCESSING, or the poll schedule exhausting without a terminal status) -- never treated as an error (Rules.md, API.md section 6). The COMPLETED and FAILED branches (FR-310/311, not built yet) are byte-identical to the FR-306/307/308 version -- confirmed no QR/install/refund UI was built ahead of schedule. One existing test updated to assert the exact new text (stricter than its old substring check) instead of the old wording; grepped lib/test and confirmed no trace of the old wording survives anywhere. Full checkout suite still 73 tests (pure text change, no new tests needed), full suite green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily replaced the new string with a placeholder, got a real test failure, restored. On-device evidence avoided both another real purchase and the real ~170s poll-exhaustion wait: used the same temporary, never-committed local rig established for FR-308 (lib/main.dart briefly mounting CheckoutReviewScreen directly with fake/offline providers -- fake WalletsApi/OrdersApi, no network calls, no money moved -- whose orderStatusLauncherProvider override immediately resolves with a still-PROCESSING order) to capture the real SnackBar text rendered by the real Flutter engine on the real device, then reverted via git checkout and confirmed byte-identical to HEAD before rebuilding/reinstalling the real app and re-running bash harness.sh verify green. Reviewer: PASS (confirmed message wording matches the FR exactly modulo the codebase's existing '--'-for-em-dash house style, confirmed branch logic/scope discipline, confirmed the screenshot shows the real text, confirmed main.dart has zero drift from HEAD)."
+      }
     },
     {
       "id": "FR-310",
