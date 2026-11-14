@@ -11,7 +11,9 @@ import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/checkout/application/discounts_providers.dart';
 import 'package:triptel/features/checkout/data/discounts_api.dart';
 import 'package:triptel/features/checkout/data/models/discount_check_result.dart';
+import 'package:triptel/features/checkout/application/order_poll.dart';
 import 'package:triptel/features/checkout/application/order_poll_schedule.dart';
+import 'package:triptel/features/checkout/application/order_status_launcher.dart';
 import 'package:triptel/features/checkout/application/orders_providers.dart';
 import 'package:triptel/features/checkout/application/shurjopay_callback.dart';
 import 'package:triptel/features/checkout/application/shurjopay_launcher.dart';
@@ -177,6 +179,8 @@ Widget _app({
             )),
         shurjoPayLauncherProvider
             .overrideWithValue((context, url) async => shurjoPayLauncherResult),
+        orderStatusLauncherProvider.overrideWithValue(
+            (context, api, orderId) => pollOrderUntilDone(api, orderId)),
         if (discountResult != null || previewResult != null)
           discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
             checkResult: discountResult,
@@ -754,7 +758,8 @@ void main() {
 
     testWidgets(
         'a callback flagged failed=true is still just a hint: the app '
-        're-polls the real order and reports its actual outcome', (tester) async {
+        're-polls the real order and reports its actual outcome',
+        (tester) async {
       final ordersApi = _FakeOrdersApi(pollStatuses: const ['COMPLETED']);
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),

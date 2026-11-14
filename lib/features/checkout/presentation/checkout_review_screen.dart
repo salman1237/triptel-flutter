@@ -17,7 +17,7 @@ import '../../wallet/application/wallet_providers.dart';
 import '../../wallet/data/models/wallet.dart';
 import '../application/checkout_breakdown.dart';
 import '../application/discounts_providers.dart';
-import '../application/order_poll.dart';
+import '../application/order_status_launcher.dart';
 import '../application/orders_providers.dart';
 import '../application/shurjopay_launcher.dart';
 import '../data/models/discount_check_result.dart';
@@ -215,7 +215,9 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
         productId: widget.args.product.id,
         discountCode: discount != null && discount.valid ? discount.code : null,
       );
-      final finalOrder = await pollOrderUntilDone(api, order.id);
+      if (!mounted) return;
+      final launchStatus = ref.read(orderStatusLauncherProvider);
+      final finalOrder = await launchStatus(context, api, order.id);
       if (!mounted) return;
       setState(() => _placingOrder = false);
       _showOrderResult(finalOrder);
@@ -261,7 +263,8 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     setState(() => _placingOrder = true);
     try {
       final api = ref.read(ordersApiProvider);
-      final finalOrder = await pollOrderUntilDone(api, checkout.orderId);
+      final launchStatus = ref.read(orderStatusLauncherProvider);
+      final finalOrder = await launchStatus(context, api, checkout.orderId);
       if (!mounted) return;
       setState(() => _placingOrder = false);
       _showOrderResult(finalOrder);
