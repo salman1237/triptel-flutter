@@ -16,7 +16,9 @@ Session log. Read first at session start, update last at session end.
   wallet purchase completed live (Order ORD-20261114-4DB40D, a real
   eSIM provisioned). New `lib/features/wallet/` data layer (Wallet
   model, WalletsApi) started ahead of FR-601, same incremental pattern
-  as FR-007.
+  as FR-007. **FR-307** (ShurjoPay checkout) also now passing — real
+  WebView against the beta ShurjoPay sandbox gateway, backed out
+  cleanly without completing any payment.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -31,23 +33,66 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-306 (wallet checkout) just landed — including one real,
-  user-approved purchase (see below) — next is **FR-307** (ShurjoPay
-  checkout: `order-initiate` with `mobile:true` → WebView →
-  `triptel://payment-callback` → poll the order). Per the 2026-11-14
-  DECISIONS.md entry, FR-307's pre-populated `integration_test` verification
-  has the same repeating-real-money problem as FR-306's did — drop it the
-  same way (widget tests with fakes + one manual, user-approved capture if
-  a real gateway charge is needed for evidence — ask first, same as FR-306).
-  No valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work. Revisit
-  **FR-106** and **FR-953b** now that a real purchase action (FR-306) exists.
+  array order. FR-306 and FR-307 (wallet + ShurjoPay checkout) are both
+  passing now — next is whatever immediately follows FR-307 in
+  `feature_list.json` (check it fresh; likely provisioning-progress/
+  My eSIMs territory). No valid discount code exists on beta (confirmed
+  via curl) — keep disclosing that limitation for any future
+  discount-related work. Revisit **FR-106** and **FR-953b** now that a
+  real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-307, ShurjoPay checkout):
+  - New `OrdersApi.initiateShurjoPay` (`POST /payments/shurjopay/order-initiate`
+    — `product_id`, `payment_method: SHURJOPAY`, `discount_code`, `mobile: true`
+    per API.md §9) returning a new `ShurjoPayCheckout` model (tolerant of both
+    `checkout_url`/`checkoutUrl` casing). New `ShurjoPayWebViewScreen` wraps
+    `webview_flutter`'s `WebViewController`; its `NavigationDelegate` intercepts
+    the documented `triptel://payment-callback` redirect (new
+    `isShurjoPayCallbackUrl`/`parseShurjoPayCallback`, scoped to scheme+host
+    only, confirmed it never matches the unrelated `https://triptel.co/...`
+    wallet/eSIM top-up redirects) and pops the parsed callback; any other
+    non-http(s) scheme (bank/wallet apps) is externally launched via
+    `url_launcher` instead of loaded in-WebView.
+  - Testability seam: new injectable `shurjoPayLauncherProvider`
+    (`ShurjoPayLauncher` typedef) defaults to a real `Navigator.push`,
+    overridable in tests — same pattern as `pollOrderUntilDone`'s injectable
+    `wait` — so the real platform-view WebView never needs to render under
+    `flutter test`.
+  - Wired into checkout review's guest/wallet-doesn't-cover/ShurjoPay-selected
+    paths via a new `_checkoutWithShurjoPay`: a null callback (user backed out)
+    returns silently, no polling, no misleading snackbar; any non-null callback
+    always re-polls the real order via FR-306's `pollOrderUntilDone` regardless
+    of `callback.failed`, per API.md's "redirect is a hint, not proof" rule.
+    The old `_showComingSoon` placeholder is fully removed; ~8 previously-stale
+    "Payment is coming soon" assertions across `main()`/FR-304/FR-305 test
+    groups were rewritten to assert real order results.
+  - Reviewer: PASS, flagged one coverage gap (no test exercised a
+    `failed: true` callback to lock in the hint-not-proof rule) — added that
+    regression test before committing; confirmed non-vacuous by temporarily
+    short-circuiting on `callback.failed`, got a real failure, restored.
+  - 10 new tests (8 FR-307 group + 1 hint-not-proof regression + 1
+    model-parsing test); full checkout suite now 64 tests, full project
+    suite 303 tests, all green; `flutter analyze` clean; `bash harness.sh
+    verify` green (debug APK builds).
+  - On-device evidence (`artifacts/FR-307.png`, `artifacts/FR-307-step1-sheet.png`):
+    real `order-initiate` call for a EUR0.90 Japan plan; deliberately chose
+    ShurjoPay over the wallet (which had sufficient balance, EUR532.80) to
+    exercise this path; real WebView rendered the actual ShurjoPay **sandbox**
+    gateway page with a genuine order id (`NOKBETA6af7d2ba3f635`) and blank
+    card-entry fields. Backed out via the WebView's own close button without
+    submitting any payment details or tapping the sandbox SUCCESS/FAILED
+    simulation buttons — one such tap (SUCCESS) was in fact blocked by Claude
+    Code's own auto-mode safety classifier as a possible financial action;
+    treated as a correct safety boundary and not worked around. Checkout
+    review screen confirmed clean afterward, no polling occurred.
+  - No secrets, real card data, or real-money completion anywhere in this
+    feature's code, tests, or evidence.
+  - Commits: `80d8e73` (feature code), `da1b44c` (state → passing).
 - 2026-11-14 — Session 10 continued (FR-306, wallet checkout — the first
   real purchase this app has ever made):
   - **FR-306:** `OrdersApi.checkout({productId, discountCode})` (`POST
