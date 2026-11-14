@@ -47,6 +47,11 @@ Session log. Read first at session start, update last at session end.
   screen's rendering only depends on the Order object's contents, not
   how it was obtained — and a real purchase would only risk a real
   ICCID/LPA/QR secret in a screenshot for no extra test signal.
+  **FR-311** (purchase failure) also now passing — this behavior
+  already existed as a side effect of FR-306's original work; this
+  feature just locked it in with 5 dedicated tests (explicit FAILED
+  only, never CANCELLED; refund message) and a clarifying doc comment,
+  no logic change.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -61,17 +66,15 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. FR-306 through FR-310 and FR-401 are all passing now —
-  next is **FR-311** (purchase failure: only on explicit `FAILED`,
-  states the refund to wallet). This one is a text/branch change in
-  the same `_showOrderResult` method FR-309/310 already touched (the
-  `isFailed` branch specifically) — likely no new screen needed, just
-  richer messaging than the current one-line SnackBar. On-device
-  evidence for a real FAILED order is hard to trigger on demand (no
-  known way to force a real backend failure); prefer the FR-310
-  precedent (synthetic data via the temp-rig) over asking for another
-  real purchase, since a FAILED outcome especially shouldn't be forced
-  by trying to make a real purchase fail. No valid discount code exists
+  array order. Checkout (D, FR-301–311) is now fully passing, as is
+  FR-401. Next is **FR-402** (My eSIMs list: `GET /orders/my-esims`
+  cards — plan title, status chip, data/validity, "starts on install"
+  or expiry, pull to refresh, empty state → explore, "Bought for me"
+  vs "Bought by me" via `is_beneficiary`). The real signed-in account
+  now has real completed orders (FR-306/308 purchases) to list against
+  — no synthetic data needed for FR-402's own on-device evidence.
+  FR-403 (usage view) and FR-404 (install — the fuller SM-DP+/matching-ID
+  breakdown FR-310 deferred) follow it. No valid discount code exists
   on beta (confirmed via curl) — keep disclosing that limitation for
   any future discount-related work. Revisit **FR-106** and **FR-953b**
   now that a real purchase action (FR-306) exists.
@@ -81,6 +84,28 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-14 — Session 10 continued (FR-311, purchase failure -- lock-in):
+  - This behavior already existed as a side effect of FR-306's original
+    work: `_showOrderResult`'s `isFailed` branch already fired only on the
+    explicit `FAILED` status and already showed a refund message. This
+    feature formalized and locked it in rather than adding new UI -- `git
+    diff` on `checkout_review_screen.dart` shows only a 4-line clarifying
+    doc comment, no logic/message-string change.
+  - Confirmed `Order.isFailed` is exactly `status == 'FAILED'` -- `CANCELLED`
+    correctly falls through to the FR-309 still-preparing branch, consistent
+    with API.md section 6's documented poll rule (only `COMPLETED`/`FAILED`
+    stop the poll early).
+  - 5 new dedicated tests: explicit FAILED shows the exact message and never
+    lands on FR-310's `PurchaseSuccessScreen`; a parameterized check over
+    `PENDING`/`PAID`/`PROCESSING`/`CANCELLED` confirms none of them ever show
+    "failed"/"refunded", each draining the full real poll schedule (same
+    pattern as the pre-existing FR-309 test).
+  - Full checkout suite now 90 tests, full suite green, `flutter analyze`
+    clean (zero issues). Non-vacuous: temporarily made `isFailed` also match
+    `CANCELLED`, got a real failure, restored. No on-device screenshot
+    needed -- this feature's own verification command is test-only.
+  - Reviewer: PASS.
+  - Commits: `90c828c` (feature code), `c8d29a9` (state → passing).
 - 2026-11-14 — Session 10 continued (FR-310, purchase success screen):
   - New `PurchaseSuccessScreen` replaces the plain SnackBar for a `COMPLETED`
     order: the already-built `EsimQr` (FR-401) rendered from
