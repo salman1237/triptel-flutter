@@ -15,6 +15,9 @@ import 'package:triptel/features/checkout/application/order_poll.dart';
 import 'package:triptel/features/checkout/application/order_poll_schedule.dart';
 import 'package:triptel/features/checkout/application/order_status_launcher.dart';
 import 'package:triptel/features/checkout/application/orders_providers.dart';
+import 'package:triptel/features/checkout/application/url_launcher_provider.dart';
+import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
+import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/checkout/application/shurjopay_callback.dart';
 import 'package:triptel/features/checkout/application/shurjopay_launcher.dart';
 import 'package:triptel/features/checkout/data/models/discount_preview_result.dart';
@@ -85,28 +88,31 @@ class _FakeWalletsApi implements WalletsApi {
   Future<List<Wallet>> getMyWallets() async => _wallets;
 }
 
-Order _order(String status) => Order(
+Order _order(String status, {EsimProfile? esimProfile}) => Order(
       id: 'order-1',
       orderNo: 'ORD-TEST-1',
       productId: 'fixed-1-7',
       totalAmount: const Money(500),
       discountAmount: const Money(0),
       status: status,
-      esimProfile: null,
+      esimProfile: esimProfile,
     );
 
 class _FakeOrdersApi implements OrdersApi {
   _FakeOrdersApi(
       {Object? checkoutResult,
       List<String>? pollStatuses,
-      Object? shurjoPayResult})
+      Object? shurjoPayResult,
+      EsimProfile? completedEsimProfile})
       : _checkoutResult = checkoutResult,
         _pollStatuses = pollStatuses ?? const ['COMPLETED'],
-        _shurjoPayResult = shurjoPayResult;
+        _shurjoPayResult = shurjoPayResult,
+        _completedEsimProfile = completedEsimProfile;
 
   final Object? _checkoutResult; // Order or Exception.
   final List<String> _pollStatuses;
   final Object? _shurjoPayResult; // ShurjoPayCheckout or Exception.
+  final EsimProfile? _completedEsimProfile;
   var _getOrderCalls = 0;
   var initiateShurjoPayCalls = 0;
 
@@ -137,7 +143,8 @@ class _FakeOrdersApi implements OrdersApi {
     final status =
         _pollStatuses[_getOrderCalls.clamp(0, _pollStatuses.length - 1)];
     _getOrderCalls++;
-    return _order(status);
+    return _order(status,
+        esimProfile: status == 'COMPLETED' ? _completedEsimProfile : null);
   }
 }
 
@@ -164,6 +171,12 @@ Widget _app({
   ShurjoPayCallback? shurjoPayLauncherResult =
       const ShurjoPayCallback(orderId: 'order-1', failed: false),
   _FakeOrdersApi? ordersApi,
+  EsimProfile? completedEsimProfile,
+  EsimVerdict esimVerdict = const EsimVerdict(
+    kind: EsimVerdictKind.supported,
+    deviceLabel: 'Test device',
+    reason: '',
+  ),
 }) =>
     ProviderScope(
       overrides: [
@@ -176,11 +189,14 @@ Widget _app({
               checkoutResult: checkoutResult,
               pollStatuses: pollStatuses,
               shurjoPayResult: shurjoPayResult,
+              completedEsimProfile: completedEsimProfile,
             )),
         shurjoPayLauncherProvider
             .overrideWithValue((context, url) async => shurjoPayLauncherResult),
         orderStatusLauncherProvider.overrideWithValue(
             (context, api, orderId) => pollOrderUntilDone(api, orderId)),
+        esimVerdictProvider.overrideWith((ref) async => esimVerdict),
+        urlLauncherProvider.overrideWithValue((url) async => true),
         if (discountResult != null || previewResult != null)
           discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
             checkResult: discountResult,
@@ -856,6 +872,47 @@ void main() {
         'checkoutUrl': 'https://shurjopay.example/b',
       });
       expect(b.checkoutUrl, 'https://shurjopay.example/b');
+    });
+  });
+
+  group('FR-310: purchase success screen', () {
+    const profile = EsimProfile(
+      id: 'esim-1',
+      iccid: '00000000000000000000',
+      lpaString: r'LPA:1$smdp.example.invalid$ACTIVATION-CODE',
+      qrCodeData: r'LPA:1$smdp.example.invalid$ACTIVATION-CODE',
+      smdpAddress: 'smdp.example.invalid',
+      status: 'RELEASED',
+    );
+
+    testWidgets(
+        'a completed order with a real esim_profile navigates to the real '
+        'purchase-success screen (QR + install), not just a snack',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        pollStatuses: const ['COMPLETED'],
+        completedEsimProfile: profile,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('purchase-success-screen')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('one-tap-install-button')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('go-to-my-esims-button')), findsOneWidget);
     });
   });
 

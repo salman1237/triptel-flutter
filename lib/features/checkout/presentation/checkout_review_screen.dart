@@ -23,6 +23,7 @@ import '../application/shurjopay_launcher.dart';
 import '../data/models/discount_check_result.dart';
 import '../data/models/order.dart';
 import '../data/models/shurjopay_checkout.dart';
+import 'purchase_success_screen.dart';
 
 /// Arguments for `/checkout/review` -- go_router's `extra`, since a [Product]
 /// isn't URL-encodable (Architecture.md's routing table has no query params
@@ -196,13 +197,18 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   /// (API.md section 6, ~170s) runs out is "still preparing", never an
   /// error (Rules.md) -- the backend keeps provisioning in the background
   /// and emails the eSIM when ready.
+  /// FR-310: a completed order goes to the real purchase-success screen
+  /// (QR, 1-tap install, copy code, "Go to My eSIMs") instead of a snack.
   void _showOrderResult(Order order) {
-    final message = order.isCompleted
-        ? 'Order ${order.orderNo}: your eSIM is ready!'
-        : order.isFailed
-            ? 'Order ${order.orderNo}: failed -- refunded to your wallet.'
-            : "We're still setting up your eSIM -- it will appear in My "
-                'eSIMs and arrive by email.';
+    if (order.isCompleted) {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => PurchaseSuccessScreen(order: order)));
+      return;
+    }
+    final message = order.isFailed
+        ? 'Order ${order.orderNo}: failed -- refunded to your wallet.'
+        : "We're still setting up your eSIM -- it will appear in My "
+            'eSIMs and arrive by email.';
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
