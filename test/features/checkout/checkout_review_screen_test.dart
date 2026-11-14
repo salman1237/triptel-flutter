@@ -11,7 +11,11 @@ import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/checkout/application/discounts_providers.dart';
 import 'package:triptel/features/checkout/data/discounts_api.dart';
 import 'package:triptel/features/checkout/data/models/discount_check_result.dart';
+import 'package:triptel/features/checkout/application/order_poll_schedule.dart';
+import 'package:triptel/features/checkout/application/orders_providers.dart';
 import 'package:triptel/features/checkout/data/models/discount_preview_result.dart';
+import 'package:triptel/features/checkout/data/models/order.dart';
+import 'package:triptel/features/checkout/data/orders_api.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
@@ -28,6 +32,12 @@ class _FixedAuth extends AuthNotifier {
 
   @override
   Future<AuthState> build() async => _state;
+}
+
+class _ErroringAuth extends AuthNotifier {
+  @override
+  Future<AuthState> build() async =>
+      throw const ApiException(statusCode: null, message: 'Network error');
 }
 
 const _signedInToken = AuthToken(
@@ -70,6 +80,42 @@ class _FakeWalletsApi implements WalletsApi {
   Future<List<Wallet>> getMyWallets() async => _wallets;
 }
 
+Order _order(String status) => Order(
+      id: 'order-1',
+      orderNo: 'ORD-TEST-1',
+      productId: 'fixed-1-7',
+      totalAmount: const Money(500),
+      discountAmount: const Money(0),
+      status: status,
+      esimProfile: null,
+    );
+
+class _FakeOrdersApi implements OrdersApi {
+  _FakeOrdersApi({Object? checkoutResult, List<String>? pollStatuses})
+      : _checkoutResult = checkoutResult,
+        _pollStatuses = pollStatuses ?? const ['COMPLETED'];
+
+  final Object? _checkoutResult; // Order or Exception.
+  final List<String> _pollStatuses;
+  var _getOrderCalls = 0;
+
+  @override
+  Future<Order> checkout(
+      {required String productId, String? discountCode}) async {
+    final result = _checkoutResult;
+    if (result is Exception) throw result;
+    return result as Order? ?? _order(_pollStatuses.first);
+  }
+
+  @override
+  Future<Order> getOrder(String orderId) async {
+    final status =
+        _pollStatuses[_getOrderCalls.clamp(0, _pollStatuses.length - 1)];
+    _getOrderCalls++;
+    return _order(status);
+  }
+}
+
 const _product = Product(
   id: 'fixed-1-7',
   countryId: 107,
@@ -87,6 +133,8 @@ Widget _app({
   Object? previewResult,
   AuthState authState = const AuthUnauthenticated(),
   List<Wallet> wallets = const [],
+  Object? checkoutResult,
+  List<String>? pollStatuses,
 }) =>
     ProviderScope(
       overrides: [
@@ -94,6 +142,10 @@ Widget _app({
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
         authNotifierProvider.overrideWith(() => _FixedAuth(authState)),
         walletsApiProvider.overrideWithValue(_FakeWalletsApi(wallets)),
+        ordersApiProvider.overrideWithValue(_FakeOrdersApi(
+          checkoutResult: checkoutResult,
+          pollStatuses: pollStatuses,
+        )),
         if (discountResult != null || previewResult != null)
           discountsApiProvider.overrideWithValue(_FakeDiscountsApi(
             checkResult: discountResult,
@@ -423,8 +475,10 @@ void main() {
       expect(find.text('ShurjoPay'), findsOneWidget);
     });
 
-    testWidgets('selecting Wallet in the sheet proceeds to "coming soon"',
-        (tester) async {
+    testWidgets(
+        'selecting Wallet in the sheet places a real order (FR-306) -- '
+        'superseded "coming soon" placeholder, now checked in the FR-306 '
+        'group below', (tester) async {
       await tester.pumpWidget(_app(
         authState: const AuthAuthenticated(_signedInToken),
         wallets: const [
@@ -436,9 +490,12 @@ void main() {
       await tester.tap(find.text('Continue to payment'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Wallet'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
 
-      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('Payment is coming soon'), findsNothing);
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
     });
 
     testWidgets(
@@ -464,6 +521,161 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Choose payment method'), findsNothing);
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+    });
+  });
+
+  group('FR-306: wallet checkout + poll', () {
+    testWidgets(
+        'selecting Wallet places a real order and shows the completed '
+        'result once polling resolves it', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        pollStatuses: const ['COMPLETED'],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(find.textContaining('eSIM is ready'), findsOneWidget);
+      expect(find.textContaining('coming soon'), findsNothing);
+    });
+
+    testWidgets('a FAILED order shows the refund message, never "coming soon"',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        pollStatuses: const ['FAILED'],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('failed'), findsOneWidget);
+      expect(find.textContaining('refunded'), findsOneWidget);
+    });
+
+    testWidgets(
+        'still-PROCESSING after polling is reported as "still setting up", '
+        'never as a failure (Rules.md)', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        pollStatuses: const ['PROCESSING'],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      // Every poll keeps returning PROCESSING, so this drains the full
+      // schedule (API.md §6's real timing) before the final snack appears.
+      for (final delay in orderPollSchedule()) {
+        await tester.pump(delay);
+      }
+      await tester.pump();
+
+      expect(find.textContaining('still setting up'), findsOneWidget);
+      expect(find.textContaining('failed'), findsNothing);
+    });
+
+    testWidgets(
+        'a checkout error (e.g. insufficient balance) shows the real '
+        'server message, never crashes', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        checkoutResult: const ApiException(
+          statusCode: 400,
+          message: 'Insufficient wallet balance. Please top up.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Insufficient wallet balance. Please top up.'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'selecting ShurjoPay never calls the orders API, "coming '
+        'soon" only (FR-307 does not exist yet)', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ShurjoPay'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('Payment is coming soon'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsNothing);
+    });
+  });
+
+  group(
+      'auth resolution failure never silently aborts "Continue to '
+      'payment"', () {
+    testWidgets(
+        'a transient error resolving the signed-in session (e.g. a '
+        'network hiccup refreshing GET /auth/me) is treated like a guest '
+        '-- still proceeds to "coming soon" instead of doing nothing',
+        (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+          currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+          authNotifierProvider.overrideWith(_ErroringAuth.new),
+          walletsApiProvider.overrideWithValue(_FakeWalletsApi(const [])),
+          ordersApiProvider.overrideWithValue(_FakeOrdersApi()),
+        ],
+        child: const MaterialApp(
+          home: CheckoutReviewScreen(
+            args: CheckoutReviewArgs(product: _product, countryName: 'Japan'),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump();
+      await tester.pump();
+
       expect(find.textContaining('Payment is coming soon'), findsOneWidget);
     });
   });

@@ -17,6 +17,8 @@ import '../../wallet/application/wallet_providers.dart';
 import '../../wallet/data/models/wallet.dart';
 import '../application/checkout_breakdown.dart';
 import '../application/discounts_providers.dart';
+import '../application/order_poll.dart';
+import '../application/orders_providers.dart';
 import '../data/models/discount_check_result.dart';
 
 /// Arguments for `/checkout/review` -- go_router's `extra`, since a [Product]
@@ -52,6 +54,7 @@ class CheckoutReviewScreen extends ConsumerStatefulWidget {
 class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   DiscountCheckResult? _discount;
   bool _confirmingDiscount = false;
+  bool _placingOrder = false;
 
   void _showComingSoon(String what) {
     ScaffoldMessenger.of(context)
@@ -76,6 +79,22 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     return formatMoney(amount, currencyCode: code, rateToBase: rate);
   }
 
+  /// Safely resolves the current auth state. `authNotifierProvider.future`
+  /// rethrows if `AuthNotifier.build()` itself errored (e.g. a transient
+  /// network failure refreshing the session) -- an uncaught throw here
+  /// would silently abort the whole continue-to-payment action with no
+  /// feedback to the user. Treat a resolution failure the same as a
+  /// guest: safe (every downstream branch already handles "not
+  /// authenticated"), and never worse than what a real guest already
+  /// gets.
+  Future<AuthState> _resolveAuthState() async {
+    try {
+      return await ref.read(authNotifierProvider.future);
+    } catch (_) {
+      return const AuthUnauthenticated();
+    }
+  }
+
   /// FR-304: before charging (the one real "about to pay" trigger that
   /// exists today, since FR-306/307's real purchase flows don't),
   /// authoritatively re-confirm an applied discount via
@@ -83,20 +102,19 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   /// between FR-303's guest estimate and now. Invalid -> show the reason
   /// and keep the user on review (never proceeds). Skipped for a guest:
   /// the endpoint requires auth, and there's no sign-in-and-resume flow
-  /// yet (FR-106, deferred). Awaits `authNotifierProvider.future` rather
-  /// than reading `ref.read(authNotifierProvider).valueOrNull` -- the
-  /// latter returned null/AsyncLoading on first access here since nothing
-  /// else in this screen watches the provider, so its
-  /// AsyncNotifier.build() hadn't resolved yet; `.future` properly awaits
-  /// it. Once the discount (if any) is confirmed, FR-305's payment method
-  /// choice runs next.
+  /// yet (FR-106, deferred). Resolves auth via [_resolveAuthState] rather
+  /// than reading `ref.read(authNotifierProvider).valueOrNull` directly --
+  /// the latter returned null/AsyncLoading on first access here since
+  /// nothing else in this screen watches the provider, so its
+  /// AsyncNotifier.build() hadn't resolved yet. Once the discount (if any)
+  /// is confirmed, FR-305's payment method choice runs next.
   Future<void> _onContinueToPayment() async {
     final discount = _discount;
     if (discount == null || !discount.valid || discount.code == null) {
       await _choosePaymentMethod();
       return;
     }
-    final authState = await ref.read(authNotifierProvider.future);
+    final authState = await _resolveAuthState();
     if (!mounted) return;
     if (authState is! AuthAuthenticated) {
       await _choosePaymentMethod();
@@ -133,11 +151,11 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   /// FR-305: Wallet is offered as a payment method only when
   /// DEFAULT+REWARD fully covers the total; otherwise skip the sheet and
   /// go straight to ShurjoPay. A guest has no wallet, so always goes
-  /// straight to ShurjoPay. Neither FR-306 (wallet checkout) nor FR-307
-  /// (ShurjoPay checkout) exist yet, so every path ends in "coming soon" --
-  /// but which path (sheet vs. skip) is genuinely balance-driven.
+  /// straight to ShurjoPay. FR-307 (ShurjoPay checkout) doesn't exist yet,
+  /// so selecting it (or skipping straight to it) still ends in "coming
+  /// soon"; selecting Wallet now runs FR-306's real checkout.
   Future<void> _choosePaymentMethod() async {
-    final authState = await ref.read(authNotifierProvider.future);
+    final authState = await _resolveAuthState();
     if (!mounted) return;
 
     var wallets = const <Wallet>[];
@@ -169,8 +187,43 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
         ),
       ]);
       if (!mounted || selected == null) return;
+      if (selected == 'wallet') {
+        await _checkoutWithWallet();
+        return;
+      }
     }
     _showComingSoon('Payment');
+  }
+
+  /// FR-306: `POST /orders/checkout` (wallet only) then poll
+  /// `GET /orders/{id}` until `COMPLETED`/`FAILED` or the schedule runs
+  /// out -- anything else, including a timeout, is "still processing",
+  /// never a failure (Rules.md, API.md §6).
+  Future<void> _checkoutWithWallet() async {
+    final discount = _discount;
+    setState(() => _placingOrder = true);
+    try {
+      final api = ref.read(ordersApiProvider);
+      final order = await api.checkout(
+        productId: widget.args.product.id,
+        discountCode: discount != null && discount.valid ? discount.code : null,
+      );
+      final finalOrder = await pollOrderUntilDone(api, order.id);
+      if (!mounted) return;
+      setState(() => _placingOrder = false);
+      final message = finalOrder.isCompleted
+          ? 'Order ${finalOrder.orderNo}: your eSIM is ready!'
+          : finalOrder.isFailed
+              ? 'Order ${finalOrder.orderNo}: failed -- refunded to your wallet.'
+              : 'Order ${finalOrder.orderNo}: still setting up your eSIM.';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _placingOrder = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   @override
@@ -312,9 +365,14 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
               savingsText: breakdown.hasDiscount
                   ? "You've saved ${money(breakdown.discount)}"
                   : null,
-              ctaLabel:
-                  _confirmingDiscount ? "Checking…" : "Continue to payment",
-              onPressed: _confirmingDiscount ? null : _onContinueToPayment,
+              ctaLabel: _confirmingDiscount
+                  ? "Checking…"
+                  : _placingOrder
+                      ? "Placing order…"
+                      : "Continue to payment",
+              onPressed: _confirmingDiscount || _placingOrder
+                  ? null
+                  : _onContinueToPayment,
             ),
           ],
         ),
