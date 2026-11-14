@@ -18,6 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-latest's default JDK is too new for Gradle 8.11.1's build
+      # scripts ("Unsupported class file major version 69" == JDK 25);
+      # pin a known-compatible JDK, same as this project's local setup.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.27.1"
