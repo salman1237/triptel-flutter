@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/install/install_link.dart';
 import '../../../core/install/url_launcher_provider.dart';
+import '../../../core/money/currency_format.dart';
+import '../../../core/money/currency_providers.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -20,6 +22,7 @@ import '../application/esim_lifecycle_shape.dart';
 import '../application/esim_status_providers.dart';
 import '../application/esim_usage_shape.dart';
 import '../data/models/esim_status.dart';
+import '../data/models/topup_option.dart';
 
 /// FR-403: eSIM detail -- usage. `GET /esims/{id}/status`: usage ring/bar
 /// (allowance incl. top-ups; none for unlimited), remaining, validity
@@ -33,7 +36,10 @@ import '../data/models/esim_status.dart';
 /// (FR-901 isn't ported into the app yet). FR-405: a lifecycle banner for
 /// SUSPENDED/REVOKED/CANCELLED/EXPIRED replaces the entire install section.
 /// FR-406: history/daily breakdown, VivaPe-only, shown only when present.
-/// FR-407 (top-up) is a separate, not-yet-built section of this screen.
+/// FR-407: top-up options (`GET /esims/{id}/topup-options`), hidden
+/// entirely when empty (non-eSIM-Access profile, or not yet delivered) --
+/// purchasing a package (FR-408) isn't built yet, so tapping one shows a
+/// "coming soon" note instead of a dead end.
 class EsimDetailScreen extends ConsumerStatefulWidget {
   const EsimDetailScreen({super.key, required this.esimId});
 
@@ -113,10 +119,18 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
     }
   }
 
+  void _onTopupOptionTap() {
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Top-up purchase is coming soon.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusAsync = ref.watch(esimStatusProvider(widget.esimId));
     final verdictAsync = ref.watch(esimVerdictProvider);
+    final topupOptions =
+        ref.watch(topupOptionsProvider(widget.esimId)).valueOrNull ??
+            const <TopupOption>[];
 
     return TriptelScaffold(
       key: const ValueKey('esim-detail-screen'),
@@ -134,6 +148,8 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
             onInstall: _install,
             onCopy: _copy,
             onOpenSetupGuide: _openSetupGuide,
+            topupOptions: topupOptions,
+            onTopupOptionTap: _onTopupOptionTap,
           ),
         AsyncError() => Center(
             child: ErrorState(
@@ -157,6 +173,8 @@ class _Body extends StatelessWidget {
     required this.onInstall,
     required this.onCopy,
     required this.onOpenSetupGuide,
+    required this.topupOptions,
+    required this.onTopupOptionTap,
   });
 
   final EsimStatus status;
@@ -167,6 +185,8 @@ class _Body extends StatelessWidget {
   final ValueChanged<String> onInstall;
   final void Function(String label, String value) onCopy;
   final VoidCallback onOpenSetupGuide;
+  final List<TopupOption> topupOptions;
+  final VoidCallback onTopupOptionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -258,6 +278,23 @@ class _Body extends StatelessWidget {
               variant: PillButtonVariant.text,
               onPressed: onOpenSetupGuide,
             ),
+          ],
+          if (topupOptions.isNotEmpty &&
+              !installAndTopupDisabled(status.esimStatus)) ...[
+            const SizedBox(height: 32),
+            const Divider(color: AppColors.line),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Top up', style: AppTypography.headline()),
+            ),
+            const SizedBox(height: 8),
+            for (final option in topupOptions)
+              _TopupOptionRow(
+                key: ValueKey('topup-option-${option.packageCode}'),
+                option: option,
+                onTap: onTopupOptionTap,
+              ),
           ],
           if (hasHistorySection(status.history, status.dailyBreakdown)) ...[
             const SizedBox(height: 32),
@@ -405,5 +442,48 @@ class _CopyRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _TopupOptionRow extends StatelessWidget {
+  const _TopupOptionRow({super.key, required this.option, required this.onTap});
+
+  final TopupOption option;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, _) {
+      final rateAsync = ref.watch(selectedCurrencyRateProvider);
+      final currencyAsync = ref.watch(currencyPreferenceProvider);
+      final priceText = switch ((rateAsync, currencyAsync)) {
+        (AsyncData(value: final rate), AsyncData(value: final code)) =>
+          formatMoney(option.retailPrice, currencyCode: code, rateToBase: rate),
+        _ => '',
+      };
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(option.title, style: AppTypography.body()),
+                    Text('${option.validityDays} days',
+                        style:
+                            AppTypography.caption(color: AppColors.inkMuted)),
+                  ],
+                ),
+              ),
+              Text(priceText, style: AppTypography.body()),
+            ],
+          ),
+        ),
+      );
+    });
   }
 }

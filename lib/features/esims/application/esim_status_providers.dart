@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/esim_status_api.dart';
 import '../data/models/esim_status.dart';
+import '../data/models/topup_option.dart';
 
 final esimStatusApiProvider = Provider<EsimStatusApi>(
   (ref) => EsimStatusApiImpl(ref.watch(apiClientProvider)),
@@ -14,4 +15,10 @@ final esimStatusApiProvider = Provider<EsimStatusApi>(
 final esimStatusProvider =
     FutureProvider.family<EsimStatus, String>((ref, esimId) {
   return ref.watch(esimStatusApiProvider).getStatus(esimId);
+});
+
+/// FR-407: an eSIM's available top-up packages, keyed by id.
+final topupOptionsProvider =
+    FutureProvider.family<List<TopupOption>, String>((ref, esimId) {
+  return ref.watch(esimStatusApiProvider).getTopupOptions(esimId);
 });

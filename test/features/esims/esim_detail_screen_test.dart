@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/install/url_launcher_provider.dart';
+import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
@@ -10,7 +11,9 @@ import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/esims/application/esim_status_providers.dart';
 import 'package:triptel/features/esims/data/esim_status_api.dart';
 import 'package:triptel/features/esims/data/models/esim_status.dart';
+import 'package:triptel/features/esims/data/models/topup_option.dart';
 import 'package:triptel/features/esims/presentation/esim_detail_screen.dart';
+import 'package:triptel/core/money/money.dart';
 
 const _lpa = r'LPA:1$smdp.example.invalid$ACTIVATION-CODE';
 
@@ -75,11 +78,22 @@ EsimStatus _status({
       dailyBreakdown: dailyBreakdown,
     );
 
+class _FixedCurrency extends CurrencyPreferenceNotifier {
+  @override
+  Future<String> build() async => 'EUR';
+}
+
 class _FakeEsimStatusApi implements EsimStatusApi {
-  _FakeEsimStatusApi(this._initial, {Object? refreshResult})
-      : _refreshResult = refreshResult;
+  _FakeEsimStatusApi(this._initial,
+      {Object? refreshResult,
+      List<TopupOption> topupOptions = const [],
+      this.topupError})
+      : _refreshResult = refreshResult,
+        _topupOptions = topupOptions;
   final EsimStatus _initial;
   final Object? _refreshResult; // EsimStatus or Exception.
+  final List<TopupOption> _topupOptions;
+  final Exception? topupError;
   var refreshCalls = 0;
 
   @override
@@ -91,6 +105,13 @@ class _FakeEsimStatusApi implements EsimStatusApi {
     final result = _refreshResult;
     if (result is Exception) throw result;
     return result as EsimStatus? ?? _initial;
+  }
+
+  @override
+  Future<List<TopupOption>> getTopupOptions(String esimId) async {
+    final error = topupError;
+    if (error != null) throw error;
+    return _topupOptions;
   }
 }
 
@@ -105,6 +126,8 @@ Widget _app(
       overrides: [
         esimStatusApiProvider.overrideWithValue(api),
         esimVerdictProvider.overrideWith((ref) async => verdict),
+        selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+        currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
         urlLauncherProvider.overrideWithValue((url) async {
           launchedUrls?.add(url.toString());
           return launchResult;
@@ -460,6 +483,108 @@ void main() {
       expect(find.text('Install history'), findsOneWidget);
     });
   });
+
+  group('FR-407: top-up options', () {
+    testWidgets('empty list -> no top-up section at all', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top up'), findsNothing);
+    });
+
+    testWidgets(
+        'a non-empty list shows the "Top up" section with one row per '
+        'option, title/validity/price', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+          TopupOption(
+            packageCode: 'TOPUP_JC064',
+            title: 'Japan 3GB 15Days',
+            dataAmountGb: 3.0,
+            validityDays: 15,
+            retailPrice: Money(510),
+          ),
+        ],
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top up'), findsOneWidget);
+      expect(find.text('Japan 1GB 7Days'), findsOneWidget);
+      expect(find.text('7 days'), findsOneWidget);
+      expect(find.text('€2.10'), findsOneWidget);
+      expect(find.text('Japan 3GB 15Days'), findsOneWidget);
+      expect(find.text('15 days'), findsOneWidget);
+      expect(find.text('€5.10'), findsOneWidget);
+    });
+
+    testWidgets('tapping an option shows the coming-soon note, not a dead end',
+        (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+      )));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pump();
+
+      expect(find.text('Top-up purchase is coming soon.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a non-empty list is hidden under a terminal lifecycle status '
+        '(Rules.md: lifecycle disables install AND top-up)', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(
+        _status(esimStatus: 'EXPIRED'),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+      )));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('esim-lifecycle-banner')), findsOneWidget);
+      expect(find.text('Top up'), findsNothing);
+    });
+
+    testWidgets(
+        'a topup-options load error silently hides the section rather than '
+        'crashing (the rest of the screen still renders)', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(
+        _status(),
+        topupError: Exception('network error'),
+      )));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top up'), findsNothing);
+      expect(find.text('Japan 100MB 7Days'), findsOneWidget);
+    });
+  });
 }
 
 class _ThrowingEsimStatusApi implements EsimStatusApi {
@@ -469,5 +594,9 @@ class _ThrowingEsimStatusApi implements EsimStatusApi {
 
   @override
   Future<EsimStatus> refresh(String esimId) async =>
+      throw Exception('network error');
+
+  @override
+  Future<List<TopupOption>> getTopupOptions(String esimId) async =>
       throw Exception('network error');
 }
