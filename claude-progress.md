@@ -80,7 +80,21 @@ Session log. Read first at session start, update last at session end.
   EXPIRED replace the entire FR-404 install section with a danger-toned
   banner; the FR-403 usage section above it stays visible regardless.
   New `installAndTopupDisabled()` has no caller yet (FR-407 not built)
-  but is tested and ready for reuse.
+  but is tested and ready for reuse. **FR-406** (eSIM detail — history)
+  also now passing — `history[]`/`daily_breakdown[]` (VivaPe-only,
+  always empty for eSIM Access), rendered generically since no fixed
+  item schema is documented anywhere, confirmed against the backend
+  source directly. Independent of lifecycle state (shows even under a
+  terminal status), unlike FR-404/405's gating.
+- **Revisit now that checkout + My eSIMs exist:** FR-105b, FR-106, and
+  FR-201b were all `blocked` earlier in this session specifically on
+  "no real checkout flow / no real eSIM usage data exists yet" — that's
+  no longer true (FR-301–311, FR-402/403 are all passing now). They sit
+  *before* FR-406 in `feature_list.json`'s strict array order, so the
+  loop should have revisited them already; flagged to the user
+  mid-session, decision on going back vs. continuing forward pending.
+  FR-202b stays blocked — genuinely backend-side (no featured/price
+  field on the country-list endpoint).
 - **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
   `is_installed` telemetry doesn't reliably reflect real install state for
   current eSIM Access profiles — confirmed live with real evidence (see
@@ -100,27 +114,52 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. Checkout (D, FR-301–311), FR-401 through FR-405 are all
-  passing now — next is **FR-406** (eSIM detail — history: daily
-  breakdown & install history when present — `history[]`/
-  `daily_breakdown[]` on `GET /esims/{id}/status`, VivaPe-only per
-  API.md, empty for eSIM Access). This extends the same
-  `EsimDetailScreen` again, this time additively (no gating needed —
-  just hide the section entirely when both arrays are empty, which
-  they will be for every real eSIM this account has so far since
-  they're all eSIM Access). **FR-407** (top-up options, `GET
-  /esims/{id}/topup-options`, hidden when empty) follows it and can
-  reuse FR-405's `installAndTopupDisabled()`. No valid discount code
-  exists on beta (confirmed via curl) — keep disclosing that
-  limitation for any future discount-related work. Revisit **FR-106**
-  and **FR-953b** now that a real purchase action (FR-306) exists.
+- **Next step — PAUSED pending user direction:** the user asked "how many
+  features left?" / "4 blocked?" mid-loop and was told FR-105b and FR-106
+  are likely unblockable now (both were blocked only on "no checkout flow
+  exists yet" — FR-301–311 are all passing now) and FR-201b is
+  *partially* unblockable (needs FR-402/403, now passing, AND FR-801
+  referrals, still not_started — so it stays blocked until FR-801 lands).
+  FR-202b stays blocked regardless (genuinely backend-side). The user was
+  asked whether to go back and unblock FR-105b/106/201b now (they sit
+  *before* FR-406 in strict array order, so the loop technically skipped
+  past them) or keep going forward — **awaiting their answer before the
+  next action**. If/when resuming forward without revisiting them: next
+  is **FR-407** (top-up options, `GET /esims/{id}/topup-options`, hidden
+  when empty — can reuse FR-405's `installAndTopupDisabled()`). No valid
+  discount code exists on beta (confirmed via curl) — keep disclosing
+  that limitation for any future discount-related work. Revisit
+  **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
+  install-gating dependency resolve.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-406, eSIM detail -- history):
+  - `history[]`/`daily_breakdown[]` on `GET /esims/{id}/status` are
+    VivaPe-only fields, always empty for eSIM Access (the only supplier
+    this account's real eSIMs use). No fixed item schema is documented
+    anywhere beyond "items may contain `eid`" -- confirmed directly
+    against the backend source (`esim_telemetry_svc.py`'s `_history()`),
+    which also revealed `eid` is NOT stripped server-side for this app's
+    authenticated call path (only the public/unauthenticated variant
+    strips it) -- making the new client-side `eid` exclusion necessary,
+    not just defensive.
+  - Rendered generically ("key: value" pairs, `eid` always excluded,
+    sorted for a stable order) rather than guessing sub-fields that might
+    not match VivaPe's actual shape. Shown as a new sibling section below
+    the FR-404/405 conditional, independent of lifecycle state (unlike
+    FR-404/405's own gating) since FR-406 has no documented dependency on
+    it.
+  - 11 new tests; full suite (413 tests) green, `flutter analyze` clean.
+    Non-vacuous: removed the `eid` filter (3 real failures) and disabled
+    the section gate (4 real failures), both restored. No on-device
+    evidence -- test-only verification, and no real VivaPe eSIM exists to
+    screenshot anyway.
+  - Reviewer: PASS.
+  - Commits: `180369e` (feature code), `1e45ef1` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-405, eSIM detail -- lifecycle
   status banners):
   - When an eSIM's own `esim_status` is `SUSPENDED`/`REVOKED`/`CANCELLED`/
