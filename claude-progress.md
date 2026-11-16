@@ -60,9 +60,13 @@ Session log. Read first at session start, update last at session end.
   the whole suite on a real network call once the My eSIMs tab became
   real instead of a placeholder — fixed with a missing fake-API
   override, same pattern the file already used for other tabs.
-- **Active feature:** none. Session paused here at the user's explicit
-  request ("complete the running feature, stop after committing")
-  right after FR-402 — FR-403 is next, not yet started.
+  **FR-403** (eSIM detail — usage) also now passing — the first eSIM
+  *detail* screen, adding a tap target + `/my-esims/:id` route on
+  FR-402's cards: usage ring, validity countdown, telemetry-stale
+  banner, manual refresh via the real `POST /refresh` with a 30s
+  client-side cooldown. Real on-device evidence proved the refresh
+  call and cooldown both actually work end-to-end.
+- **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
   CPH2015 `YP7HDIPFPBWGHM9H`, a third device `109973842B010285`, and a Tecno
@@ -75,27 +79,58 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** resume the `next-feature` loop, strict feature_list.json
-  array order. Checkout (D, FR-301–311), FR-401, and FR-402 are all
-  passing now — next is **FR-403** (eSIM detail — usage: `GET
-  /esims/{id}/status`, usage ring/bar including top-ups, none for
-  unlimited, remaining, validity countdown or "starts on install",
-  status label, telemetry-stale banner, manual refresh with a 30s
-  cooldown). This is the first eSIM *detail* screen — FR-402's cards
-  are still non-interactive, so this will likely need to add a tap
-  target + route (e.g. `/my-esims/:id`) as part of the work, unless a
-  cleaner place to wire that in turns up. FR-404 (install — the fuller
-  SM-DP+/matching-ID breakdown FR-310 deferred) and FR-405 (lifecycle
-  banners) follow it. No valid discount code exists on beta (confirmed
-  via curl) — keep disclosing that limitation for any future
-  discount-related work. Revisit **FR-106** and **FR-953b** now that a
-  real purchase action (FR-306) exists.
+- **Next step:** run the `next-feature` loop, strict feature_list.json
+  array order. Checkout (D, FR-301–311), FR-401, FR-402, and FR-403
+  are all passing now — next is **FR-404** (eSIM detail — install: QR
+  reveal, 1-tap install links iOS 17.4+/Android, manual SM-DP+ +
+  matching ID + LPA copy, "install only once" warning, link to setup
+  guide, install hidden on unsupported handsets per FR-950). This
+  extends the same `EsimDetailScreen` FR-403 just created (route
+  `/my-esims/:id` already exists) with an install section below the
+  usage section — can reuse FR-310's `buildInstallUrl`/`urlLauncherProvider`
+  and FR-401's `EsimQr` directly. FR-405 (lifecycle banners) follows it.
+  No valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work.
+  Revisit **FR-106** and **FR-953b** now that a real purchase action
+  (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-16 — Session 10 continued (FR-403, eSIM detail -- usage):
+  - FR-402's cards are now interactive: a new `EsimDetailScreen` (route
+    `/my-esims/:id`) backed by `GET /esims/{id}/status`. New `EsimStatus`
+    model matches API.md section 7's response shape field-for-field,
+    built as a complete model (including fields FR-404/405/406 will need
+    later -- iccid, lpa_string, qr_code_data, matching_id, history,
+    daily_breakdown) even though this screen only surfaces the
+    usage-relevant subset.
+  - New pure `esim_usage_shape.dart`: `usageFraction` (0-100 `used_pct`
+    converted to a clamped 0-1 ring fraction, null/no-fill for unlimited),
+    `usageCenterText`, `validityCountdownLabel` ("Validity starts on
+    install" until activated, else a "N days left" countdown -- zero
+    internal `DateTime.now()` dependency, injected as a parameter instead),
+    `showsTelemetryStaleBanner`, `refreshCooldownRemaining` (pure 30s
+    cooldown math).
+  - Manual "Refresh" calls the real `POST /refresh` (not just a re-GET),
+    pins the UI to the fresh result via local override state that's never
+    cleared (no flicker back to stale data), and disables itself for a
+    client-side 30s cooldown via a one-shot `Timer`.
+  - Model-parsing fixture captured from a real authenticated call against
+    the beta backend (same account as FR-306/308/402's real data) --
+    every ICCID/LPA/QR/SM-DP+/matching-id field replaced with a synthetic
+    placeholder before committing.
+  - Full suite (378 tests) green, `flutter analyze` clean. Non-vacuous:
+    hardcoded `usageFraction` to a constant (2 real failures) and deleted
+    the not-yet-activated early return in `validityCountdownLabel` (1 real
+    failure), both restored.
+  - On-device evidence: a real detail screen for a real completed order,
+    plus a second screenshot after a genuine on-device tap proving the
+    real `POST /refresh` fired and the cooldown engaged.
+  - Reviewer: PASS.
+  - Commits: `1281062` (feature code), `0012f6b` (state → passing).
 - 2026-11-16 — Session 10 continued (FR-402, My eSIMs list):
   - Real cards from `GET /orders/my-esims` replace the placeholder tab: new
     `MyEsim` model (field-for-field match to API.md section 7), `MyEsimsApi`,
