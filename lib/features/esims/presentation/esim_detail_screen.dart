@@ -15,6 +15,7 @@ import '../../../core/widgets/widgets.dart';
 import '../../compatibility/application/compatibility_providers.dart';
 import '../../compatibility/application/esim_verdict.dart';
 import '../application/esim_install_links.dart';
+import '../application/esim_lifecycle_shape.dart';
 import '../application/esim_status_providers.dart';
 import '../application/esim_usage_shape.dart';
 import '../data/models/esim_status.dart';
@@ -209,48 +210,80 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 32),
           const Divider(color: AppColors.line),
           const SizedBox(height: 24),
-          EsimQr(
-            data: status.qrCodeData.isNotEmpty
-                ? status.qrCodeData
-                : status.lpaString,
-          ),
-          const SizedBox(height: 20),
-          _InstallButton(
-            verdict: verdict,
-            lpaString: status.lpaString,
-            onInstall: onInstall,
-          ),
-          const SizedBox(height: 20),
-          InfoBox(
-            icon: Icons.warning_amber_outlined,
-            text: 'You can only install this eSIM once. If you remove it '
-                'from your device, it cannot be reinstalled -- contact '
-                'support if that happens.',
-          ),
-          const SizedBox(height: 16),
-          _CopyRow(
-            label: 'SM-DP+ address',
-            value: status.smdpAddress,
-            onCopy: () => onCopy('SM-DP+ address', status.smdpAddress),
-          ),
-          if (status.matchingId != null)
-            _CopyRow(
-              label: 'Matching ID',
-              value: status.matchingId!,
-              onCopy: () => onCopy('Matching ID', status.matchingId!),
+          if (lifecycleBannerMessage(status.esimStatus) case final message?)
+            _LifecycleBanner(
+                key: const ValueKey('esim-lifecycle-banner'), message: message)
+          else ...[
+            EsimQr(
+              data: status.qrCodeData.isNotEmpty
+                  ? status.qrCodeData
+                  : status.lpaString,
             ),
-          _CopyRow(
-            label: 'Activation code (LPA)',
-            value: status.lpaString,
-            onCopy: () => onCopy('Activation code', status.lpaString),
-          ),
-          const SizedBox(height: 16),
-          PillButton(
-            key: const ValueKey('esim-setup-guide-link'),
-            label: 'View setup guide',
-            variant: PillButtonVariant.text,
-            onPressed: onOpenSetupGuide,
-          ),
+            const SizedBox(height: 20),
+            _InstallButton(
+              verdict: verdict,
+              lpaString: status.lpaString,
+              onInstall: onInstall,
+            ),
+            const SizedBox(height: 20),
+            InfoBox(
+              icon: Icons.warning_amber_outlined,
+              text: 'You can only install this eSIM once. If you remove it '
+                  'from your device, it cannot be reinstalled -- contact '
+                  'support if that happens.',
+            ),
+            const SizedBox(height: 16),
+            _CopyRow(
+              label: 'SM-DP+ address',
+              value: status.smdpAddress,
+              onCopy: () => onCopy('SM-DP+ address', status.smdpAddress),
+            ),
+            if (status.matchingId != null)
+              _CopyRow(
+                label: 'Matching ID',
+                value: status.matchingId!,
+                onCopy: () => onCopy('Matching ID', status.matchingId!),
+              ),
+            _CopyRow(
+              label: 'Activation code (LPA)',
+              value: status.lpaString,
+              onCopy: () => onCopy('Activation code', status.lpaString),
+            ),
+            const SizedBox(height: 16),
+            PillButton(
+              key: const ValueKey('esim-setup-guide-link'),
+              label: 'View setup guide',
+              variant: PillButtonVariant.text,
+              onPressed: onOpenSetupGuide,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LifecycleBanner extends StatelessWidget {
+  const _LifecycleBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, size: 18, color: AppColors.danger),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Text(message,
+                  style: AppTypography.caption(color: AppColors.danger))),
         ],
       ),
     );

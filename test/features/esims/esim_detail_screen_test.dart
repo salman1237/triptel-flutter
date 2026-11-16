@@ -24,6 +24,7 @@ EsimStatus _status({
   String lpaString = _lpa,
   String smdpAddress = 'smdp.example.invalid',
   String? matchingId = 'ACTIVATION-CODE',
+  String esimStatus = 'RELEASED',
 }) =>
     EsimStatus(
       esimId: 'esim-1',
@@ -39,7 +40,7 @@ EsimStatus _status({
       qrCodeData: lpaString,
       smdpAddress: smdpAddress,
       matchingId: matchingId,
-      esimStatus: 'RELEASED',
+      esimStatus: esimStatus,
       status: EsimStatusInfo(
         label: label,
         code: 0,
@@ -332,6 +333,56 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("Couldn't open the install link."), findsOneWidget);
+    });
+  });
+
+  group('FR-405: lifecycle banners', () {
+    for (final status in ['SUSPENDED', 'REVOKED', 'CANCELLED', 'EXPIRED']) {
+      testWidgets(
+          '$status shows a lifecycle banner and hides the entire install '
+          'section', (tester) async {
+        await tester
+            .pumpWidget(_app(_FakeEsimStatusApi(_status(esimStatus: status))));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const ValueKey('esim-lifecycle-banner')),
+            findsOneWidget);
+        expect(find.textContaining('install and top-up are unavailable'),
+            findsOneWidget);
+        expect(find.byType(EsimQr), findsNothing);
+        expect(find.byKey(const ValueKey('esim-one-tap-install-button')),
+            findsNothing);
+        expect(find.byKey(const ValueKey('esim-install-explanation')),
+            findsNothing);
+        expect(find.byKey(const ValueKey('esim-copy-SM-DP+ address')),
+            findsNothing);
+        expect(
+            find.byKey(const ValueKey('esim-setup-guide-link')), findsNothing);
+      });
+    }
+
+    for (final status in ['ALLOCATED', 'RELEASED', 'INSTALLED', 'ACTIVE']) {
+      testWidgets('$status shows no lifecycle banner, install section intact',
+          (tester) async {
+        await tester
+            .pumpWidget(_app(_FakeEsimStatusApi(_status(esimStatus: status))));
+        await tester.pumpAndSettle();
+
+        expect(
+            find.byKey(const ValueKey('esim-lifecycle-banner')), findsNothing);
+        expect(find.byType(EsimQr), findsOneWidget);
+      });
+    }
+
+    testWidgets(
+        'the usage ring, usage status label, and refresh button stay '
+        'visible even when the lifecycle banner is shown', (tester) async {
+      await tester
+          .pumpWidget(_app(_FakeEsimStatusApi(_status(esimStatus: 'EXPIRED'))));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UsageRing), findsOneWidget);
+      expect(find.byKey(const ValueKey('esim-refresh-button')), findsOneWidget);
     });
   });
 }
