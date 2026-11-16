@@ -95,7 +95,12 @@ Session log. Read first at session start, update last at session end.
   ShurjoPay return for top-up goes to the real **web**, not a custom
   scheme, so it needed its own callback-matching + WebView screen
   (`topup_callback.dart`/`TopupWebViewScreen`), separate from
-  checkout's existing one.
+  checkout's existing one. **FR-409** (share tracking link + receipt)
+  also now passing — a share icon sends the real `share_url`; a new
+  receipt screen (`/my-esims/:id/print`) shows order no/ICCID/plan/QR,
+  captured as a PNG via `RepaintBoundary` and shared the same way (no
+  new PDF dependency). `price` omitted — neither endpoint this screen
+  touches carries one.
 - **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
   now both **passing** (see Done below). FR-201b stays *partially*
   blocked (needs FR-801 referrals, still not_started). FR-202b stays
@@ -135,11 +140,11 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b, FR-106, FR-407, and FR-408 all done (see Done
-  below). Continuing forward in strict array order: next is **FR-409**
-  (share tracking link via `share_url` + a printable/shareable receipt
-  as PDF/image). No valid discount code exists on beta (confirmed via
-  curl) — keep disclosing that limitation for any future
+- **Next step:** FR-105b, FR-106, FR-407, FR-408, and FR-409 all done
+  (see Done below). Continuing forward in strict array order: next is
+  **FR-410** ("Report a problem" → new support ticket prefilled with
+  category ESIM and `order_id`). No valid discount code exists on beta
+  (confirmed via curl) — keep disclosing that limitation for any future
   discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
   install-gating dependency resolve.
@@ -158,6 +163,46 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-409, share tracking link +
+  receipt):
+  - Share icon on the eSIM detail AppBar (shown only when the real
+    `EsimStatus.shareUrl` is non-null) shares the real web tracking link
+    through the native share sheet. New `EsimReceiptScreen`
+    (`/my-esims/:id/print`) shows order no, ICCID, plan, and the QR
+    (reusing the shared `EsimQr` widget); "Share receipt" captures the
+    card via `RepaintBoundary.toImage()` and shares the PNG -- no new
+    PDF dependency, an image satisfies "printable/shareable" via the OS
+    share sheet's own Print/Save options.
+  - The image-capture-and-share path needed a new provider seam
+    (`receiptSharerProvider`, same reasoning as the pre-existing
+    `shurjoPayLauncherProvider`) since `RenderRepaintBoundary.toImage()`
+    doesn't reliably complete inside a widget test's fake-async clock --
+    confirmed empirically (a first attempt calling it inline hung
+    silently in tests, even wrapped in `tester.runAsync`). The simpler
+    text-only tracking-link share didn't need this -- it works fine in
+    tests via the existing `SharePlatform.instance` fake-swap pattern
+    already used for FR-206.
+  - `price` is deliberately omitted even though the FR's own text lists
+    it -- neither `GET /esims/{id}/status` nor `GET /orders/my-esims`
+    carries a price field anywhere (confirmed against API.md section
+    7), so there's no reliable source for it on this screen's data
+    path. A disclosed limitation, not a guess.
+  - 13 new tests; full suite (455 tests) green, `flutter analyze`
+    clean, `bash harness.sh verify` green (twice, with a confirmed-
+    empty `git diff` on `lib/main.dart` in between). Non-vacuous:
+    disabled the share icon's `shareUrl != null` guard, got a real
+    failure, restored.
+  - On-device evidence: the receipt screen + its real share sheet used
+    the established temporary, never-committed `main.dart` rig (entirely
+    synthetic ICCID/order-no/LPA -- a real screenshot would put a real
+    provisioning secret in this public repo); confirmed the rig left
+    zero trace via `git diff` afterward. The share-tracking-link button
+    was verified against real account data instead (a tracking link is
+    meant to be shared) -- real token painted over with a solid
+    redaction before saving, real contact-icon rows cropped out of all
+    three screenshots.
+  - Reviewer: PASS.
+  - Commits: `15d2fff` (feature code), `24fd59a` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-408, eSIM detail -- top-up
   purchase):
   - Same wallet-vs-ShurjoPay chooser as first purchase (FR-305/306/307)
