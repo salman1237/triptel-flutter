@@ -75,7 +75,12 @@ Session log. Read first at session start, update last at session end.
   is now shared between FR-310 and this feature. On-device evidence
   used synthetic data (temp-rig) since this screen displays raw LPA/
   matching-ID/SM-DP+ as copyable text — a real screenshot would put
-  real secrets on disk even gitignored.
+  real secrets on disk even gitignored. **FR-405** (eSIM detail —
+  lifecycle status) also now passing — SUSPENDED/REVOKED/CANCELLED/
+  EXPIRED replace the entire FR-404 install section with a danger-toned
+  banner; the FR-403 usage section above it stays visible regardless.
+  New `installAndTopupDisabled()` has no caller yet (FR-407 not built)
+  but is tested and ready for reuse.
 - **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
   `is_installed` telemetry doesn't reliably reflect real install state for
   current eSIM Access profiles — confirmed live with real evidence (see
@@ -96,14 +101,18 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. Checkout (D, FR-301–311), FR-401, FR-402, FR-403, and
-  FR-404 are all passing now — next is **FR-405** (eSIM detail —
-  lifecycle status: banners for `SUSPENDED`/`REVOKED`/`CANCELLED`/
-  `EXPIRED`, disable install and top-up for them). This extends the
-  same `EsimDetailScreen`, gating FR-404's install section (and the
-  not-yet-built FR-407 top-up section) off when `esim_status` is one
-  of those four values, showing a banner instead. No valid discount
-  code exists on beta (confirmed via curl) — keep disclosing that
+  array order. Checkout (D, FR-301–311), FR-401 through FR-405 are all
+  passing now — next is **FR-406** (eSIM detail — history: daily
+  breakdown & install history when present — `history[]`/
+  `daily_breakdown[]` on `GET /esims/{id}/status`, VivaPe-only per
+  API.md, empty for eSIM Access). This extends the same
+  `EsimDetailScreen` again, this time additively (no gating needed —
+  just hide the section entirely when both arrays are empty, which
+  they will be for every real eSIM this account has so far since
+  they're all eSIM Access). **FR-407** (top-up options, `GET
+  /esims/{id}/topup-options`, hidden when empty) follows it and can
+  reuse FR-405's `installAndTopupDisabled()`. No valid discount code
+  exists on beta (confirmed via curl) — keep disclosing that
   limitation for any future discount-related work. Revisit **FR-106**
   and **FR-953b** now that a real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
@@ -112,6 +121,27 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-405, eSIM detail -- lifecycle
+  status banners):
+  - When an eSIM's own `esim_status` is `SUSPENDED`/`REVOKED`/`CANCELLED`/
+    `EXPIRED`, the entire FR-404 install section (QR, 1-tap button, manual
+    codes, setup-guide link) is replaced by a danger-toned banner (new
+    `_LifecycleBanner`, theme tokens only) instead -- disabling install
+    for those terminal lifecycle states. A different gating axis from
+    FR-404's compatibility gating (device capability, which per Rules.md
+    only ever hides the 1-tap button, not the whole section).
+  - The FR-403 usage section above it (title, status label, telemetry
+    banner, usage ring, validity, refresh button) is completely
+    unaffected -- confirmed via diff it's outside the change, and by a
+    dedicated test that it stays visible under a terminal status.
+  - New `installAndTopupDisabled()` has no caller yet (FR-407's top-up UI
+    isn't built) but is tested and ready for that feature to reuse.
+  - 14 new tests; full suite (402 tests) green, `flutter analyze` clean.
+    Non-vacuous: renamed one status's match string, got 3 real failures,
+    restored. No on-device evidence needed -- this feature's own
+    verification command is test-only.
+  - Reviewer: PASS.
+  - Commits: `388513c` (feature code), `29f22c9` (state → passing).
 - 2026-11-17 — Session 10 continued (two real bug reports + FR-404,
   eSIM detail -- install section):
   - **Real bug, fixed:** user reported "why my installed sims also showing
