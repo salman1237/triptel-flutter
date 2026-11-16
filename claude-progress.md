@@ -85,7 +85,11 @@ Session log. Read first at session start, update last at session end.
   always empty for eSIM Access), rendered generically since no fixed
   item schema is documented anywhere, confirmed against the backend
   source directly. Independent of lifecycle state (shows even under a
-  terminal status), unlike FR-404/405's gating.
+  terminal status), unlike FR-404/405's gating. **FR-407** (eSIM detail
+  — top-up options) also now passing — gives `installAndTopupDisabled()`
+  its first real caller; section hidden when empty or lifecycle-disabled.
+  Purchasing a package is FR-408, not built yet — tapping shows a
+  "coming soon" note.
 - **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
   now both **passing** (see Done below). FR-201b stays *partially*
   blocked (needs FR-801 referrals, still not_started). FR-202b stays
@@ -117,12 +121,13 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b and FR-106 both done (see Done below) — the
-  "go & you pick" detour is complete. Continuing forward in strict
-  array order: next is **FR-407** (top-up options, `GET
-  /esims/{id}/topup-options`, hidden when empty — can reuse FR-405's
-  `installAndTopupDisabled()`). No valid discount code exists on beta
-  (confirmed via curl) — keep disclosing that limitation for any future
+- **Next step:** FR-105b, FR-106, and FR-407 all done (see Done below).
+  Continuing forward in strict array order: next is **FR-408** (top-up
+  purchase — same wallet/ShurjoPay chooser as FR-305, `POST
+  /esims/{id}/topup` or `shurjopay/esim-topup-initiate`, reload status
+  after; ⚠️ the ShurjoPay return goes to the **web**, not the app, per
+  API.md section 7). No valid discount code exists on beta (confirmed
+  via curl) — keep disclosing that limitation for any future
   discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
   install-gating dependency resolve.
@@ -132,6 +137,34 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-407, eSIM detail -- top-up
+  options):
+  - New `TopupOption` model (`GET /esims/{id}/topup-options`, API.md
+    section 7), `EsimStatusApi.getTopupOptions()`, `topupOptionsProvider`.
+    `EsimDetailScreen` gained a "Top up" section shown only when the
+    options list is non-empty AND the eSIM isn't lifecycle-disabled --
+    the first real caller of FR-405's `installAndTopupDisabled()`,
+    which had "no caller yet" until now.
+  - Each row shows title/validity/price (converted to the user's
+    currency preference). Tapping shows "Top-up purchase is coming
+    soon." -- the real purchase flow is FR-408, not built yet; a
+    disclosed scope boundary.
+  - A `topupOptionsProvider` load error silently hides just this section
+    rather than crashing or blocking the rest of the screen -- matches
+    the API's own "live, never cached, optional" contract.
+  - Real fixture (`test/fixtures/esim_topup_options.json`) captured live
+    via curl against the real signed-in account's real Japan eSIM.
+  - 6 new tests; full suite (428 tests) green, `flutter analyze` clean,
+    `bash harness.sh verify` green. Non-vacuous: replaced the gating
+    condition with `true`, got 3 real failures, restored.
+  - On-device evidence is genuine, real account, real beta data: a real
+    Saudi Arabia eSIM's detail screen showing 8 real supplier-priced
+    top-up packages, and a real tap producing the real coming-soon
+    snack. Both screenshots were cropped (not just scrolled) to exclude
+    the real LPA activation code visible higher on the same screen --
+    checked directly, no secrets in either saved image.
+  - Reviewer: PASS.
+  - Commits: `93598bc` (feature code), `f62405d` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-106, guest purchase resumes after
   login/register/Google):
   - Unblocked now that FR-301 (checkout review) exists. Both real checkout
