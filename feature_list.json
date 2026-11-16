@@ -557,8 +557,16 @@
       "id": "FR-409",
       "behavior": "Share tracking link and receipt",
       "verification": "flutter test test/features/esims",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "15d2fff",
+        "screens": [
+          "artifacts/FR-409-receipt-screen.png",
+          "artifacts/FR-409-receipt-share-sheet.png",
+          "artifacts/FR-409-share-tracking-link.png"
+        ],
+        "notes": "Share tracking link: a new AppBar share icon on EsimDetailScreen, shown only when the real EsimStatus.shareUrl is non-null, calls SharePlus.instance.share(ShareParams(text: shareUrl)) directly (works fine in widget tests via the existing SharePlatform.instance fake-swap pattern already used for FR-206). Receipt: new EsimReceiptScreen at /my-esims/:id/print shows order no, ICCID, plan, and the QR (reusing the shared EsimQr widget); 'Share receipt' captures the card via RepaintBoundary.toImage() and shares the PNG. That capture-and-share path needed a new provider seam (receiptSharerProvider, same reasoning as the pre-existing shurjoPayLauncherProvider's own doc comment) since RenderRepaintBoundary.toImage() doesn't reliably complete inside a widget test's fake-async clock -- confirmed empirically (a first attempt calling it inline hung/no-opped silently in tests even with tester.runAsync). price is deliberately omitted -- neither GET /esims/{id}/status nor GET /orders/my-esims carries a price field anywhere (confirmed against API.md section 7), so there's no reliable source for it on this screen's data path; a disclosed limitation, not a guess. No new dependency added for 'printable' -- an image satisfies it via the OS share sheet's own Print/Save options. 13 new tests across 4 files; full suite (455 tests) green, flutter analyze clean, bash harness.sh verify green (run twice, before and after the on-device rig, with a confirmed-empty git diff on lib/main.dart in between). Non-vacuous: disabled the share icon's shareUrl != null guard, got a real failure, restored. On-device evidence: the receipt screen and its real Android share sheet were screenshotted via the established temporary, never-committed main.dart rig (entirely synthetic ICCID/order-no/LPA, since a real screenshot would put a real provisioning secret in this public repo) -- confirmed via git diff that the rig left zero trace afterward. The share-tracking-link button was verified against real account data instead (a tracking link is meant to be shared, unlike an LPA/ICCID) -- a real tap opened the real 'Sharing link' sheet with a real beta.triptel.co/track/<token> URL, saved with the real token painted over (solid redaction, not a crop/blur) and the share sheet's row of the device owner's real contact icons/names cropped out of all three screenshots. Reviewer: PASS (independently confirmed the price-field absence against API.md directly, re-ran the full esims test suite (115 tests) and flutter analyze, reproduced the non-vacuousness check, confirmed lib/main.dart is byte-identical to committed via git diff, and opened all three screenshots directly to confirm no real secrets/tokens/contacts are visible)."
+      }
     },
     {
       "id": "FR-410",
