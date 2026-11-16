@@ -1,0 +1,50 @@
+{
+  "esim_id": "888dd7eb-1e83-4df4-ae4a-6a0b1ed8ff0a",
+  "order_no": "ORD-20261114-6D7389",
+  "purchased_at": "2026-11-14T03:46:08.161362+00:00",
+  "product": {
+    "title": "Japan 100MB 7Days",
+    "validity_days": 7,
+    "is_unlimited": false,
+    "data_amount_gb": "0.10"
+  },
+  "iccid": "00000000000000000000",
+  "lpa_string": "LPA:1$rsp-eu.example.invalid$EXAMPLEACTIVATIONCODE1",
+  "qr_code_data": "LPA:1$rsp-eu.example.invalid$EXAMPLEACTIVATIONCODE1",
+  "smdp_address": "rsp-eu.example.invalid",
+  "matching_id": "EXAMPLEACTIVATIONCODE1",
+  "supplier_reference": "EXAMPLE-SUPPLIER-REF",
+  "supplier": "esimaccess",
+  "esim_status": "RELEASED",
+  "status": {
+    "label": "Not installed yet",
+    "code": 0,
+    "is_installed": false,
+    "is_activated": false,
+    "device_model": null
+  },
+  "usage": {
+    "used_mb": "0.00",
+    "used_bytes": 0,
+    "formatted": "0.00 MB",
+    "allowance_mb": "100.00",
+    "remaining_mb": "100.00",
+    "remaining_formatted": "100.00 MB",
+    "used_pct": 0.0,
+    "is_unlimited": false
+  },
+  "validity": {
+    "days": 7,
+    "activated_at": null,
+    "expires_at": null,
+    "note": "Validity starts when you install this eSIM -- 7 days from then."
+  },
+  "share_url": "https://beta.triptel.co/track/example-token",
+  "history": [],
+  "daily_breakdown": [],
+  "telemetry": {
+    "fetched_at": "2026-11-16T17:07:25.838790+00:00",
+    "error": null,
+    "available": true
+  }
+}

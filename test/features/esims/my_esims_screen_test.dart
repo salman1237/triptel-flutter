@@ -56,6 +56,11 @@ Widget _app(Object apiResult) {
     GoRoute(
         path: '/home',
         builder: (context, state) => const Scaffold(body: Text('Home screen'))),
+    GoRoute(
+      path: '/my-esims/:id',
+      builder: (context, state) =>
+          Scaffold(body: Text('eSIM detail for ${state.pathParameters['id']}')),
+    ),
   ]);
   return MaterialApp.router(routerConfig: router);
 }
@@ -77,6 +82,16 @@ void main() {
     expect(find.text('Bought by me'), findsOneWidget);
     expect(find.textContaining('100 MB'), findsNWidgets(2));
     expect(find.textContaining('Validity starts on install'), findsNWidgets(2));
+  });
+
+  testWidgets('tapping a card navigates to /my-esims/<id>', (tester) async {
+    await tester.pumpWidget(_app([_esim('42')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('esim-card-42')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('eSIM detail for 42'), findsOneWidget);
   });
 
   testWidgets('empty state shows the explore CTA and navigates to /home',

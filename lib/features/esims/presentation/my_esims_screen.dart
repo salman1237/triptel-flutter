@@ -77,33 +77,38 @@ class _EsimCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chip = esimStatusChip(esim.status);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: const [appCardShadow],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(esim.productTitle,
-                    style: AppTypography.body(), maxLines: 2),
-              ),
-              const SizedBox(width: 8),
-              StatusChip(label: chip.label, tone: chip.tone),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text('${esimDataLabel(esim)} · ${esimValidityLabel(esim)}',
-              style: AppTypography.caption(color: AppColors.inkMuted)),
-          const SizedBox(height: 4),
-          Text(esimOwnershipLabel(esim),
-              style: AppTypography.caption(color: AppColors.inkMuted)),
-        ],
+    return InkWell(
+      key: ValueKey('esim-card-${esim.id}'),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      onTap: () => context.push('/my-esims/${esim.id}'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: const [appCardShadow],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(esim.productTitle,
+                      style: AppTypography.body(), maxLines: 2),
+                ),
+                const SizedBox(width: 8),
+                StatusChip(label: chip.label, tone: chip.tone),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('${esimDataLabel(esim)} · ${esimValidityLabel(esim)}',
+                style: AppTypography.caption(color: AppColors.inkMuted)),
+            const SizedBox(height: 4),
+            Text(esimOwnershipLabel(esim),
+                style: AppTypography.caption(color: AppColors.inkMuted)),
+          ],
+        ),
       ),
     );
   }
