@@ -51,8 +51,18 @@ Session log. Read first at session start, update last at session end.
   already existed as a side effect of FR-306's original work; this
   feature just locked it in with 5 dedicated tests (explicit FAILED
   only, never CANCELLED; refund message) and a clarifying doc comment,
-  no logic change.
-- **Active feature:** none.
+  no logic change. **FR-402** (My eSIMs list) also now passing —
+  real `GET /orders/my-esims` cards with status chip, data/validity,
+  "Bought for me/by me", pull to refresh, empty state → explore. Real
+  on-device evidence used the signed-in account's actual real orders
+  from FR-306/308 (no synthetic data needed). Also fixed a real bug
+  this surfaced: `test/app/shell_test.dart`'s 4-tab shell test hung
+  the whole suite on a real network call once the My eSIMs tab became
+  real instead of a placeholder — fixed with a missing fake-API
+  override, same pattern the file already used for other tabs.
+- **Active feature:** none. Session paused here at the user's explicit
+  request ("complete the running feature, stop after committing")
+  right after FR-402 — FR-403 is next, not yet started.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
   CPH2015 `YP7HDIPFPBWGHM9H`, a third device `109973842B010285`, and a Tecno
@@ -65,25 +75,62 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. Checkout (D, FR-301–311) is now fully passing, as is
-  FR-401. Next is **FR-402** (My eSIMs list: `GET /orders/my-esims`
-  cards — plan title, status chip, data/validity, "starts on install"
-  or expiry, pull to refresh, empty state → explore, "Bought for me"
-  vs "Bought by me" via `is_beneficiary`). The real signed-in account
-  now has real completed orders (FR-306/308 purchases) to list against
-  — no synthetic data needed for FR-402's own on-device evidence.
-  FR-403 (usage view) and FR-404 (install — the fuller SM-DP+/matching-ID
-  breakdown FR-310 deferred) follow it. No valid discount code exists
-  on beta (confirmed via curl) — keep disclosing that limitation for
-  any future discount-related work. Revisit **FR-106** and **FR-953b**
-  now that a real purchase action (FR-306) exists.
+- **Next step:** resume the `next-feature` loop, strict feature_list.json
+  array order. Checkout (D, FR-301–311), FR-401, and FR-402 are all
+  passing now — next is **FR-403** (eSIM detail — usage: `GET
+  /esims/{id}/status`, usage ring/bar including top-ups, none for
+  unlimited, remaining, validity countdown or "starts on install",
+  status label, telemetry-stale banner, manual refresh with a 30s
+  cooldown). This is the first eSIM *detail* screen — FR-402's cards
+  are still non-interactive, so this will likely need to add a tap
+  target + route (e.g. `/my-esims/:id`) as part of the work, unless a
+  cleaner place to wire that in turns up. FR-404 (install — the fuller
+  SM-DP+/matching-ID breakdown FR-310 deferred) and FR-405 (lifecycle
+  banners) follow it. No valid discount code exists on beta (confirmed
+  via curl) — keep disclosing that limitation for any future
+  discount-related work. Revisit **FR-106** and **FR-953b** now that a
+  real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-16 — Session 10 continued (FR-402, My eSIMs list):
+  - Real cards from `GET /orders/my-esims` replace the placeholder tab: new
+    `MyEsim` model (field-for-field match to API.md section 7), `MyEsimsApi`,
+    `myEsimsProvider`. New pure `esim_card_shape.dart`: `esimDataLabel`
+    (MB/GB, deliberately not replicating catalog's Day Pass per-day math
+    since this endpoint carries no plan-shape data), `esimValidityLabel`
+    ("Validity starts on install" until `activated_at` is set, else the
+    formatted expiry date -- never a computed countdown), `esimOwnershipLabel`
+    ("Bought for me"/"Bought by me" via `is_beneficiary`), `esimStatusChip`
+    (maps the eSIM status enum to `StatusChip`'s documented tone rule
+    exactly, unknown status falls back to a warning chip with the raw
+    string rather than crashing or hiding the card).
+  - A custom card (inline theme tokens) was used instead of the existing
+    `ListRow` component, which is a fixed icon+title+subtitle+chevron
+    layout with no slot for a chip plus two extra lines, and whose chevron
+    would misleadingly imply a tap target that doesn't exist yet. Pull to
+    refresh via `RefreshIndicator`; empty state routes to Home.
+  - Model-parsing fixture captured from a real authenticated call against
+    the beta backend (same account as FR-306/308's real purchases) --
+    every ICCID/LPA/QR/SM-DP+ field replaced with a synthetic placeholder
+    before committing, independently re-checked for leaks.
+  - 22 new tests; fixed a real bug this surfaced: `test/app/shell_test.dart`'s
+    pre-existing 4-tab shell test had no reason to mock any eSIMs provider
+    before (the tab was static) -- switching to My eSIMs during that test
+    now hit a real, unmocked network call and **hung the entire suite
+    indefinitely**. Fixed with a `_FakeMyEsimsApi` override, same pattern
+    the file already used for other tabs. Full suite (351 tests) confirmed
+    green and non-hanging after the fix.
+  - On-device evidence used the real signed-in account's actual real
+    orders from FR-306/308 -- no synthetic data needed this time.
+  - Reviewer: PASS.
+  - Commits: `c8b70e4` (feature code), `5ca2cc5` (state → passing).
+  - **Session paused here at the user's explicit request** ("complete the
+    running feature, stop after committing") -- the loop did not continue
+    to FR-403.
 - 2026-11-14 — Session 10 continued (FR-311, purchase failure -- lock-in):
   - This behavior already existed as a side effect of FR-306's original
     work: `_showOrderResult`'s `isFailed` branch already fired only on the

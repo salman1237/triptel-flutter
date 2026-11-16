@@ -1,6 +1,31 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-16 — A hanging (not failing) test meant a missing mock, not a reverted fix
+Running the full `flutter test` suite after building FR-402 (My eSIMs list)
+produced no failure output at all -- it just hung indefinitely partway
+through. Root cause: `test/app/shell_test.dart`'s pre-existing 4-tab shell
+test switches to every tab including My eSIMs; before FR-402 that tab was
+a static placeholder with no provider dependency, so the test never needed
+to mock anything for it. Once FR-402 made it a real screen backed by
+`myEsimsProvider` (a real `ApiClient`/Dio call), the test started making an
+actual unmocked network request mid-test, and `pumpAndSettle` waited
+forever for a real HTTP response that a widget test's environment will
+never deliver. **What I did:** added a `_FakeMyEsimsApi` (empty list) and
+overrode `myEsimsApiProvider` in the test's existing `_pumpApp` helper,
+matching the exact override pattern that file already used for
+`bootstrapProvider`/`popularCountriesProvider` on the other tabs -- a
+test-only fix, since the app itself has no bug here (a real app screen is
+*supposed* to hit the real network; only the test needed a mock it never
+got around to adding when the tab was built). **Why this matters enough to
+log:** a hang in a widget-test run should always be suspected as "some
+provider now does real async I/O with nothing mocking it," not chased as a
+flakiness/timeout issue to work around with longer timeouts -- the fix is
+almost always adding the missing override, not waiting longer.
+**Revisit if:** a future screen added to the shell needs its own provider
+mocked in this same `_pumpApp` helper and someone forgets -- the symptom
+will be the same (hang, not a clean failure).
+
 ## 2026-11-14 — Pulled FR-401 forward ahead of FR-310, same precedent as the wallet layer
 `feature_list.json`'s strict array order had the loop on FR-310 ("Purchase
 success: QR, install links, copy codes"), which explicitly depends on FR-401
