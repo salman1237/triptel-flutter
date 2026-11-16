@@ -532,8 +532,15 @@
       "id": "FR-407",
       "behavior": "Top-up options section hidden when empty",
       "verification": "flutter test test/features/esims",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "93598bc",
+        "screens": [
+          "artifacts/FR-407-topup-section.png",
+          "artifacts/FR-407-coming-soon-tap.png"
+        ],
+        "notes": "New TopupOption model (GET /esims/{id}/topup-options, API.md section 7), EsimStatusApi.getTopupOptions(), and topupOptionsProvider. EsimDetailScreen gained a 'Top up' section, a sibling of the install section, shown only when the options list is non-empty AND the eSIM isn't lifecycle-disabled (reuses FR-405's installAndTopupDisabled(), which had 'no caller yet' until now -- its first real wiring). Each row shows title/validity/price (converted to the user's currency preference, same pattern as destination_plans_screen.dart); tapping shows a 'Top-up purchase is coming soon.' snack since the real purchase flow (FR-408) isn't built yet -- a disclosed scope boundary, not a corner cut. A topupOptionsProvider load error silently hides just this section (valueOrNull ?? []) rather than crashing or blocking the rest of the screen, consistent with the API's own 'live, never cached, optional' contract. Real fixture test/fixtures/esim_topup_options.json captured live via curl against the real signed-in account's real Japan eSIM (package codes TOPUP_JC063/064/065); confirms the EUR-regardless-of-currency-label rule holds for this new model too (retail_price '2.10' labelled USD -> 210 EUR cents). 6 new tests (1 model-fixture + 5 widget: empty-hides, non-empty-shows-with-correct-text, tap-shows-coming-soon, lifecycle-disabled-hides-even-with-options (proves the AND, not just indentation), load-error-hides-only-this-section). Full suite (428 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: replaced the gating condition with `true`, got 3 real failures (empty-hide/lifecycle-hide/load-error-hide), restored. On-device evidence is genuine, real account (salman2033), real beta data: a real Saudi Arabia 1GB 7Days eSIM's detail screen showing 8 real supplier-priced top-up packages converted to BDT, and a real on-device tap producing the real coming-soon snack. Both screenshots were deliberately cropped (PIL, not just scrolled) to exclude the real LPA activation code visible higher on the same screen -- checked directly, no ICCID/LPA/QR/SM-DP+/matching-ID text in either saved image. Reviewer: PASS (independently confirmed the AND-gating via its own test, confirmed installAndTopupDisabled's first-caller status via repo grep + FR-405's own 'no caller yet' note, independently reproduced the non-vacuousness check, visually inspected both screenshots for secret leakage, confirmed API.md section 7 conformance field-for-field)."
+      }
     },
     {
       "id": "FR-408",
