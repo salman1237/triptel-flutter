@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_pill_switcher.dart';
 import '../../../core/money/currency_providers.dart';
@@ -217,6 +218,16 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// FR-105b: `POST /orders/checkout`/`.../order-initiate` are both
+  /// `(auth, password-changed)` (API.md §0.1/§6/§9) -- the real 403 this
+  /// guards against, routed to Set Password instead of a dead-end snack.
+  /// Returns true if it handled the error (caller should stop there).
+  bool _routeIfMustChangePassword(ApiException e) {
+    if (!e.mustChangePassword) return false;
+    context.push('/set-password');
+    return true;
+  }
+
   /// FR-306: `POST /orders/checkout` (wallet only) then poll
   /// `GET /orders/{id}` until `COMPLETED`/`FAILED` or the schedule runs
   /// out -- anything else, including a timeout, is "still processing",
@@ -239,6 +250,7 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _placingOrder = false);
+      if (_routeIfMustChangePassword(e)) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
     }
@@ -264,6 +276,7 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _placingOrder = false);
+      if (_routeIfMustChangePassword(e)) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.message)));
       return;

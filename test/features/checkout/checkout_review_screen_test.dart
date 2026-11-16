@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/network/api_exception.dart';
@@ -203,12 +204,22 @@ Widget _app({
             previewResult: previewResult,
           )),
       ],
-      child: const MaterialApp(
-        home: CheckoutReviewScreen(
+      child: MaterialApp.router(routerConfig: _testRouter()),
+    );
+
+GoRouter _testRouter() => GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const CheckoutReviewScreen(
           args: CheckoutReviewArgs(product: _product, countryName: 'Japan'),
         ),
       ),
-    );
+      GoRoute(
+        path: '/set-password',
+        builder: (context, state) =>
+            const Scaffold(body: Text('Set password screen')),
+      ),
+    ]);
 
 Future<void> _openSheetAndApply(WidgetTester tester, String code) async {
   await tester.tap(find.byKey(const ValueKey('voucher-row')));
@@ -980,6 +991,84 @@ void main() {
             findsOneWidget);
       });
     }
+  });
+
+  group('FR-105b: a real password-changed 403 routes to Set Password', () {
+    testWidgets(
+        'wallet checkout hitting the real 403 navigates to Set Password '
+        'instead of showing a dead-end snack', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        checkoutResult: const ApiException(
+          statusCode: 403,
+          message:
+              'Please set your own password before buying or moving money.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set password screen'), findsOneWidget);
+      expect(
+          find.text(
+              'Please set your own password before buying or moving money.'),
+          findsNothing);
+    });
+
+    testWidgets(
+        'ShurjoPay order-initiate hitting the real 403 navigates to Set '
+        'Password instead of showing a dead-end snack', (tester) async {
+      await tester.pumpWidget(_app(
+        shurjoPayResult: const ApiException(
+          statusCode: 403,
+          message:
+              'Please set your own password before buying or moving money.',
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set password screen'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a different 403 (e.g. account suspended) is NOT misrouted -- '
+        'still shows the real server message', (tester) async {
+      await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+        checkoutResult:
+            const ApiException(statusCode: 403, message: 'Account suspended'),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue to payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Account suspended'), findsOneWidget);
+      expect(find.text('Set password screen'), findsNothing);
+    });
   });
 
   group(
