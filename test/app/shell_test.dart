@@ -8,9 +8,17 @@ import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
 import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
 import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/presentation/home_screen.dart';
+import 'package:triptel/features/esims/application/my_esims_providers.dart';
+import 'package:triptel/features/esims/data/models/my_esim.dart';
+import 'package:triptel/features/esims/data/my_esims_api.dart';
 import 'package:triptel/features/esims/presentation/my_esims_screen.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
 import 'package:triptel/main.dart';
+
+class _FakeMyEsimsApi implements MyEsimsApi {
+  @override
+  Future<List<MyEsim>> getMyEsims() async => const [];
+}
 
 Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpWidget(
@@ -29,6 +37,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
           ),
         ),
         popularCountriesProvider.overrideWith((ref) async => const []),
+        myEsimsApiProvider.overrideWithValue(_FakeMyEsimsApi()),
       ],
       child: const TriptelApp(),
     ),
