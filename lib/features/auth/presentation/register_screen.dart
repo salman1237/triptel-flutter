@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/deeplink/deep_link_providers.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../application/auth_providers.dart';
-import '../application/auth_state.dart';
+import '../application/post_auth_navigation.dart';
 import '../application/register_validation.dart';
 
 /// FR-101: email/username/password (+ optional phone/full name/referral
@@ -73,7 +72,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 : _referralController.text.trim(),
           );
       if (mounted) {
-        context.go(postAuthRoute(ref.read(authNotifierProvider).value!));
+        await navigateAfterAuth(
+            context, ref, ref.read(authNotifierProvider).value!);
       }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);

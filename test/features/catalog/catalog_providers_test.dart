@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
+import 'package:triptel/features/catalog/data/models/product.dart';
 
 class _FakeCatalogApi implements CatalogApi {
   _FakeCatalogApi({this.error});
@@ -11,6 +13,7 @@ class _FakeCatalogApi implements CatalogApi {
   String? lastSearch;
   bool? lastPopularOnly;
   String? lastSlug;
+  String? lastProductId;
 
   @override
   Future<List<Country>> getCountries({
@@ -37,6 +40,23 @@ class _FakeCatalogApi implements CatalogApi {
       country: Country(
           id: 107, iso2: 'JP', nameEn: 'Japan', isActive: true, slug: 'japan'),
       products: [],
+    );
+  }
+
+  @override
+  Future<Product> getProduct(String productId) async {
+    lastProductId = productId;
+    if (error != null) throw error!;
+    return Product(
+      id: productId,
+      countryId: 107,
+      titleEn: 'Japan 1GB 7Days',
+      dataAmountGb: 1,
+      validityDays: 7,
+      retailPrice: const Money(5),
+      isUnlimited: false,
+      isActive: true,
+      isFeatured: false,
     );
   }
 }
@@ -82,5 +102,15 @@ void main() {
 
     expect(fake.lastSlug, 'japan');
     expect(destination.country.nameEn, 'Japan');
+  });
+
+  test('CatalogApi.getProduct passes the product id through', () async {
+    final fake = _FakeCatalogApi();
+
+    final product =
+        await fake.getProduct('f251a1c2-dcf1-4bf9-84c1-9d5f4801555f');
+
+    expect(fake.lastProductId, 'f251a1c2-dcf1-4bf9-84c1-9d5f4801555f');
+    expect(product.id, 'f251a1c2-dcf1-4bf9-84c1-9d5f4801555f');
   });
 }

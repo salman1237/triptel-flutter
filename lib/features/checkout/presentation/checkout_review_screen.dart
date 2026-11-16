@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/checkout/pending_purchase.dart';
+import '../../../core/checkout/pending_purchase_provider.dart';
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_pill_switcher.dart';
 import '../../../core/money/currency_providers.dart';
@@ -30,10 +32,19 @@ import 'purchase_success_screen.dart';
 /// isn't URL-encodable (Architecture.md's routing table has no query params
 /// for this route).
 class CheckoutReviewArgs {
-  const CheckoutReviewArgs({required this.product, required this.countryName});
+  const CheckoutReviewArgs({
+    required this.product,
+    required this.countryName,
+    this.initialDiscountCode,
+  });
 
   final Product product;
   final String countryName;
+
+  /// FR-106: a discount code persisted alongside a resumed guest purchase --
+  /// re-checked on open (best-effort; silently dropped if it's since
+  /// expired/invalid) rather than applied blindly.
+  final String? initialDiscountCode;
 }
 
 /// FR-302/FR-303/FR-304: checkout review screen (Design_System.md §57).
@@ -60,6 +71,26 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
   DiscountCheckResult? _discount;
   bool _confirmingDiscount = false;
   bool _placingOrder = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final code = widget.args.initialDiscountCode;
+    if (code != null) _restoreDiscountCode(code);
+  }
+
+  /// FR-106: best-effort restore of a discount code persisted before a
+  /// guest was sent to login -- a silent no-op if it's since become
+  /// invalid/expired rather than blocking the resumed checkout on it.
+  Future<void> _restoreDiscountCode(String code) async {
+    try {
+      final result = await ref.read(discountsApiProvider).check(code);
+      if (!mounted) return;
+      if (result.valid) setState(() => _discount = result);
+    } on ApiException {
+      // Best-effort only.
+    }
+  }
 
   CheckoutBreakdown get _breakdown {
     final discount = _discount;
@@ -95,28 +126,41 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
     }
   }
 
+  /// FR-106: both real checkout endpoints (`POST /orders/checkout`,
+  /// `POST /payments/shurjopay/order-initiate`) are `(auth)` -- a guest
+  /// would only ever hit a real 401 if we let them try. Persist
+  /// `{productId, discountCode, countryName}` and send them to login
+  /// *before* any payment attempt, instead of after a failed one.
+  /// Consumed once by [navigateAfterAuth] on the other side.
+  Future<void> _sendGuestToLogin() async {
+    await ref.read(pendingPurchaseProvider.notifier).save(PendingPurchase(
+          productId: widget.args.product.id,
+          countryName: widget.args.countryName,
+          discountCode: _discount?.code,
+        ));
+    if (!mounted) return;
+    context.push('/login');
+  }
+
   /// FR-304: before charging (the one real "about to pay" trigger that
   /// exists today, since FR-306/307's real purchase flows don't),
   /// authoritatively re-confirm an applied discount via
   /// `POST /discounts/preview` -- codes can expire or become invalid
   /// between FR-303's guest estimate and now. Invalid -> show the reason
-  /// and keep the user on review (never proceeds). Skipped for a guest:
-  /// the endpoint requires auth, and there's no sign-in-and-resume flow
-  /// yet (FR-106, deferred). Resolves auth via [_resolveAuthState] rather
-  /// than reading `ref.read(authNotifierProvider).valueOrNull` directly --
-  /// the latter returned null/AsyncLoading on first access here since
-  /// nothing else in this screen watches the provider, so its
-  /// AsyncNotifier.build() hadn't resolved yet. Once the discount (if any)
-  /// is confirmed, FR-305's payment method choice runs next.
+  /// and keep the user on review (never proceeds). A guest is sent to
+  /// login first (FR-106) rather than attempting anything auth-gated.
+  /// Once the discount (if any) is confirmed, FR-305's payment method
+  /// choice runs next.
   Future<void> _onContinueToPayment() async {
-    final discount = _discount;
-    if (discount == null || !discount.valid || discount.code == null) {
-      await _choosePaymentMethod();
-      return;
-    }
     final authState = await _resolveAuthState();
     if (!mounted) return;
     if (authState is! AuthAuthenticated) {
+      await _sendGuestToLogin();
+      return;
+    }
+
+    final discount = _discount;
+    if (discount == null || !discount.valid || discount.code == null) {
       await _choosePaymentMethod();
       return;
     }
@@ -150,9 +194,10 @@ class _CheckoutReviewScreenState extends ConsumerState<CheckoutReviewScreen> {
 
   /// FR-305: Wallet is offered as a payment method only when
   /// DEFAULT+REWARD fully covers the total; otherwise skip the sheet and
-  /// go straight to FR-307's real ShurjoPay checkout. A guest has no
-  /// wallet, so always goes straight to ShurjoPay too. Selecting Wallet
-  /// runs FR-306's real checkout instead.
+  /// go straight to FR-307's real ShurjoPay checkout. Only ever reached
+  /// once already authenticated -- [_onContinueToPayment] sends a guest to
+  /// login first (FR-106). Selecting Wallet runs FR-306's real checkout
+  /// instead.
   Future<void> _choosePaymentMethod() async {
     final authState = await _resolveAuthState();
     if (!mounted) return;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/network/api_exception.dart';
@@ -178,6 +179,7 @@ Widget _app({
     deviceLabel: 'Test device',
     reason: '',
   ),
+  String? initialDiscountCode,
 }) =>
     ProviderScope(
       overrides: [
@@ -204,20 +206,28 @@ Widget _app({
             previewResult: previewResult,
           )),
       ],
-      child: MaterialApp.router(routerConfig: _testRouter()),
+      child: MaterialApp.router(routerConfig: _testRouter(initialDiscountCode)),
     );
 
-GoRouter _testRouter() => GoRouter(routes: [
+GoRouter _testRouter([String? initialDiscountCode]) => GoRouter(routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const CheckoutReviewScreen(
-          args: CheckoutReviewArgs(product: _product, countryName: 'Japan'),
+        builder: (context, state) => CheckoutReviewScreen(
+          args: CheckoutReviewArgs(
+            product: _product,
+            countryName: 'Japan',
+            initialDiscountCode: initialDiscountCode,
+          ),
         ),
       ),
       GoRoute(
         path: '/set-password',
         builder: (context, state) =>
             const Scaffold(body: Text('Set password screen')),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const Scaffold(body: Text('Login screen')),
       ),
     ]);
 
@@ -231,6 +241,8 @@ Future<void> _openSheetAndApply(WidgetTester tester, String code) async {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets(
       'shows the plan title, facts, and subtotal/total with no '
       'discount yet', (tester) async {
@@ -344,18 +356,54 @@ void main() {
   });
 
   testWidgets(
-      'tapping "Continue to payment" (guest, no wallet) runs the real '
-      'ShurjoPay checkout and shows the real order result', (tester) async {
+      'FR-106: a resumed purchase\'s persisted discount code is '
+      're-checked on open and applied to the breakdown', (tester) async {
+    await tester.pumpWidget(_app(
+      initialDiscountCode: 'WELCOME',
+      discountResult: const DiscountCheckResult(
+        valid: true,
+        code: 'WELCOME',
+        discountType: 'PERCENT',
+        value: '10',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('discount-row')), findsOneWidget);
+  });
+
+  testWidgets(
+      "FR-106: a resumed purchase's persisted discount code is silently "
+      'dropped when it has since become invalid', (tester) async {
+    await tester.pumpWidget(_app(
+      initialDiscountCode: 'EXPIRED',
+      discountResult:
+          const DiscountCheckResult(valid: false, reason: 'Code expired'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('discount-row')), findsNothing);
+    expect(find.text('Code expired'), findsNothing);
+  });
+
+  testWidgets(
+      'FR-106: tapping "Continue to payment" as a guest persists the '
+      'pending purchase and sends them to login instead of attempting the '
+      'real (auth-gated) checkout', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Continue to payment'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
-    expect(find.textContaining('eSIM is ready'), findsOneWidget);
+    expect(find.text('Login screen'), findsOneWidget);
+    expect(find.textContaining('ORD-TEST-1'), findsNothing);
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('checkout.pendingPurchase');
+    expect(raw, isNotNull);
+    expect(raw, contains('"productId":"${_product.id}"'));
+    expect(raw, contains('"countryName":"Japan"'));
   });
 
   group('FR-304: authoritative re-check before charging', () {
@@ -377,8 +425,9 @@ void main() {
     });
 
     testWidgets(
-        'a guest with a discount applied skips the authoritative check '
-        '(no auth, no sign-in-and-resume flow yet) and still proceeds',
+        'FR-106: a guest with a discount applied is sent to login with the '
+        'discount code persisted alongside the pending purchase, instead of '
+        'skipping straight to a real (auth-gated) checkout attempt',
         (tester) async {
       await tester.pumpWidget(_app(
         discountResult: const DiscountCheckResult(
@@ -392,11 +441,14 @@ void main() {
       await _openSheetAndApply(tester, 'WELCOME');
 
       await tester.tap(find.text('Continue to payment'));
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(find.text('Login screen'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsNothing);
+
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('checkout.pendingPurchase');
+      expect(raw, contains('"discountCode":"WELCOME"'));
     });
 
     testWidgets(
@@ -490,18 +542,17 @@ void main() {
 
   group('FR-305: payment method choice', () {
     testWidgets(
-        'a guest always skips straight to ShurjoPay (no wallet, no sheet) '
-        'and runs the real FR-307 checkout', (tester) async {
+        'FR-106: a guest never sees the payment method sheet -- sent to '
+        'login before any payment method is chosen', (tester) async {
       await tester.pumpWidget(_app());
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Continue to payment'));
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('Choose payment method'), findsNothing);
-      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(find.text('Login screen'), findsOneWidget);
+      expect(find.textContaining('ORD-TEST-1'), findsNothing);
     });
 
     testWidgets(
@@ -1029,6 +1080,7 @@ void main() {
         'ShurjoPay order-initiate hitting the real 403 navigates to Set '
         'Password instead of showing a dead-end snack', (tester) async {
       await tester.pumpWidget(_app(
+        authState: const AuthAuthenticated(_signedInToken),
         shurjoPayResult: const ApiException(
           statusCode: 403,
           message:
@@ -1077,8 +1129,8 @@ void main() {
     testWidgets(
         'a transient error resolving the signed-in session (e.g. a '
         'network hiccup refreshing GET /auth/me) is treated like a guest '
-        '-- still proceeds to a real checkout attempt instead of doing '
-        'nothing', (tester) async {
+        '-- sent to login (FR-106) instead of silently doing nothing',
+        (tester) async {
       final ordersApi = _FakeOrdersApi();
       await tester.pumpWidget(ProviderScope(
         overrides: [
@@ -1090,23 +1142,15 @@ void main() {
           shurjoPayLauncherProvider.overrideWithValue((context, url) async =>
               const ShurjoPayCallback(orderId: 'order-1', failed: false)),
         ],
-        child: const MaterialApp(
-          home: CheckoutReviewScreen(
-            args: CheckoutReviewArgs(product: _product, countryName: 'Japan'),
-          ),
-        ),
+        child: MaterialApp.router(routerConfig: _testRouter()),
       ));
       await tester.pump();
 
       await tester.tap(find.text('Continue to payment'));
-      await tester.pump();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      expect(ordersApi.initiateShurjoPayCalls, 1);
-      expect(find.textContaining('ORD-TEST-1'), findsOneWidget);
+      expect(ordersApi.initiateShurjoPayCalls, 0);
+      expect(find.text('Login screen'), findsOneWidget);
     });
   });
 }

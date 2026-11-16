@@ -1,15 +1,43 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/features/auth/application/auth_providers.dart';
 import 'package:triptel/features/auth/data/auth_api.dart';
 import 'package:triptel/features/auth/data/models/auth_token.dart';
 import 'package:triptel/features/auth/data/models/current_user.dart';
 import 'package:triptel/features/auth/presentation/register_screen.dart';
+import 'package:triptel/features/catalog/application/catalog_providers.dart';
+import 'package:triptel/features/catalog/data/catalog_api.dart';
+import 'package:triptel/features/catalog/data/models/country.dart';
+import 'package:triptel/features/catalog/data/models/destination.dart';
+import 'package:triptel/features/catalog/data/models/product.dart';
+import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'secure_storage_test_mock.dart';
+
+class _FakeCatalogApi implements CatalogApi {
+  _FakeCatalogApi(this.product);
+  final Product product;
+
+  @override
+  Future<List<Country>> getCountries(
+          {String? search, bool popularOnly = false}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<String>> getCoverageCountries(String iso2) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Destination> getDestination(String slug) => throw UnimplementedError();
+
+  @override
+  Future<Product> getProduct(String productId) async => product;
+}
 
 class _FakeAuthApi implements AuthApi {
   _FakeAuthApi({this.error});
@@ -57,7 +85,7 @@ class _FakeAuthApi implements AuthApi {
   Future<CurrentUser> fetchCurrentUser() => throw UnimplementedError();
 }
 
-Widget _testApp({AuthApi? authApi}) {
+Widget _testApp({AuthApi? authApi, CatalogApi? catalogApi}) {
   final router = GoRouter(
     initialLocation: '/register',
     routes: [
@@ -67,12 +95,20 @@ Widget _testApp({AuthApi? authApi}) {
       GoRoute(
           path: '/home',
           builder: (context, state) => const Text('home-placeholder')),
+      GoRoute(
+          path: '/checkout/review',
+          builder: (context, state) {
+            final args = state.extra as CheckoutReviewArgs;
+            return Text('checkout-review:${args.product.id}:'
+                '${args.countryName}:${args.initialDiscountCode}');
+          }),
     ],
   );
 
   return ProviderScope(
     overrides: [
-      if (authApi != null) authApiProvider.overrideWithValue(authApi)
+      if (authApi != null) authApiProvider.overrideWithValue(authApi),
+      if (catalogApi != null) catalogApiProvider.overrideWithValue(catalogApi),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -160,6 +196,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ABC123'), findsOneWidget);
+  });
+
+  testWidgets(
+      'FR-106: a pending purchase persisted before register resumes '
+      'checkout instead of landing on Home', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'checkout.pendingPurchase': jsonEncode({
+        'productId': 'prod-2',
+        'countryName': 'Bangladesh',
+      }),
+    });
+    final catalogApi = _FakeCatalogApi(Product(
+      id: 'prod-2',
+      countryId: 1,
+      titleEn: 'Bangladesh 1GB 7Days',
+      dataAmountGb: 1,
+      validityDays: 7,
+      retailPrice: const Money(500),
+      isUnlimited: false,
+      isActive: true,
+      isFeatured: false,
+    ));
+    await tester
+        .pumpWidget(_testApp(authApi: _FakeAuthApi(), catalogApi: catalogApi));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('register-email')), 'a@b.co');
+    await tester.enterText(
+        find.byKey(const ValueKey('register-username')), 'alice');
+    await tester.enterText(
+        find.byKey(const ValueKey('register-password')), 'min8chars');
+
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('checkout-review:prod-2:Bangladesh:null'), findsOneWidget);
+    expect(find.text('home-placeholder'), findsNothing);
   });
 
   testWidgets('does not overwrite a referral code the user already typed',

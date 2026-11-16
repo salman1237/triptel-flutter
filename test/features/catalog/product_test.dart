@@ -26,6 +26,21 @@ void main() {
     expect(fixed.retailPrice.eurCents, 210);
   });
 
+  test(
+      'Product.fromJson parses the real beta GET /catalog/products/{id} '
+      'fixture (FR-106: resuming a pending purchase re-fetches by id)', () {
+    final raw = File('test/fixtures/catalog_product.json').readAsStringSync();
+    final json = jsonDecode(raw) as Map<String, dynamic>;
+
+    final product = Product.fromJson(json);
+
+    expect(product.id, 'f251a1c2-dcf1-4bf9-84c1-9d5f4801555f');
+    expect(product.titleEn, 'AUKUS(3 countries) 1GB 30days');
+    expect(product.dataAmountGb, 1.0);
+    expect(product.validityDays, 30);
+    expect(product.retailPrice.eurCents, 720);
+  });
+
   test('missing optional fields fall back safely', () {
     final product = Product.fromJson(const {
       'id': 'abc',

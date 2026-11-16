@@ -6,6 +6,7 @@ import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
+import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/catalog/presentation/explore_sheet.dart';
 
 const _japan = Country(
@@ -56,6 +57,9 @@ class _FakeCatalogApi implements CatalogApi {
 
   @override
   Future<Destination> getDestination(String slug) => throw UnimplementedError();
+
+  @override
+  Future<Product> getProduct(String productId) => throw UnimplementedError();
 }
 
 Widget _app({List<Country>? all}) {

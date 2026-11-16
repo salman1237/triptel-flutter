@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import 'models/country.dart';
 import 'models/destination.dart';
+import 'models/product.dart';
 
 abstract class CatalogApi {
   Future<List<Country>> getCountries(
@@ -14,6 +15,11 @@ abstract class CatalogApi {
   /// FR-204: a destination's products for the plans screen. `slug` is a
   /// name slug ("japan") or ISO2 ("jp") -- API.md §3.
   Future<Destination> getDestination(String slug);
+
+  /// FR-106: re-fetch a single product by id to resume a pending purchase
+  /// after a guest signs in -- the in-memory [Product] from before login
+  /// is gone by then, and a pending purchase persists only the id.
+  Future<Product> getProduct(String productId);
 }
 
 class CatalogApiImpl implements CatalogApi {
@@ -50,5 +56,11 @@ class CatalogApiImpl implements CatalogApi {
   Future<Destination> getDestination(String slug) async {
     final response = await _client.get('/catalog/destinations/$slug');
     return Destination.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Product> getProduct(String productId) async {
+    final response = await _client.get('/catalog/products/$productId');
+    return Product.fromJson(response as Map<String, dynamic>);
   }
 }
