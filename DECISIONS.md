@@ -1,6 +1,49 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-17 — FR-203 regional packages were unbuyable; FR-408's verification string had the same integration_test gap predicted for it
+Two judgment calls from the same session stretch, both worth recording.
+
+**Regional packages (FR-203) had no path to a purchase screen.** The
+user asked "why can't I see regional packages in buy data?" Live
+investigation found the user's phrasing undersold the problem: regional
+packages were *visible* (Home → search/"Buy data" → the sheet's Regional
+tab lists all 42 real ones from the beta backend), but every one of them
+was a dead end -- a regional row's only tap target opened `CoverageSheet`
+(a read-only "which countries does this cover" list with no CTA), never
+`FR-204`'s real plans screen. Confirmed via a live curl that the backend
+has no such restriction (`GET /catalog/destinations/aukus-3-countries`
+returns real, purchasable products exactly like a normal country slug).
+**Why this happened:** FR-203's own spec text ("Globe icon rows, name,
+'N countries' *link* → coverage list sheet") describes the coverage link
+as one piece of the row, but the original implementation wired the
+*entire* row's tap to that link, leaving nothing to open plans with.
+**Fix:** the row's main tap now navigates to `/explore/{slug}` like any
+country row; the "N countries" subtitle became its own nested tap
+target (rendered in primary colour to signal it's separately tappable)
+for the coverage sheet. Two tests updated/added, each proven non-vacuous
+by swapping which callback the subtitle used and getting a real
+failure. On-device: AUKUS(3 countries) now opens a real plans screen
+with a real purchasable package. Commit `05b014f`.
+
+**FR-408 hit the exact gap the 2026-11-14 entry below predicted for it.**
+The reviewer's first pass on FR-408 (top-up purchase) correctly FAILed
+it: `feature_list.json`'s pre-populated `verification` string still
+required `integration_test/fr_408_test.dart` (doesn't exist) calling the
+real money-moving top-up endpoint on every run. This is precisely what
+the FR-306 entry below already named FR-408/FR-603 as going to hit.
+**Fix:** dropped the integration_test clause (same treatment as
+FR-306), kept `flutter test test/features/esims`. **On the "ask first"
+rule below:** rather than attempting to complete a real payment myself
+for stronger evidence (which the auto-mode classifier also blocked when
+I tried to even tap further into the real payment-method sheet), I
+asked the user directly how far to go; they said they'd already tested
+the real flow themselves and confirmed it works -- stronger evidence
+than anything I could have captured, and the basis for marking FR-408
+passing. **Revisit if:** FR-603 (wallet top-up via ShurjoPay) is
+reached -- check its `verification` string for the identical gap before
+trusting it as given, per the 2026-11-14 entry's own note.
+
 ## 2026-11-16 — "Not installed" was a client bug; "still says not installed" after the fix is a backend telemetry gap
 The user reported two related but distinct problems in quick succession.
 **First** ("why my installed sims also showing not installed tab?"): confirmed

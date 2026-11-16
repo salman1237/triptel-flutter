@@ -88,13 +88,27 @@ Session log. Read first at session start, update last at session end.
   terminal status), unlike FR-404/405's gating. **FR-407** (eSIM detail
   — top-up options) also now passing — gives `installAndTopupDisabled()`
   its first real caller; section hidden when empty or lifecycle-disabled.
-  Purchasing a package is FR-408, not built yet — tapping shows a
-  "coming soon" note.
+  **FR-408** (top-up purchase) also now passing — same wallet/ShurjoPay
+  chooser as FR-305/306/307, reused not reimplemented; a real
+  password-changed 403 on the ShurjoPay call routes to Set Password
+  (same FR-105b pattern, second real gated endpoint in the app). The
+  ShurjoPay return for top-up goes to the real **web**, not a custom
+  scheme, so it needed its own callback-matching + WebView screen
+  (`topup_callback.dart`/`TopupWebViewScreen`), separate from
+  checkout's existing one.
 - **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
   now both **passing** (see Done below). FR-201b stays *partially*
   blocked (needs FR-801 referrals, still not_started). FR-202b stays
   blocked — genuinely backend-side (no featured/price field on the
   country-list endpoint).
+- **Real bug found and fixed mid-session (FR-203):** the user asked "why
+  can't I see regional packages in buy data?" -- they were visible (Home
+  →search/"Buy data" →Regional tab, all 42 real regional packages list
+  fine), but completely unbuyable: a regional row's only tap target
+  opened the coverage sheet, never the plans screen, even though the
+  backend fully supports buying them (confirmed live via curl). Fixed:
+  the row now navigates to plans like a normal country; "N countries"
+  is its own separate tap target for coverage. See DECISIONS.md.
 - **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
   `is_installed` telemetry doesn't reliably reflect real install state for
   current eSIM Access profiles — confirmed live with real evidence (see
@@ -121,22 +135,78 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b, FR-106, and FR-407 all done (see Done below).
-  Continuing forward in strict array order: next is **FR-408** (top-up
-  purchase — same wallet/ShurjoPay chooser as FR-305, `POST
-  /esims/{id}/topup` or `shurjopay/esim-topup-initiate`, reload status
-  after; ⚠️ the ShurjoPay return goes to the **web**, not the app, per
-  API.md section 7). No valid discount code exists on beta (confirmed
-  via curl) — keep disclosing that limitation for any future
+- **Next step:** FR-105b, FR-106, FR-407, and FR-408 all done (see Done
+  below). Continuing forward in strict array order: next is **FR-409**
+  (share tracking link via `share_url` + a printable/shareable receipt
+  as PDF/image). No valid discount code exists on beta (confirmed via
+  curl) — keep disclosing that limitation for any future
   discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
   install-gating dependency resolve.
+- **feature_list.json gotcha found this session:** FR-408's (and likely
+  still FR-603's) pre-populated `verification` string required a
+  not-yet-written `integration_test/fr_*_test.dart` hitting a real
+  money-moving endpoint on every run -- the exact problem already
+  documented below (2026-11-14 entry) for FR-306, with FR-408/FR-603
+  explicitly flagged as going to hit it too. Fixed FR-408's the same
+  way: dropped the integration_test clause, kept the widget tests. If
+  FR-603 is reached, check its verification string for the same issue
+  before trusting it as given.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-408, eSIM detail -- top-up
+  purchase):
+  - Same wallet-vs-ShurjoPay chooser as first purchase (FR-305/306/307)
+    -- reused `PaymentMethodSheet`/`walletCoversTotal`/`spendableBalance`
+    directly, no reimplementation. `EsimStatusApi.topupWithWallet()`
+    (`POST /esims/{id}/topup`) and `.initiateTopupShurjoPay()` (`POST
+    /payments/shurjopay/esim-topup-initiate`, `esim_id` as a query
+    param -- `ApiClient.post()` gained an optional `query` param for
+    this, additive).
+  - New `EsimTopup`/`TopupShurjoPayCheckout` models, built from API.md's
+    own fully-documented shapes rather than a live fixture -- an
+    exploratory curl against the real payment-initiating endpoint was
+    correctly blocked by Claude Code's own auto-mode financial-action
+    classifier, same precedent as FR-304's discount-preview fixture.
+  - The ShurjoPay top-up return redirects to the real **web**
+    (`.../my-esims/{id}?topup=success|failed`), not a custom scheme
+    like checkout's flow -- needed its own `topup_callback.dart`
+    (path+query match, no hardcoded host) and a separate
+    `TopupWebViewScreen`/`topupLauncherProvider`, deliberately not
+    sharing code with checkout's existing, already-reviewed WebView
+    screen (flagged by the reviewer as a reasonable, non-blocking
+    duplication rather than a defect).
+  - A real password-changed 403 on the ShurjoPay call routes to
+    `/set-password` via the same `ApiException.mustChangePassword`
+    getter FR-105b introduced -- the second real gated endpoint in the
+    app to use it.
+  - 14 new tests; full suite (442 tests) green, `flutter analyze`
+    clean, `bash harness.sh verify` green. Non-vacuous: proved twice
+    (wallet-covers gating, `mustChangePassword` routing), each via a
+    temporary disabled guard producing real failures, then restored.
+  - **Reviewer caught a real gap on the first pass:** `feature_list.json`'s
+    pre-populated `verification` string for FR-408 required a
+    not-yet-written `integration_test/fr_408_test.dart` hitting the
+    real money-moving top-up endpoint on every run -- the exact problem
+    the 2026-11-14 DECISIONS.md entry already predicted and prescribed
+    a fix for (drop the auto-repeating real-money integration test,
+    keep the widget tests, rely on one on-device capture). Fixed
+    accordingly; see the "feature_list.json gotcha" note above.
+  - On-device evidence: reached the real "Choose payment method" sheet
+    live (real `GET /wallets/my-wallets` call, real balance -- redacted
+    via solid overpaint before saving) and backed out without
+    completing either real payment path. The user then independently
+    ran the full real purchase flow themselves on-device and confirmed
+    it works end-to-end -- the basis for marking this passing, per
+    DECISIONS.md's "ask first, don't assume" rule for anything beyond
+    FR-306's original approval scope.
+  - Reviewer: PASS on all code/API/safety checks on the second pass
+    (after the verification-string fix).
+  - Commits: `382247f` (feature code), `c6c2bc3` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-407, eSIM detail -- top-up
   options):
   - New `TopupOption` model (`GET /esims/{id}/topup-options`, API.md
