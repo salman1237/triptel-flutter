@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/install/url_launcher_provider.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/network/api_exception.dart';
@@ -9,11 +10,17 @@ import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
 import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/esims/application/esim_status_providers.dart';
+import 'package:triptel/features/esims/application/topup_launcher.dart';
 import 'package:triptel/features/esims/data/esim_status_api.dart';
 import 'package:triptel/features/esims/data/models/esim_status.dart';
+import 'package:triptel/features/esims/data/models/esim_topup.dart';
 import 'package:triptel/features/esims/data/models/topup_option.dart';
+import 'package:triptel/features/esims/data/models/topup_shurjopay_checkout.dart';
 import 'package:triptel/features/esims/presentation/esim_detail_screen.dart';
 import 'package:triptel/core/money/money.dart';
+import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/wallet.dart';
+import 'package:triptel/features/wallet/data/wallets_api.dart';
 
 const _lpa = r'LPA:1$smdp.example.invalid$ACTIVATION-CODE';
 
@@ -83,18 +90,40 @@ class _FixedCurrency extends CurrencyPreferenceNotifier {
   Future<String> build() async => 'EUR';
 }
 
+class _FakeWalletsApi implements WalletsApi {
+  _FakeWalletsApi(this._wallets);
+  final List<Wallet> _wallets;
+
+  @override
+  Future<List<Wallet>> getMyWallets() async => _wallets;
+}
+
+class _ThrowingWalletsApi implements WalletsApi {
+  @override
+  Future<List<Wallet>> getMyWallets() async =>
+      throw const ApiException(statusCode: 500, message: 'Network error');
+}
+
 class _FakeEsimStatusApi implements EsimStatusApi {
   _FakeEsimStatusApi(this._initial,
       {Object? refreshResult,
       List<TopupOption> topupOptions = const [],
-      this.topupError})
+      this.topupError,
+      Object? walletTopupResult,
+      Object? shurjoPayTopupResult})
       : _refreshResult = refreshResult,
-        _topupOptions = topupOptions;
+        _topupOptions = topupOptions,
+        _walletTopupResult = walletTopupResult,
+        _shurjoPayTopupResult = shurjoPayTopupResult;
   final EsimStatus _initial;
   final Object? _refreshResult; // EsimStatus or Exception.
   final List<TopupOption> _topupOptions;
   final Exception? topupError;
+  final Object? _walletTopupResult; // EsimTopup or Exception.
+  final Object? _shurjoPayTopupResult; // TopupShurjoPayCheckout or Exception.
   var refreshCalls = 0;
+  String? lastWalletTopupPackageCode;
+  String? lastShurjoPayTopupPackageCode;
 
   @override
   Future<EsimStatus> getStatus(String esimId) async => _initial;
@@ -113,6 +142,23 @@ class _FakeEsimStatusApi implements EsimStatusApi {
     if (error != null) throw error;
     return _topupOptions;
   }
+
+  @override
+  Future<EsimTopup> topupWithWallet(String esimId, String packageCode) async {
+    lastWalletTopupPackageCode = packageCode;
+    final result = _walletTopupResult;
+    if (result is Exception) throw result;
+    return result as EsimTopup;
+  }
+
+  @override
+  Future<TopupShurjoPayCheckout> initiateTopupShurjoPay(
+      String esimId, String packageCode) async {
+    lastShurjoPayTopupPackageCode = packageCode;
+    final result = _shurjoPayTopupResult;
+    if (result is Exception) throw result;
+    return result as TopupShurjoPayCheckout;
+  }
 }
 
 Widget _app(
@@ -121,6 +167,8 @@ Widget _app(
       kind: EsimVerdictKind.supported, deviceLabel: 'Test', reason: ''),
   List<String>? launchedUrls,
   bool launchResult = true,
+  List<Wallet> wallets = const [],
+  bool? topupLauncherResult = false,
 }) =>
     ProviderScope(
       overrides: [
@@ -132,9 +180,24 @@ Widget _app(
           launchedUrls?.add(url.toString());
           return launchResult;
         }),
+        walletsApiProvider.overrideWithValue(_FakeWalletsApi(wallets)),
+        topupLauncherProvider.overrideWithValue(
+            (context, checkoutUrl, esimId) async => topupLauncherResult),
       ],
-      child: const MaterialApp(home: EsimDetailScreen(esimId: 'esim-1')),
+      child: MaterialApp.router(routerConfig: _testRouter()),
     );
+
+GoRouter _testRouter() => GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const EsimDetailScreen(esimId: 'esim-1'),
+      ),
+      GoRoute(
+        path: '/set-password',
+        builder: (context, state) =>
+            const Scaffold(body: Text('Set password screen')),
+      ),
+    ]);
 
 void main() {
   testWidgets('shows plan title, status label, usage ring, and validity note',
@@ -525,31 +588,6 @@ void main() {
       expect(find.text('€5.10'), findsOneWidget);
     });
 
-    testWidgets('tapping an option shows the coming-soon note, not a dead end',
-        (tester) async {
-      await tester.pumpWidget(_app(_FakeEsimStatusApi(
-        _status(),
-        topupOptions: const [
-          TopupOption(
-            packageCode: 'TOPUP_JC063',
-            title: 'Japan 1GB 7Days',
-            dataAmountGb: 1.0,
-            validityDays: 7,
-            retailPrice: Money(210),
-          ),
-        ],
-      )));
-      await tester.pumpAndSettle();
-
-      final optionFinder =
-          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
-      await tester.ensureVisible(optionFinder);
-      await tester.tap(optionFinder);
-      await tester.pump();
-
-      expect(find.text('Top-up purchase is coming soon.'), findsOneWidget);
-    });
-
     testWidgets(
         'a non-empty list is hidden under a terminal lifecycle status '
         '(Rules.md: lifecycle disables install AND top-up)', (tester) async {
@@ -585,6 +623,258 @@ void main() {
       expect(find.text('Japan 100MB 7Days'), findsOneWidget);
     });
   });
+
+  group('FR-408: top-up purchase', () {
+    testWidgets(
+        'wallet covers the price -- shows the sheet, selecting '
+        'Wallet runs a real POST /topup and refreshes status', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        walletTopupResult: EsimTopup(
+          id: 'topup-1',
+          esimProfileId: 'esim-1',
+          packageCode: 'TOPUP_JC063',
+          title: 'Japan 1GB 7Days',
+          dataAmountGb: 1.0,
+          validityDays: 7,
+          retailPrice: const Money(210),
+          status: 'COMPLETED',
+          createdAt: DateTime.utc(2026, 11, 17),
+        ),
+      );
+      await tester.pumpWidget(_app(
+        fakeApi,
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsOneWidget);
+      await tester.tap(find.text('Wallet'));
+      await tester.pumpAndSettle();
+
+      expect(fakeApi.lastWalletTopupPackageCode, 'TOPUP_JC063');
+      expect(find.text('Top-up successful.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a FAILED wallet top-up shows the refund message, never '
+        'crashes', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        walletTopupResult: EsimTopup(
+          id: 'topup-1',
+          esimProfileId: 'esim-1',
+          packageCode: 'TOPUP_JC063',
+          title: 'Japan 1GB 7Days',
+          dataAmountGb: 1.0,
+          validityDays: 7,
+          retailPrice: const Money(210),
+          status: 'FAILED',
+          createdAt: DateTime.utc(2026, 11, 17),
+        ),
+      );
+      await tester.pumpWidget(_app(
+        fakeApi,
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(1000), isFrozen: false),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Wallet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top-up failed -- refunded to your wallet.'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'wallet does not cover the price -- skips straight to '
+        'ShurjoPay, no sheet', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        shurjoPayTopupResult: const TopupShurjoPayCheckout(
+          topupId: 'topup-1',
+          checkoutUrl: 'https://shurjopay.example.invalid/checkout',
+        ),
+      );
+      await tester.pumpWidget(_app(
+        fakeApi,
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(50), isFrozen: false),
+        ],
+        topupLauncherResult: false,
+      ));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Choose payment method'), findsNothing);
+      expect(fakeApi.lastShurjoPayTopupPackageCode, 'TOPUP_JC063');
+      expect(find.text('Top-up successful.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'backing out of the ShurjoPay WebView shows no message '
+        'and does not refresh status', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        shurjoPayTopupResult: const TopupShurjoPayCheckout(
+          topupId: 'topup-1',
+          checkoutUrl: 'https://shurjopay.example.invalid/checkout',
+        ),
+      );
+      await tester.pumpWidget(_app(
+        fakeApi,
+        wallets: const [
+          Wallet(walletType: 'DEFAULT', balance: Money(50), isFrozen: false),
+        ],
+        topupLauncherResult: null,
+      ));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top-up successful.'), findsNothing);
+      expect(find.text('Top-up failed.'), findsNothing);
+    });
+
+    testWidgets(
+        'a real password-changed 403 on ShurjoPay top-up-initiate '
+        'routes to Set Password instead of a dead-end snack', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        shurjoPayTopupResult: const ApiException(
+          statusCode: 403,
+          message:
+              'Please set your own password before buying or moving money.',
+        ),
+      );
+      await tester.pumpWidget(_app(fakeApi));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set password screen'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a wallet-fetch error treats it the same as no wallet -- '
+        'skips straight to ShurjoPay, never crashes', (tester) async {
+      final fakeApi = _FakeEsimStatusApi(
+        _status(),
+        topupOptions: const [
+          TopupOption(
+            packageCode: 'TOPUP_JC063',
+            title: 'Japan 1GB 7Days',
+            dataAmountGb: 1.0,
+            validityDays: 7,
+            retailPrice: Money(210),
+          ),
+        ],
+        shurjoPayTopupResult: const TopupShurjoPayCheckout(
+          topupId: 'topup-1',
+          checkoutUrl: 'https://shurjopay.example.invalid/checkout',
+        ),
+      );
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          esimStatusApiProvider.overrideWithValue(fakeApi),
+          esimVerdictProvider.overrideWith((ref) async => const EsimVerdict(
+              kind: EsimVerdictKind.supported,
+              deviceLabel: 'Test',
+              reason: '')),
+          selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+          currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+          urlLauncherProvider.overrideWithValue((url) async => true),
+          walletsApiProvider.overrideWithValue(_ThrowingWalletsApi()),
+          topupLauncherProvider
+              .overrideWithValue((context, checkoutUrl, esimId) async => false),
+        ],
+        child: MaterialApp.router(routerConfig: _testRouter()),
+      ));
+      await tester.pumpAndSettle();
+
+      final optionFinder =
+          find.byKey(const ValueKey('topup-option-TOPUP_JC063'));
+      await tester.ensureVisible(optionFinder);
+      await tester.tap(optionFinder);
+      await tester.pumpAndSettle();
+
+      expect(fakeApi.lastShurjoPayTopupPackageCode, 'TOPUP_JC063');
+      expect(find.text('Top-up successful.'), findsOneWidget);
+    });
+  });
 }
 
 class _ThrowingEsimStatusApi implements EsimStatusApi {
@@ -598,5 +888,14 @@ class _ThrowingEsimStatusApi implements EsimStatusApi {
 
   @override
   Future<List<TopupOption>> getTopupOptions(String esimId) async =>
+      throw Exception('network error');
+
+  @override
+  Future<EsimTopup> topupWithWallet(String esimId, String packageCode) async =>
+      throw Exception('network error');
+
+  @override
+  Future<TopupShurjoPayCheckout> initiateTopupShurjoPay(
+          String esimId, String packageCode) async =>
       throw Exception('network error');
 }

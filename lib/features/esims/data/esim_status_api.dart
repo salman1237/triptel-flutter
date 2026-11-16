@@ -1,6 +1,8 @@
 import '../../../core/network/api_client.dart';
 import 'models/esim_status.dart';
+import 'models/esim_topup.dart';
 import 'models/topup_option.dart';
+import 'models/topup_shurjopay_checkout.dart';
 
 abstract class EsimStatusApi {
   /// `GET /esims/{esim_id}/status` (auth) -- cached 5 min server-side.
@@ -14,6 +16,15 @@ abstract class EsimStatusApi {
   /// `GET /esims/{esim_id}/topup-options` (auth) -- FR-407. Empty = hide
   /// the section entirely.
   Future<List<TopupOption>> getTopupOptions(String esimId);
+
+  /// `POST /esims/{esim_id}/topup` (auth, 10/min) -- pay from wallet,
+  /// synchronous (FR-408).
+  Future<EsimTopup> topupWithWallet(String esimId, String packageCode);
+
+  /// `POST /payments/shurjopay/esim-topup-initiate` (auth,
+  /// password-changed) -- FR-408.
+  Future<TopupShurjoPayCheckout> initiateTopupShurjoPay(
+      String esimId, String packageCode);
 }
 
 class EsimStatusApiImpl implements EsimStatusApi {
@@ -39,5 +50,23 @@ class EsimStatusApiImpl implements EsimStatusApi {
     return (response as List)
         .map((json) => TopupOption.fromJson(json as Map<String, dynamic>))
         .toList();
+  }
+
+  @override
+  Future<EsimTopup> topupWithWallet(String esimId, String packageCode) async {
+    final response = await _client
+        .post('/esims/$esimId/topup', data: {'package_code': packageCode});
+    return EsimTopup.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<TopupShurjoPayCheckout> initiateTopupShurjoPay(
+      String esimId, String packageCode) async {
+    final response = await _client.post(
+      '/payments/shurjopay/esim-topup-initiate',
+      query: {'esim_id': esimId},
+      data: {'package_code': packageCode},
+    );
+    return TopupShurjoPayCheckout.fromJson(response as Map<String, dynamic>);
   }
 }

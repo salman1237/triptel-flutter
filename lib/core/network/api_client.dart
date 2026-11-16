@@ -28,8 +28,9 @@ class ApiClient {
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) =>
       _unwrap(() => _dio.get(path, queryParameters: query));
 
-  Future<dynamic> post(String path, {Object? data}) =>
-      _unwrap(() => _dio.post(path, data: data));
+  Future<dynamic> post(String path,
+          {Object? data, Map<String, dynamic>? query}) =>
+      _unwrap(() => _dio.post(path, data: data, queryParameters: query));
 
   Future<dynamic> put(String path, {Object? data}) =>
       _unwrap(() => _dio.put(path, data: data));

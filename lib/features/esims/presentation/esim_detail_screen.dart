@@ -4,25 +4,32 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/install/install_link.dart';
 import '../../../core/install/url_launcher_provider.dart';
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_providers.dart';
+import '../../../core/money/money.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../compatibility/application/compatibility_providers.dart';
 import '../../compatibility/application/esim_verdict.dart';
+import '../../wallet/application/wallet_balance.dart';
+import '../../wallet/application/wallet_providers.dart';
+import '../../wallet/data/models/wallet.dart';
 import '../application/esim_history_shape.dart';
 import '../application/esim_install_links.dart';
 import '../application/esim_lifecycle_shape.dart';
 import '../application/esim_status_providers.dart';
 import '../application/esim_usage_shape.dart';
+import '../application/topup_launcher.dart';
 import '../data/models/esim_status.dart';
 import '../data/models/topup_option.dart';
+import '../data/models/topup_shurjopay_checkout.dart';
 
 /// FR-403: eSIM detail -- usage. `GET /esims/{id}/status`: usage ring/bar
 /// (allowance incl. top-ups; none for unlimited), remaining, validity
@@ -119,9 +126,97 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
     }
   }
 
-  void _onTopupOptionTap() {
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Top-up purchase is coming soon.')));
+  String _formatMoney(Money amount) {
+    final rate = ref.read(selectedCurrencyRateProvider).valueOrNull;
+    final code = ref.read(currencyPreferenceProvider).valueOrNull;
+    if (rate == null || code == null) return '';
+    return formatMoney(amount, currencyCode: code, rateToBase: rate);
+  }
+
+  /// FR-408: same payment-method choice as FR-305's first purchase --
+  /// wallet offered only when DEFAULT+REWARD covers the price, else go
+  /// straight to ShurjoPay.
+  Future<void> _onTopupOptionTap(TopupOption option) async {
+    var wallets = const <Wallet>[];
+    try {
+      wallets = await ref.read(walletsApiProvider).getMyWallets();
+    } on ApiException {
+      wallets = const [];
+    }
+    if (!mounted) return;
+
+    if (walletCoversTotal(wallets, option.retailPrice)) {
+      final spendable = spendableBalance(wallets);
+      final after = spendable - option.retailPrice;
+      final selected = await PaymentMethodSheet.show(context, [
+        PaymentMethodOption(
+          id: 'wallet',
+          label: 'Wallet',
+          subtitle:
+              'Balance ${_formatMoney(spendable)} · After: ${_formatMoney(after)}',
+          icon: Icons.account_balance_wallet_outlined,
+        ),
+        const PaymentMethodOption(
+          id: 'shurjopay',
+          label: 'ShurjoPay',
+          icon: Icons.credit_card,
+        ),
+      ]);
+      if (!mounted || selected == null) return;
+      if (selected == 'wallet') {
+        await _topupWithWallet(option);
+        return;
+      }
+    }
+    await _topupWithShurjoPay(option);
+  }
+
+  Future<void> _topupWithWallet(TopupOption option) async {
+    try {
+      final result = await ref
+          .read(esimStatusApiProvider)
+          .topupWithWallet(widget.esimId, option.packageCode);
+      if (!mounted) return;
+      ref.invalidate(esimStatusProvider(widget.esimId));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result.failed
+              ? 'Top-up failed -- refunded to your wallet.'
+              : 'Top-up successful.')));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    }
+  }
+
+  /// `POST /payments/shurjopay/esim-topup-initiate` is `(auth,
+  /// password-changed)` (API.md section 7) -- a real 403 here routes to
+  /// Set Password, same as FR-105b's checkout guard.
+  Future<void> _topupWithShurjoPay(TopupOption option) async {
+    TopupShurjoPayCheckout checkout;
+    try {
+      checkout = await ref
+          .read(esimStatusApiProvider)
+          .initiateTopupShurjoPay(widget.esimId, option.packageCode);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      if (e.mustChangePassword) {
+        context.push('/set-password');
+        return;
+      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+      return;
+    }
+    if (!mounted) return;
+
+    final launch = ref.read(topupLauncherProvider);
+    final failed = await launch(context, checkout.checkoutUrl, widget.esimId);
+    if (!mounted || failed == null) return;
+
+    ref.invalidate(esimStatusProvider(widget.esimId));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(failed ? 'Top-up failed.' : 'Top-up successful.')));
   }
 
   @override
@@ -186,7 +281,7 @@ class _Body extends StatelessWidget {
   final void Function(String label, String value) onCopy;
   final VoidCallback onOpenSetupGuide;
   final List<TopupOption> topupOptions;
-  final VoidCallback onTopupOptionTap;
+  final ValueChanged<TopupOption> onTopupOptionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +388,7 @@ class _Body extends StatelessWidget {
               _TopupOptionRow(
                 key: ValueKey('topup-option-${option.packageCode}'),
                 option: option,
-                onTap: onTopupOptionTap,
+                onTap: () => onTopupOptionTap(option),
               ),
           ],
           if (hasHistorySection(status.history, status.dailyBreakdown)) ...[
