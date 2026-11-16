@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/install/install_link.dart';
 import '../../../core/install/url_launcher_provider.dart';
@@ -219,6 +220,13 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
         content: Text(failed ? 'Top-up failed.' : 'Top-up successful.')));
   }
 
+  /// FR-409: share the real web tracking link -- null on the (unused here)
+  /// public status variant, so the action is simply absent rather than a
+  /// dead tap (checked by the caller before building the AppBar action).
+  Future<void> _shareTrackingLink(String shareUrl) async {
+    await SharePlus.instance.share(ShareParams(text: shareUrl));
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusAsync = ref.watch(esimStatusProvider(widget.esimId));
@@ -226,10 +234,26 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
     final topupOptions =
         ref.watch(topupOptionsProvider(widget.esimId)).valueOrNull ??
             const <TopupOption>[];
+    final shareUrl = statusAsync.valueOrNull?.shareUrl;
 
     return TriptelScaffold(
       key: const ValueKey('esim-detail-screen'),
-      appBar: AppBar(title: const Text('eSIM details')),
+      appBar: AppBar(
+        title: const Text('eSIM details'),
+        actions: [
+          if (shareUrl != null)
+            IconButton(
+              key: const ValueKey('esim-share-tracking-link'),
+              icon: const Icon(Icons.share),
+              onPressed: () => _shareTrackingLink(shareUrl),
+            ),
+          IconButton(
+            key: const ValueKey('esim-view-receipt'),
+            icon: const Icon(Icons.receipt_long),
+            onPressed: () => context.push('/my-esims/${widget.esimId}/print'),
+          ),
+        ],
+      ),
       body: switch (statusAsync) {
         AsyncData(:final value) => _Body(
             status: _override ?? value,

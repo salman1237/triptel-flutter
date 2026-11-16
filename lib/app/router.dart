@@ -11,6 +11,7 @@ import '../features/checkout/presentation/checkout_review_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
 import '../features/compatibility/presentation/supported_devices_screen.dart';
 import '../features/esims/presentation/esim_detail_screen.dart';
+import '../features/esims/presentation/esim_receipt_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
@@ -59,6 +60,11 @@ final appRouter = GoRouter(
       path: '/my-esims/:id',
       builder: (context, state) =>
           EsimDetailScreen(esimId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/my-esims/:id/print',
+      builder: (context, state) =>
+          EsimReceiptScreen(esimId: state.pathParameters['id']!),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

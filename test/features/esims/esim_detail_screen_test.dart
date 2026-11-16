@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:share_plus_platform_interface/share_plus_platform_interface.dart';
 import 'package:triptel/core/install/url_launcher_provider.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/network/api_exception.dart';
@@ -35,6 +37,7 @@ EsimStatus _status({
   String smdpAddress = 'smdp.example.invalid',
   String? matchingId = 'ACTIVATION-CODE',
   String esimStatus = 'RELEASED',
+  String? shareUrl,
   List<Map<String, dynamic>> history = const [],
   List<Map<String, dynamic>> dailyBreakdown = const [],
 }) =>
@@ -74,7 +77,7 @@ EsimStatus _status({
         expiresAt: expiresAt,
         note: '',
       ),
-      shareUrl: null,
+      shareUrl: shareUrl,
       telemetry: EsimTelemetryInfo(
         fetchedAt:
             telemetryError != null ? DateTime.utc(2026, 11, 16, 17) : null,
@@ -84,6 +87,16 @@ EsimStatus _status({
       history: history,
       dailyBreakdown: dailyBreakdown,
     );
+
+class _FakeSharePlatform extends SharePlatform with MockPlatformInterfaceMixin {
+  ShareParams? lastParams;
+
+  @override
+  Future<ShareResult> share(ShareParams params) async {
+    lastParams = params;
+    return ShareResult('', ShareResultStatus.success);
+  }
+}
 
 class _FixedCurrency extends CurrencyPreferenceNotifier {
   @override
@@ -196,6 +209,11 @@ GoRouter _testRouter() => GoRouter(routes: [
         path: '/set-password',
         builder: (context, state) =>
             const Scaffold(body: Text('Set password screen')),
+      ),
+      GoRoute(
+        path: '/my-esims/:id/print',
+        builder: (context, state) => Scaffold(
+            body: Text('receipt-placeholder-${state.pathParameters['id']}')),
       ),
     ]);
 
@@ -873,6 +891,45 @@ void main() {
 
       expect(fakeApi.lastShurjoPayTopupPackageCode, 'TOPUP_JC063');
       expect(find.text('Top-up successful.'), findsOneWidget);
+    });
+  });
+
+  group('FR-409: share tracking link and receipt', () {
+    testWidgets('no share icon when shareUrl is null', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('esim-share-tracking-link')), findsNothing);
+    });
+
+    testWidgets('tapping the share icon shares the real web tracking link',
+        (tester) async {
+      final fakePlatform = _FakeSharePlatform();
+      SharePlatform.instance = fakePlatform;
+      addTearDown(() => SharePlatform.instance = SharePlatform());
+
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status(
+        shareUrl: 'https://triptel.co/track/example-token',
+      ))));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('esim-share-tracking-link')));
+      await tester.pumpAndSettle();
+
+      expect(fakePlatform.lastParams?.text,
+          'https://triptel.co/track/example-token');
+    });
+
+    testWidgets('tapping the receipt icon navigates to the receipt screen',
+        (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('esim-view-receipt')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('receipt-placeholder-esim-1'), findsOneWidget);
     });
   });
 }
