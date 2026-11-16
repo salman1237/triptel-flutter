@@ -1612,6 +1612,32 @@ Session log. Read first at session start, update last at session end.
 6. No push-notification registration; no account-deletion endpoint (store requirement).
 7. No universal-link `.well-known` files for `triptel.co` (track/ref links open web).
 8. `coverage_networks` holds IP-export region for eSIM Access, not carriers.
+9. **`GET /esims/{id}/status`'s `status.is_installed` telemetry doesn't reflect
+   reality for eSIM Access-supplied eSIMs:** confirmed live (2026-11-16) against
+   the real signed-in account -- a real eSIM the user reports actively using
+   right now still returns `is_installed: false, is_activated: false,
+   device_model: null`. Another (`865fe3a6...`, `activated_at` set 2026-11-11)
+   returns `is_installed: false, is_activated: true` -- so even the backend's
+   own `is_activated` flag can be true while `is_installed` stays false
+   indefinitely. By contrast, two *older, now-expired* eSIMs do show
+   `is_installed: true` with a real `device_model` ("iPhone 11 Pro Max"/"iPhone
+   13 Pro"), so the signal CAN work -- it's unreliable/delayed specifically for
+   current eSIM Access profiles, not universally broken. On-device screenshot
+   (`artifacts/FR-403-backend-telemetry-gap.png`): the Bangladesh 1GB 7Days
+   eSIM's own usage ring shows 1.72GB remaining (i.e. real data already
+   consumed) and "15 days left" -- concrete evidence it's genuinely installed
+   and in active use -- while `status.label` still says "Not installed yet".
+   The client (FR-403's
+   detail screen) correctly displays whatever `status.label`/`is_installed`
+   the backend returns, per Rules.md ("treat only telemetry is_installed as
+   installed"); there is no client-side bug here. **App-side mitigation
+   already shipped:** FR-402's list chip no longer claims "Not installed" from
+   the unrelated `/orders/my-esims` status enum (which never updates at all);
+   it now says the lower-confidence "Ready to install" instead. FR-403's
+   detail screen still echoes the backend's literal label/telemetry verbatim --
+   that's the right behavior for a pure client, but it will keep looking wrong
+   to users until the backend's own eSIM Access telemetry sync improves. Owner
+   to investigate the eSIM Access polling/webhook integration.
 
 ## User actions pending
 - Register an Android OAuth client (`co.triptel.app` + debug SHA-1) for Google Sign-In.

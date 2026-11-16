@@ -1,6 +1,29 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-16 — "Not installed" was a client bug; "still says not installed" after the fix is a backend telemetry gap
+The user reported two related but distinct problems in quick succession.
+**First** ("why my installed sims also showing not installed tab?"): confirmed
+live that FR-402's My eSIMs list chip was wrong -- it read `/orders/my-esims`'s
+own `status` field (which stays `RELEASED` forever on this backend, even for
+eSIMs with real `is_installed: true` telemetry on the richer detail endpoint)
+and displayed "Not installed" from it, a false claim the list has no cheap way
+to actually verify. **Fixed**: changed the label to "Ready to install" so the
+list stops asserting something it can't know (commit `2c52bb6`).
+**Second**, immediately after ("sim is using & installed but its saying not
+installed yet"): this is FR-403's *detail* screen, which correctly displays
+`status.label` straight from `GET /esims/{id}/status` -- the backend's own
+authoritative, telemetry-backed field. Re-fetched that eSIM live: the backend
+itself says `is_installed: false`. **Not fixed, because it's not a client
+bug**: a pure client (CLAUDE.md: "no backend code here") must display what the
+backend's telemetry says, even when the backend's telemetry is stale or wrong.
+Logged in claude-progress.md's "Blocked on backend" list instead, with the
+specific evidence (which eSIMs, which fields, confirmed the signal does work
+correctly for other, older eSIMs so it isn't universally broken -- just
+unreliable for current eSIM Access profiles). **Revisit if:** the backend
+team fixes the eSIM Access telemetry sync -- re-verify live before assuming
+it's fixed, the same way this was diagnosed.
+
 ## 2026-11-16 — A hanging (not failing) test meant a missing mock, not a reverted fix
 Running the full `flutter test` suite after building FR-402 (My eSIMs list)
 produced no failure output at all -- it just hung indefinitely partway
