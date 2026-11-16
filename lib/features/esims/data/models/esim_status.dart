@@ -19,6 +19,8 @@ class EsimStatus {
     required this.validity,
     required this.shareUrl,
     required this.telemetry,
+    required this.history,
+    required this.dailyBreakdown,
   });
 
   final String esimId;
@@ -43,6 +45,15 @@ class EsimStatus {
   final String? shareUrl;
   final EsimTelemetryInfo telemetry;
 
+  /// FR-406: carrier provisioning events and per-day usage breakdown --
+  /// VivaPe-only (API.md section 7), always empty for eSIM Access. Neither
+  /// endpoint documents a fixed item schema beyond "items may contain
+  /// `eid`" (a device identifier the backend itself never shows the
+  /// customer), so these stay as loosely-typed maps rather than a model
+  /// this app would have to guess the fields of.
+  final List<Map<String, dynamic>> history;
+  final List<Map<String, dynamic>> dailyBreakdown;
+
   factory EsimStatus.fromJson(Map<String, dynamic> json) => EsimStatus(
         esimId: json['esim_id'] as String,
         orderNo: json['order_no'] as String? ?? '',
@@ -63,8 +74,13 @@ class EsimStatus {
         shareUrl: json['share_url'] as String?,
         telemetry: EsimTelemetryInfo.fromJson(
             json['telemetry'] as Map<String, dynamic>? ?? const {}),
+        history: _opaqueList(json['history']),
+        dailyBreakdown: _opaqueList(json['daily_breakdown']),
       );
 }
+
+List<Map<String, dynamic>> _opaqueList(Object? value) =>
+    value is List ? value.whereType<Map<String, dynamic>>().toList() : const [];
 
 class EsimStatusProduct {
   const EsimStatusProduct({

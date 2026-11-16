@@ -40,6 +40,30 @@ void main() {
     expect(status.telemetry.available, isTrue);
     expect(status.telemetry.fetchedAt,
         DateTime.parse('2026-11-16T17:07:25.838790+00:00'));
+    expect(status.history, isEmpty);
+    expect(status.dailyBreakdown, isEmpty);
+  });
+
+  test(
+      'FR-406: parses non-empty history/daily_breakdown as opaque maps, '
+      'ignoring non-Map entries', () {
+    final status = EsimStatus.fromJson(const {
+      'esim_id': 'esim-1',
+      'history': [
+        {'event': 'ACTIVATED', 'eid': 'device-id'},
+        'not-a-map',
+      ],
+      'daily_breakdown': [
+        {'date': '2026-11-11', 'used_mb': '120'},
+      ],
+    });
+
+    expect(status.history, [
+      {'event': 'ACTIVATED', 'eid': 'device-id'},
+    ]);
+    expect(status.dailyBreakdown, [
+      {'date': '2026-11-11', 'used_mb': '120'},
+    ]);
   });
 
   test(

@@ -25,6 +25,8 @@ EsimStatus _status({
   String smdpAddress = 'smdp.example.invalid',
   String? matchingId = 'ACTIVATION-CODE',
   String esimStatus = 'RELEASED',
+  List<Map<String, dynamic>> history = const [],
+  List<Map<String, dynamic>> dailyBreakdown = const [],
 }) =>
     EsimStatus(
       esimId: 'esim-1',
@@ -69,6 +71,8 @@ EsimStatus _status({
         error: telemetryError,
         available: true,
       ),
+      history: history,
+      dailyBreakdown: dailyBreakdown,
     );
 
 class _FakeEsimStatusApi implements EsimStatusApi {
@@ -383,6 +387,77 @@ void main() {
 
       expect(find.byType(UsageRing), findsOneWidget);
       expect(find.byKey(const ValueKey('esim-refresh-button')), findsOneWidget);
+    });
+  });
+
+  group('FR-406: history', () {
+    testWidgets('both empty -> no history section at all', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Daily usage'), findsNothing);
+      expect(find.text('Install history'), findsNothing);
+    });
+
+    testWidgets(
+        'a non-empty daily breakdown shows the "Daily usage" '
+        'section with one line per entry', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status(
+        dailyBreakdown: const [
+          {'date': '2026-11-11', 'used_mb': '120'},
+          {'date': '2026-11-12', 'used_mb': '80'},
+        ],
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Daily usage'), findsOneWidget);
+      expect(find.text('date: 2026-11-11, used_mb: 120'), findsOneWidget);
+      expect(find.text('date: 2026-11-12, used_mb: 80'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a non-empty history shows the "Install history" section, eid '
+        'excluded from the displayed line', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status(
+        history: const [
+          {'event': 'ACTIVATED', 'eid': 'should-not-be-shown'},
+        ],
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Install history'), findsOneWidget);
+      expect(find.text('event: ACTIVATED'), findsOneWidget);
+      expect(find.textContaining('should-not-be-shown'), findsNothing);
+    });
+
+    testWidgets(
+        'only daily breakdown present -> no "Install history" '
+        'heading shown', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status(
+        dailyBreakdown: const [
+          {'date': '2026-11-11', 'used_mb': '120'},
+        ],
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Daily usage'), findsOneWidget);
+      expect(find.text('Install history'), findsNothing);
+    });
+
+    testWidgets(
+        'the history section still shows under a terminal lifecycle '
+        'status (independent of the install-section gate)', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status(
+        esimStatus: 'EXPIRED',
+        history: const [
+          {'event': 'ACTIVATED'},
+        ],
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('esim-lifecycle-banner')), findsOneWidget);
+      expect(find.text('Install history'), findsOneWidget);
     });
   });
 }

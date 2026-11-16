@@ -14,6 +14,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../compatibility/application/compatibility_providers.dart';
 import '../../compatibility/application/esim_verdict.dart';
+import '../application/esim_history_shape.dart';
 import '../application/esim_install_links.dart';
 import '../application/esim_lifecycle_shape.dart';
 import '../application/esim_status_providers.dart';
@@ -29,9 +30,10 @@ import '../data/models/esim_status.dart';
 /// the 1-tap button, never the QR/manual codes, which stay useful for
 /// installing on a different device), manual SM-DP+/matching ID/LPA copy,
 /// an "install only once" warning, and a link to the web setup guide
-/// (FR-901 isn't ported into the app yet). FR-405 (lifecycle banners) and
-/// FR-406/407 (history/top-up) are separate, not-yet-built sections of
-/// this same screen.
+/// (FR-901 isn't ported into the app yet). FR-405: a lifecycle banner for
+/// SUSPENDED/REVOKED/CANCELLED/EXPIRED replaces the entire install section.
+/// FR-406: history/daily breakdown, VivaPe-only, shown only when present.
+/// FR-407 (top-up) is a separate, not-yet-built section of this screen.
 class EsimDetailScreen extends ConsumerStatefulWidget {
   const EsimDetailScreen({super.key, required this.esimId});
 
@@ -256,6 +258,46 @@ class _Body extends StatelessWidget {
               variant: PillButtonVariant.text,
               onPressed: onOpenSetupGuide,
             ),
+          ],
+          if (hasHistorySection(status.history, status.dailyBreakdown)) ...[
+            const SizedBox(height: 32),
+            const Divider(color: AppColors.line),
+            const SizedBox(height: 16),
+            if (status.dailyBreakdown.isNotEmpty) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Daily usage', style: AppTypography.headline()),
+              ),
+              const SizedBox(height: 8),
+              for (final entry in status.dailyBreakdown)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(formatHistoryEntry(entry),
+                        style:
+                            AppTypography.caption(color: AppColors.inkMuted)),
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+            if (status.history.isNotEmpty) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Install history', style: AppTypography.headline()),
+              ),
+              const SizedBox(height: 8),
+              for (final entry in status.history)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(formatHistoryEntry(entry),
+                        style:
+                            AppTypography.caption(color: AppColors.inkMuted)),
+                  ),
+                ),
+            ],
           ],
         ],
       ),
