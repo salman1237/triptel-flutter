@@ -65,7 +65,23 @@ Session log. Read first at session start, update last at session end.
   FR-402's cards: usage ring, validity countdown, telemetry-stale
   banner, manual refresh via the real `POST /refresh` with a 30s
   client-side cooldown. Real on-device evidence proved the refresh
-  call and cooldown both actually work end-to-end.
+  call and cooldown both actually work end-to-end. **FR-404** (eSIM
+  detail — install section) also now passing — QR reveal, 1-tap
+  install double-gated on FR-950's verdict (only the button is gated,
+  per Rules.md — QR/manual codes always stay visible), manual SM-DP+/
+  matching-ID/LPA copy, "install only once" warning, link to the web
+  setup guide. `install_link.dart`/`url_launcher_provider.dart` moved
+  from checkout's `application/` into `core/install/` since this logic
+  is now shared between FR-310 and this feature. On-device evidence
+  used synthetic data (temp-rig) since this screen displays raw LPA/
+  matching-ID/SM-DP+ as copyable text — a real screenshot would put
+  real secrets on disk even gitignored.
+- **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
+  `is_installed` telemetry doesn't reliably reflect real install state for
+  current eSIM Access profiles — confirmed live with real evidence (see
+  "Blocked on backend" below and DECISIONS.md, 2026-11-16/17). The app
+  correctly displays whatever the backend reports; this is a backend/
+  supplier integration gap, flagged for the backend owner.
 - **Active feature:** none.
 - **Test device note:** across this session four different physical devices
   were connected at various points (vivo V2344 `10EF1302BJ000R5`, OPPO
@@ -80,25 +96,62 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** run the `next-feature` loop, strict feature_list.json
-  array order. Checkout (D, FR-301–311), FR-401, FR-402, and FR-403
-  are all passing now — next is **FR-404** (eSIM detail — install: QR
-  reveal, 1-tap install links iOS 17.4+/Android, manual SM-DP+ +
-  matching ID + LPA copy, "install only once" warning, link to setup
-  guide, install hidden on unsupported handsets per FR-950). This
-  extends the same `EsimDetailScreen` FR-403 just created (route
-  `/my-esims/:id` already exists) with an install section below the
-  usage section — can reuse FR-310's `buildInstallUrl`/`urlLauncherProvider`
-  and FR-401's `EsimQr` directly. FR-405 (lifecycle banners) follows it.
-  No valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work.
-  Revisit **FR-106** and **FR-953b** now that a real purchase action
-  (FR-306) exists.
+  array order. Checkout (D, FR-301–311), FR-401, FR-402, FR-403, and
+  FR-404 are all passing now — next is **FR-405** (eSIM detail —
+  lifecycle status: banners for `SUSPENDED`/`REVOKED`/`CANCELLED`/
+  `EXPIRED`, disable install and top-up for them). This extends the
+  same `EsimDetailScreen`, gating FR-404's install section (and the
+  not-yet-built FR-407 top-up section) off when `esim_status` is one
+  of those four values, showing a banner instead. No valid discount
+  code exists on beta (confirmed via curl) — keep disclosing that
+  limitation for any future discount-related work. Revisit **FR-106**
+  and **FR-953b** now that a real purchase action (FR-306) exists.
 - No more user actions pending for Android Google Sign-In. Release builds
   will need a second Android OAuth client for the release keystore's SHA-1
   later; iOS needs its own OAuth client + Associated Domains, out of scope
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (two real bug reports + FR-404,
+  eSIM detail -- install section):
+  - **Real bug, fixed:** user reported "why my installed sims also showing
+    not installed tab?" Confirmed live against the beta backend: `GET
+    /orders/my-esims`'s own `status` field stays `RELEASED` forever, even
+    for two real eSIMs with confirmed `is_installed: true` telemetry (and a
+    real `device_model`) on the richer detail endpoint. Fixed by changing
+    the list chip's `RELEASED` label from "Not installed" to "Ready to
+    install" so it stops claiming something it can't actually verify.
+    Commit `2c52bb6`.
+  - **Real backend limitation, not fixable here:** immediately after, user
+    reported the *detail* screen still saying "Not installed yet" for an
+    eSIM they're actively using (real data usage: 1.72GB remaining, 15 days
+    left). Confirmed live: the backend's own `is_installed` telemetry is
+    genuinely `false` for that eSIM despite real usage proving it's
+    installed. This is FR-403's `status.label`, sourced directly from the
+    backend's authoritative field -- a pure client must display it as-is.
+    Logged with full evidence in "Blocked on backend" below and
+    DECISIONS.md; not something to patch client-side.
+  - **FR-404** (install section): extends `EsimDetailScreen` with QR reveal,
+    a 1-tap install button double-gated on a valid `LPA:` string and FR-950's
+    verdict (only the button is gated, per Rules.md -- QR/manual codes
+    always stay visible), three manual copy rows (SM-DP+ address, matching
+    ID -- omitted when null, LPA), an "install only once" warning, and a
+    link to the real web setup guide (derived from `Env.apiBaseUrl`, no
+    second hardcoded host).
+  - `install_link.dart`/`url_launcher_provider.dart` moved from checkout's
+    `application/` into `core/install/`, since this logic is now genuinely
+    shared between FR-310 and this feature -- confirmed byte-identical,
+    every importer updated.
+  - 9 new tests; full suite (388 tests) green, `flutter analyze` clean.
+    Non-vacuous: stripped half the install button's `&&` gate (1 real
+    failure) and hardcoded `setupGuideUrl`'s base (1 real failure), both
+    restored.
+  - On-device evidence used synthetic data via the temp-rig technique --
+    this screen displays raw LPA/matching-ID/SM-DP+ as copyable text, so
+    even a gitignored screenshot with real data would put real secrets on
+    disk for no extra signal.
+  - Reviewer: PASS.
+  - Commits: `8e87a6a` (feature code), `6b6dfb5` (state → passing).
 - 2026-11-16 — Session 10 continued (FR-403, eSIM detail -- usage):
   - FR-402's cards are now interactive: a new `EsimDetailScreen` (route
     `/my-esims/:id`) backed by `GET /esims/{id}/status`. New `EsimStatus`
