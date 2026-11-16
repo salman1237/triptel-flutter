@@ -86,13 +86,11 @@ Session log. Read first at session start, update last at session end.
   item schema is documented anywhere, confirmed against the backend
   source directly. Independent of lifecycle state (shows even under a
   terminal status), unlike FR-404/405's gating.
-- **Revisit now that checkout + My eSIMs exist:** FR-105b is now
-  **passing** (see Done below). FR-106 and FR-201b were also `blocked`
-  earlier in this session specifically on "no real checkout flow / no
-  real eSIM usage data exists yet" — that's no longer true for FR-106
-  (FR-301 exists). FR-201b stays *partially* blocked (needs FR-801
-  referrals, still not_started). FR-202b stays blocked — genuinely
-  backend-side (no featured/price field on the country-list endpoint).
+- **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
+  now both **passing** (see Done below). FR-201b stays *partially*
+  blocked (needs FR-801 referrals, still not_started). FR-202b stays
+  blocked — genuinely backend-side (no featured/price field on the
+  country-list endpoint).
 - **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
   `is_installed` telemetry doesn't reliably reflect real install state for
   current eSIM Access profiles — confirmed live with real evidence (see
@@ -107,16 +105,21 @@ Session log. Read first at session start, update last at session end.
   issue that blocks `flutter test integration_test/*.dart -d <device>`
   specifically (plain `adb screencap`/`am start`/`pidof` work fine on it) —
   use whichever device is actually connected, don't assume a fixed serial.
+  Also seen on the vivo this session: `adb shell screencap` intermittently
+  returns a 0-byte file (SurfaceFlinger gets stuck, logcat shows a stray
+  binder-threadpool warning) with no error -- toggling the screen off/on
+  once (`adb shell input keyevent KEYCODE_POWER` twice, ~1s apart) reliably
+  unsticks it. `adb pull`'s local destination path also needs
+  `MSYS_NO_PATHCONV` *unset* (only the remote path needs it set) in this
+  Git Bash environment, or it mis-resolves the local file arg.
   If a differently-signed debug build is already installed on a newly
   connected device, `adb install -r` fails with
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b done (see Done below). Per the user's "go &
-  you pick" delegation, next is **FR-106** (guest purchase resumes
-  after login/register/Google) — also unblockable now that FR-301
-  exists, and sits right after FR-105b in strict array order. After
-  FR-106, continue forward: next is **FR-407** (top-up options, `GET
+- **Next step:** FR-105b and FR-106 both done (see Done below) — the
+  "go & you pick" detour is complete. Continuing forward in strict
+  array order: next is **FR-407** (top-up options, `GET
   /esims/{id}/topup-options`, hidden when empty — can reuse FR-405's
   `installAndTopupDisabled()`). No valid discount code exists on beta
   (confirmed via curl) — keep disclosing that limitation for any future
@@ -129,6 +132,46 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-106, guest purchase resumes after
+  login/register/Google):
+  - Unblocked now that FR-301 (checkout review) exists. Both real checkout
+    endpoints (`POST /orders/checkout`, `POST
+    /payments/shurjopay/order-initiate`) are `(auth)` per API.md -- a guest
+    used to fall through into attempting them anyway and hitting a real
+    401 (a pre-existing gap this FR fixes).
+  - New `lib/core/checkout/{pending_purchase,pending_purchase_provider}.dart`
+    (same shared_preferences `AsyncNotifier` pattern as the pre-existing
+    `pendingReferralProvider`) persist `{productId, countryName,
+    discountCode?}`. `checkout_review_screen.dart`'s
+    `_onContinueToPayment` now resolves auth first and routes a guest to
+    `/login` via new `_sendGuestToLogin()` before any payment attempt --
+    never falling through to a real (doomed) checkout call.
+  - New `CatalogApi.getProduct(id)` (`GET /catalog/products/{id}`, real
+    captured fixture) lets new
+    `lib/features/auth/application/post_auth_navigation.dart`'s
+    `navigateAfterAuth()` re-fetch the product and resume straight into
+    `/checkout/review` (restoring the discount code too, best-effort --
+    re-checked via the existing `discountsApiProvider.check()`, silently
+    dropped if since expired) instead of landing on Home. Only overrides
+    the Home case -- Set Password/Suspended routing untouched. Wired into
+    all three real auth-success call sites (login password, login Google,
+    register).
+  - 24 new/changed tests; full suite (422 tests) green, `flutter analyze`
+    clean, `bash harness.sh verify` green. Non-vacuous: proved 3 times
+    separately (guest-redirect, resume-after-auth, discount-restore), each
+    via a temporary disabled guard producing real failures, then restored.
+  - On-device evidence is genuine, real account (`salman2033`), real beta
+    data: `artifacts/FR-106-guest-redirected-to-login.png` shows a
+    signed-out guest tapping "Continue to payment" on a real Japan 100MB
+    plan and landing on the real Sign in screen; `FR-106-resumed-checkout-
+    after-login.png` shows that after signing in with the real password,
+    the app lands back on the real Checkout screen for that exact plan,
+    not Home.
+  - Gotcha hit mid-session: `adb screencap` intermittently returned 0-byte
+    files on the vivo test device -- fixed by toggling the screen off/on
+    once (see the test-device note above).
+  - Reviewer: PASS.
+  - Commits: `094b0d3` (feature code), `bdabd7b` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-105b, real password-changed 403
   routes to Set Password):
   - Unblocked by "go & you pick": FR-301's checkout review screen gives
