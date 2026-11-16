@@ -86,15 +86,13 @@ Session log. Read first at session start, update last at session end.
   item schema is documented anywhere, confirmed against the backend
   source directly. Independent of lifecycle state (shows even under a
   terminal status), unlike FR-404/405's gating.
-- **Revisit now that checkout + My eSIMs exist:** FR-105b, FR-106, and
-  FR-201b were all `blocked` earlier in this session specifically on
-  "no real checkout flow / no real eSIM usage data exists yet" — that's
-  no longer true (FR-301–311, FR-402/403 are all passing now). They sit
-  *before* FR-406 in `feature_list.json`'s strict array order, so the
-  loop should have revisited them already; flagged to the user
-  mid-session, decision on going back vs. continuing forward pending.
-  FR-202b stays blocked — genuinely backend-side (no featured/price
-  field on the country-list endpoint).
+- **Revisit now that checkout + My eSIMs exist:** FR-105b is now
+  **passing** (see Done below). FR-106 and FR-201b were also `blocked`
+  earlier in this session specifically on "no real checkout flow / no
+  real eSIM usage data exists yet" — that's no longer true for FR-106
+  (FR-301 exists). FR-201b stays *partially* blocked (needs FR-801
+  referrals, still not_started). FR-202b stays blocked — genuinely
+  backend-side (no featured/price field on the country-list endpoint).
 - **Known backend limitation (not fixable here):** `GET /esims/{id}/status`'s
   `is_installed` telemetry doesn't reliably reflect real install state for
   current eSIM Access profiles — confirmed live with real evidence (see
@@ -114,21 +112,15 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step — PAUSED pending user direction:** the user asked "how many
-  features left?" / "4 blocked?" mid-loop and was told FR-105b and FR-106
-  are likely unblockable now (both were blocked only on "no checkout flow
-  exists yet" — FR-301–311 are all passing now) and FR-201b is
-  *partially* unblockable (needs FR-402/403, now passing, AND FR-801
-  referrals, still not_started — so it stays blocked until FR-801 lands).
-  FR-202b stays blocked regardless (genuinely backend-side). The user was
-  asked whether to go back and unblock FR-105b/106/201b now (they sit
-  *before* FR-406 in strict array order, so the loop technically skipped
-  past them) or keep going forward — **awaiting their answer before the
-  next action**. If/when resuming forward without revisiting them: next
-  is **FR-407** (top-up options, `GET /esims/{id}/topup-options`, hidden
-  when empty — can reuse FR-405's `installAndTopupDisabled()`). No valid
-  discount code exists on beta (confirmed via curl) — keep disclosing
-  that limitation for any future discount-related work. Revisit
+- **Next step:** FR-105b done (see Done below). Per the user's "go &
+  you pick" delegation, next is **FR-106** (guest purchase resumes
+  after login/register/Google) — also unblockable now that FR-301
+  exists, and sits right after FR-105b in strict array order. After
+  FR-106, continue forward: next is **FR-407** (top-up options, `GET
+  /esims/{id}/topup-options`, hidden when empty — can reuse FR-405's
+  `installAndTopupDisabled()`). No valid discount code exists on beta
+  (confirmed via curl) — keep disclosing that limitation for any future
+  discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
   install-gating dependency resolve.
 - No more user actions pending for Android Google Sign-In. Release builds
@@ -137,6 +129,36 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-105b, real password-changed 403
+  routes to Set Password):
+  - Unblocked by "go & you pick": FR-301's checkout review screen gives
+    this feature its first real producer -- two password-changed-gated
+    endpoints, `POST /orders/checkout` (wallet) and `POST
+    /payments/shurjopay/order-initiate` (ShurjoPay), both called from
+    `checkout_review_screen.dart`.
+  - New `_routeIfMustChangePassword(ApiException e)`: reuses the
+    pre-existing (previously dormant) `ApiException.mustChangePassword`
+    getter; routes to `/set-password` on a match, falls through to the
+    normal error snackbar otherwise. Wired into both gated catch blocks;
+    the `GET /orders/{id}` polling catch block was deliberately left
+    alone since that endpoint isn't password-changed-gated.
+  - Test file's `_app()` helper converted from plain `MaterialApp` to
+    `MaterialApp.router` with a real `GoRouter` (`/` + `/set-password`)
+    so `context.push` resolves; 3 new tests (wallet 403, ShurjoPay 403,
+    a different 403 like "Account suspended" correctly NOT misrouted).
+  - 41/41 tests in file, 416/416 full suite, `flutter analyze` clean.
+    Non-vacuous: hardcoded the method to `return false`, got 2 real
+    failures, restored. `bash harness.sh verify` green.
+  - No on-device evidence needed -- test-only verification command,
+    pure navigation/error-routing change between two already-
+    screenshotted real screens.
+  - Reviewer: PASS (independently re-ran tests, the non-vacuousness
+    check, analyze, and harness verify; confirmed the getter doesn't
+    false-positive on other 403 messages and the polling catch block
+    was correctly untouched). Also flagged feature_list.json's
+    `verification` field was stale (pointed at `test/features/auth`) --
+    fixed to point at the real test file.
+  - Commits: `c6580b3` (feature code), `f44f4bb` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-406, eSIM detail -- history):
   - `history[]`/`daily_breakdown[]` on `GET /esims/{id}/status` are
     VivaPe-only fields, always empty for eSIM Access (the only supplier
