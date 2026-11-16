@@ -164,10 +164,13 @@
     {
       "id": "FR-105b",
       "behavior": "A real require_password_changed-gated endpoint's 403 actually routes to Set Password (ApiException.mustChangePassword is wired to navigation, not just a dormant getter)",
-      "verification": "flutter test test/features/auth",
-      "state": "blocked",
-      "blocked_reason": "docs/API.md line 39 says the require_password_changed 403 is 'Returned by every require_password_changed endpoint' but doesn't name one -- the only endpoints this applies to per the error text itself ('before buying or moving money') are checkout (FR-301+) and wallet top-up/withdraw (FR-601+/FR-701+), all not_started. There's no real producer (an actual gated API call) to wire ApiException.mustChangePassword's navigation to yet, same reasoning as FR-007/FR-106's deferrals. Revisit when FR-301 or FR-601/FR-701 exist -- wire the real 403 interception + navigation then, same incremental pattern.",
-      "evidence": null
+      "verification": "flutter test test/features/checkout/checkout_review_screen_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "c6580b3",
+        "screens": [],
+        "notes": "Now unblockable: FR-301 (checkout review screen) exists with two real password-changed-gated call sites, POST /orders/checkout (wallet) and POST /payments/shurjopay/order-initiate. Added _routeIfMustChangePassword(ApiException e) to checkout_review_screen.dart: reuses the pre-existing ApiException.mustChangePassword getter (api_exception.dart), routes to /set-password on match, falls through to the normal error snackbar otherwise. Wired into both gated catch blocks (wallet checkout, ShurjoPay order-initiate) -- the GET /orders/{id} polling catch block was deliberately left unguarded since that endpoint is (auth) only, not (auth, password-changed), per API.md. 3 new tests in checkout_review_screen_test.dart (wallet 403 -> Set Password, ShurjoPay 403 -> Set Password, a different 403 like 'Account suspended' is NOT misrouted) using a real GoRouter via MaterialApp.router. Non-vacuous: hardcoded the method to return false, got 2 real failures, restored, green (41/41 in file, 416/416 full suite). flutter analyze clean. bash harness.sh verify green. Reviewed by reviewer agent: PASS (independently re-ran tests, non-vacuousness check, analyze, and harness verify; confirmed the mustChangePassword getter doesn't false-positive on other 403s and the polling catch block was correctly left alone)."
+      }
     },
     {
       "id": "FR-106",
