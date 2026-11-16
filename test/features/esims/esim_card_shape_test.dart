@@ -95,6 +95,13 @@ void main() {
       expect(esimStatusChip('EXPIRED').tone, StatusTone.danger);
     });
 
+    test(
+        'RELEASED says "Ready to install", never "Not installed" -- this '
+        "list's own status field doesn't reliably track real install "
+        'state (confirmed live against the beta backend)', () {
+      expect(esimStatusChip('RELEASED').label, 'Ready to install');
+    });
+
     test('unknown status falls back to a warning chip with the raw label', () {
       final chip = esimStatusChip('SOMETHING_NEW');
       expect(chip.label, 'SOMETHING_NEW');

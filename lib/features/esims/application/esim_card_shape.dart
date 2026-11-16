@@ -37,12 +37,19 @@ String esimOwnershipLabel(MyEsim esim) =>
 
 /// Design_System.md's StatusChip tones: "Active/Installed success, Not
 /// installed sky, Preparing warning, Suspended/Revoked/Cancelled/Expired/
-/// Failed danger."
+/// Failed danger." `RELEASED` deliberately says "Ready to install", not
+/// "Not installed": this list's own `status` field doesn't track real
+/// install state on this backend (confirmed live -- an eSIM can stay
+/// `RELEASED` here even once `GET /esims/{id}/status`'s telemetry
+/// `is_installed` is genuinely true), so the chip must not claim to know
+/// something it doesn't (Rules.md: "Treat only telemetry `is_installed`
+/// as installed"). The real, telemetry-backed label lives on the detail
+/// screen (FR-403's `status.label`, sourced from that richer endpoint).
 ({String label, StatusTone tone}) esimStatusChip(String status) =>
     switch (status) {
       'ACTIVE' => (label: 'Active', tone: StatusTone.success),
       'INSTALLED' => (label: 'Installed', tone: StatusTone.success),
-      'RELEASED' => (label: 'Not installed', tone: StatusTone.info),
+      'RELEASED' => (label: 'Ready to install', tone: StatusTone.info),
       'ALLOCATED' => (label: 'Preparing', tone: StatusTone.warning),
       'SUSPENDED' => (label: 'Suspended', tone: StatusTone.danger),
       'REVOKED' => (label: 'Revoked', tone: StatusTone.danger),

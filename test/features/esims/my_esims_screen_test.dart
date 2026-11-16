@@ -76,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Japan 100MB 7Days'), findsNWidgets(2));
-    expect(find.text('Not installed'), findsOneWidget);
+    expect(find.text('Ready to install'), findsOneWidget);
     expect(find.text('Active'), findsOneWidget);
     expect(find.text('Bought for me'), findsOneWidget);
     expect(find.text('Bought by me'), findsOneWidget);
