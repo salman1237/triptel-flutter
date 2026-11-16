@@ -13,8 +13,16 @@ import 'coverage_sheet.dart';
 /// FR-202: full-height destination search sheet. The featured "Global"
 /// package card needs product-level data (price, country count framing)
 /// this screen's plain country list doesn't have -- deferred as FR-202b.
-/// Non-regional taps now open FR-204's plans screen; regional taps open
-/// FR-203's coverage sheet.
+/// Tapping any row (regional or not) opens FR-204's plans screen -- a
+/// regional package is a real, purchasable product the same way a single
+/// country is (confirmed live: `GET /catalog/destinations/{regional-slug}`
+/// returns real products). FR-203's "'N countries' link" is its own
+/// separate tap target on a regional row's subtitle, opening the coverage
+/// sheet instead -- it used to be the row's only tap target, which meant a
+/// regional package could never actually be bought (found live this
+/// session: the real bug the user's "why can't I see regional packages"
+/// question led to -- they existed and rendered, but had no path to a
+/// purchase screen).
 Future<void> showExploreSheet(BuildContext context) {
   return showModalBottomSheet(
     context: context,
@@ -66,12 +74,12 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
   }
 
   void _onCountryTap(Country country) {
-    if (country.isRegional) {
-      showCoverageSheet(context, iso2: country.iso2, name: country.nameEn);
-    } else {
-      Navigator.of(context).maybePop();
-      context.push('/explore/${country.slug}');
-    }
+    Navigator.of(context).maybePop();
+    context.push('/explore/${country.slug}');
+  }
+
+  void _onViewCoverage(Country country) {
+    showCoverageSheet(context, iso2: country.iso2, name: country.nameEn);
   }
 
   @override
@@ -112,6 +120,7 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
                     onRegionalTabChanged: (v) =>
                         setState(() => _regionalTab = v),
                     onCountryTap: _onCountryTap,
+                    onViewCoverage: _onViewCoverage,
                   ),
                 AsyncError() => Padding(
                     padding: const EdgeInsets.all(32),
@@ -142,6 +151,7 @@ class _Body extends StatelessWidget {
     required this.regionalTab,
     required this.onRegionalTabChanged,
     required this.onCountryTap,
+    required this.onViewCoverage,
   });
 
   final List<Country> all;
@@ -151,6 +161,7 @@ class _Body extends StatelessWidget {
   final bool regionalTab;
   final ValueChanged<bool> onRegionalTabChanged;
   final ValueChanged<Country> onCountryTap;
+  final ValueChanged<Country> onViewCoverage;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +243,7 @@ class _Body extends StatelessWidget {
               _RegionalRow(
                 country: country,
                 onTap: () => onCountryTap(country),
+                onViewCoverage: () => onViewCoverage(country),
               )
             else
               CountryRow(
@@ -255,10 +267,15 @@ class _Body extends StatelessWidget {
 /// of the package's display name (those names use inconsistent formats:
 /// "(N countries)", "(N areas)", "Name-N", or no count at all).
 class _RegionalRow extends ConsumerWidget {
-  const _RegionalRow({required this.country, required this.onTap});
+  const _RegionalRow({
+    required this.country,
+    required this.onTap,
+    required this.onViewCoverage,
+  });
 
   final Country country;
   final VoidCallback onTap;
+  final VoidCallback onViewCoverage;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -269,10 +286,35 @@ class _RegionalRow extends ConsumerWidget {
       _ => null,
     };
 
-    return CountryRow(
-      name: country.nameEn,
-      subtitle: subtitle,
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.public, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(country.nameEn, style: AppTypography.body()),
+                  if (subtitle != null)
+                    InkWell(
+                      key: ValueKey(
+                          'regional-row-view-coverage-${country.iso2}'),
+                      onTap: onViewCoverage,
+                      child: Text(subtitle,
+                          style:
+                              AppTypography.caption(color: AppColors.primary)),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.inkMuted),
+          ],
+        ),
+      ),
     );
   }
 }

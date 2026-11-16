@@ -175,8 +175,10 @@ void main() {
   });
 
   testWidgets(
-      'tapping a regional entry opens its coverage sheet (FR-203), not a '
-      "coming-soon snack", (tester) async {
+      'tapping a regional entry\'s row (not its "N countries" subtitle) '
+      "closes the sheet and navigates to FR-204's plans screen -- a "
+      'regional package is a real, purchasable product, not a dead end',
+      (tester) async {
     await tester.pumpWidget(_app());
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -186,9 +188,24 @@ void main() {
     await tester.tap(find.text('AUKUS(3 countries)'));
     await tester.pumpAndSettle();
 
-    expect(find.text('3 countries'), findsWidgets);
+    expect(find.text('plans-placeholder-aukus-3-countries'), findsOneWidget);
+    expect(find.text('3 countries'), findsNothing);
+  });
+
+  testWidgets(
+      'tapping a regional entry\'s "N countries" subtitle opens its '
+      'coverage sheet (FR-203) instead of navigating away', (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Regional'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3 countries'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Australia'), findsOneWidget);
-    expect(find.textContaining('coming soon'), findsNothing);
+    expect(find.text('plans-placeholder-aukus-3-countries'), findsNothing);
   });
 
   testWidgets(
