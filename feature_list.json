@@ -176,9 +176,15 @@
       "id": "FR-106",
       "behavior": "Guest purchase resumes after login/register/Google",
       "verification": "flutter test test/features/checkout",
-      "state": "blocked",
-      "blocked_reason": "This FR persists {productId, discountCode} before sending a guest to login and resumes checkout afterward -- but there is no checkout flow to persist from or resume into yet (FR-301+ are all not_started; catalog FR-201+ that would let a guest pick a product is also not_started). Building the persistence provider in isolation now (like FR-007's pendingReferralProvider, built ahead of FR-101's register screen) was considered, but unlike FR-007 there is no real producer (a guest purchase attempt) or consumer (resumed checkout) to wire it to or test meaningfully yet, and redirecting to a not-yet-existing route would be unsafe with go_router. Revisit when FR-301 (checkout review screen) exists -- build the pending-purchase provider and this FR together then, same incremental pattern as FR-007/FR-105b.",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "094b0d3",
+        "screens": [
+          "artifacts/FR-106-guest-redirected-to-login.png",
+          "artifacts/FR-106-resumed-checkout-after-login.png"
+        ],
+        "notes": "Unblocked now that FR-301 (checkout review) exists. Both real checkout endpoints (POST /orders/checkout, POST /payments/shurjopay/order-initiate) are (auth) per API.md -- a guest used to fall through into attempting them anyway and hitting a real 401. New lib/core/checkout/{pending_purchase,pending_purchase_provider}.dart (same shared_preferences AsyncNotifier pattern as the pre-existing pendingReferralProvider) persist {productId, countryName, discountCode?}. checkout_review_screen.dart's _onContinueToPayment now resolves auth first and routes a guest to /login via new _sendGuestToLogin() before any payment attempt. New CatalogApi.getProduct(id) (GET /catalog/products/{id}, real captured fixture) lets lib/features/auth/application/post_auth_navigation.dart's navigateAfterAuth() re-fetch the product and resume straight into /checkout/review (with the discount code re-checked best-effort via the existing discountsApiProvider.check(), silently dropped if since expired) instead of landing on Home -- only overrides the Home case; Set Password/Suspended routing untouched. Wired into all three real auth-success call sites (login password, login Google, register). 24 new/changed tests across checkout_review_screen_test.dart, login_screen_test.dart, register_screen_test.dart, catalog_providers_test.dart/coverage_sheet_test.dart/explore_sheet_test.dart (CatalogApi fakes), product_test.dart; full suite 422 tests green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: proved 3 separate times (guest-redirect, resume-after-auth, discount-restore), each via a temporary false&& guard producing real failures, then restored. On-device evidence is genuine, real account (salman2033), real beta data: 1st screenshot shows a signed-out guest tapping 'Continue to payment' on a real Japan 100MB plan and landing on the real Sign in screen (not a doomed checkout attempt); 2nd shows that after signing in with the real password, the app lands back on the real Checkout screen for that exact plan, not Home -- proving the resume works live, not just in widget tests. Reviewer: PASS (independently verified every file, the API usage, guest-intercept completeness via grep for stray postAuthRoute(...) calls, navigateAfterAuth's scope, discount-restore's best-effort error handling, and re-ran the non-vacuousness check itself)."
+      }
     },
     {
       "id": "FR-107",
