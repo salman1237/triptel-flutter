@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:triptel/core/money/money.dart';
-import 'package:triptel/features/checkout/application/url_launcher_provider.dart';
+import 'package:triptel/core/install/url_launcher_provider.dart';
 import 'package:triptel/features/checkout/data/models/order.dart';
 import 'package:triptel/features/checkout/presentation/purchase_success_screen.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';

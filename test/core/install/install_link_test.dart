@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:triptel/features/checkout/application/install_link.dart';
+import 'package:triptel/core/install/install_link.dart';
 
 void main() {
   group('buildInstallUrl (FR-310/404, API.md "Install links")', () {

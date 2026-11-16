@@ -15,7 +15,7 @@ import 'package:triptel/features/checkout/application/order_poll.dart';
 import 'package:triptel/features/checkout/application/order_poll_schedule.dart';
 import 'package:triptel/features/checkout/application/order_status_launcher.dart';
 import 'package:triptel/features/checkout/application/orders_providers.dart';
-import 'package:triptel/features/checkout/application/url_launcher_provider.dart';
+import 'package:triptel/core/install/url_launcher_provider.dart';
 import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
 import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/checkout/application/shurjopay_callback.dart';

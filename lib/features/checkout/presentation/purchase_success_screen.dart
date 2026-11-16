@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/install/install_link.dart';
+import '../../../core/install/url_launcher_provider.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../compatibility/application/compatibility_providers.dart';
 import '../../compatibility/application/esim_verdict.dart';
-import '../application/install_link.dart';
-import '../application/url_launcher_provider.dart';
 import '../data/models/order.dart';
 
 /// FR-310: QR (FR-401), 1-tap install gated by FR-950, copy the activation

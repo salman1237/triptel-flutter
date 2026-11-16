@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:triptel/core/install/url_launcher_provider.dart';
 import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/core/widgets/widgets.dart';
+import 'package:triptel/features/compatibility/application/compatibility_providers.dart';
+import 'package:triptel/features/compatibility/application/esim_verdict.dart';
 import 'package:triptel/features/esims/application/esim_status_providers.dart';
 import 'package:triptel/features/esims/data/esim_status_api.dart';
 import 'package:triptel/features/esims/data/models/esim_status.dart';
 import 'package:triptel/features/esims/presentation/esim_detail_screen.dart';
+
+const _lpa = r'LPA:1$smdp.example.invalid$ACTIVATION-CODE';
 
 EsimStatus _status({
   String label = 'Not installed yet',
@@ -15,6 +21,9 @@ EsimStatus _status({
   DateTime? activatedAt,
   DateTime? expiresAt,
   String? telemetryError,
+  String lpaString = _lpa,
+  String smdpAddress = 'smdp.example.invalid',
+  String? matchingId = 'ACTIVATION-CODE',
 }) =>
     EsimStatus(
       esimId: 'esim-1',
@@ -26,10 +35,10 @@ EsimStatus _status({
         dataAmountGb: 0.1,
       ),
       iccid: '',
-      lpaString: '',
-      qrCodeData: '',
-      smdpAddress: '',
-      matchingId: null,
+      lpaString: lpaString,
+      qrCodeData: lpaString,
+      smdpAddress: smdpAddress,
+      matchingId: matchingId,
       esimStatus: 'RELEASED',
       status: EsimStatusInfo(
         label: label,
@@ -80,8 +89,22 @@ class _FakeEsimStatusApi implements EsimStatusApi {
   }
 }
 
-Widget _app(EsimStatusApi api) => ProviderScope(
-      overrides: [esimStatusApiProvider.overrideWithValue(api)],
+Widget _app(
+  EsimStatusApi api, {
+  EsimVerdict verdict = const EsimVerdict(
+      kind: EsimVerdictKind.supported, deviceLabel: 'Test', reason: ''),
+  List<String>? launchedUrls,
+  bool launchResult = true,
+}) =>
+    ProviderScope(
+      overrides: [
+        esimStatusApiProvider.overrideWithValue(api),
+        esimVerdictProvider.overrideWith((ref) async => verdict),
+        urlLauncherProvider.overrideWithValue((url) async {
+          launchedUrls?.add(url.toString());
+          return launchResult;
+        }),
+      ],
       child: const MaterialApp(home: EsimDetailScreen(esimId: 'esim-1')),
     );
 
@@ -169,6 +192,147 @@ void main() {
 
     expect(find.text("We couldn't load this eSIM."), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
+  });
+
+  group('FR-404: install section', () {
+    testWidgets('renders the QR code', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EsimQr), findsOneWidget);
+    });
+
+    testWidgets(
+        'supported device: shows the 1-tap install button, tapping it '
+        "launches the platform's install URL", (tester) async {
+      final launched = <String>[];
+      await tester.pumpWidget(
+          _app(_FakeEsimStatusApi(_status()), launchedUrls: launched));
+      await tester.pumpAndSettle();
+
+      final installButton =
+          find.byKey(const ValueKey('esim-one-tap-install-button'));
+      expect(installButton, findsOneWidget);
+
+      await tester.ensureVisible(installButton);
+      await tester.tap(installButton);
+      await tester.pumpAndSettle();
+
+      expect(launched, hasLength(1));
+      expect(launched.single, contains('esim_qrcode_provisioning'));
+    });
+
+    testWidgets(
+        'unsupported device: no install button, shows the fallback-to-codes '
+        'explanation', (tester) async {
+      await tester.pumpWidget(_app(
+        _FakeEsimStatusApi(_status()),
+        verdict: const EsimVerdict(
+            kind: EsimVerdictKind.notSupported,
+            deviceLabel: 'Test',
+            reason: ''),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('esim-one-tap-install-button')),
+          findsNothing);
+      expect(find.byKey(const ValueKey('esim-install-explanation')),
+          findsOneWidget);
+    });
+
+    testWidgets('shows the "install only once" warning', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.textContaining('only install this eSIM once'), findsOneWidget);
+    });
+
+    testWidgets(
+        'shows SM-DP+ address, matching ID, and the LPA code, each copyable',
+        (tester) async {
+      final copied = <ClipboardData>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add(
+                ClipboardData(text: (call.arguments as Map)['text'] as String));
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(find.text('smdp.example.invalid'), findsOneWidget);
+      expect(find.text('ACTIVATION-CODE'), findsOneWidget);
+      expect(find.text(_lpa), findsOneWidget);
+
+      final smdpCopy = find.byKey(const ValueKey('esim-copy-SM-DP+ address'));
+      await tester.ensureVisible(smdpCopy);
+      await tester.tap(smdpCopy);
+      await tester.pumpAndSettle();
+      expect(copied.last.text, 'smdp.example.invalid');
+      expect(find.text('SM-DP+ address copied.'), findsOneWidget);
+
+      final matchingIdCopy =
+          find.byKey(const ValueKey('esim-copy-Matching ID'));
+      await tester.ensureVisible(matchingIdCopy);
+      await tester.tap(matchingIdCopy);
+      await tester.pumpAndSettle();
+      expect(copied.last.text, 'ACTIVATION-CODE');
+
+      final lpaCopy =
+          find.byKey(const ValueKey('esim-copy-Activation code (LPA)'));
+      await tester.ensureVisible(lpaCopy);
+      await tester.tap(lpaCopy);
+      await tester.pumpAndSettle();
+      expect(copied.last.text, _lpa);
+    });
+
+    testWidgets('no matching ID -> that row is hidden entirely',
+        (tester) async {
+      await tester
+          .pumpWidget(_app(_FakeEsimStatusApi(_status(matchingId: null))));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('esim-copy-Matching ID')), findsNothing);
+    });
+
+    testWidgets('tapping the setup guide link launches the web guide URL',
+        (tester) async {
+      final launched = <String>[];
+      await tester.pumpWidget(
+          _app(_FakeEsimStatusApi(_status()), launchedUrls: launched));
+      await tester.pumpAndSettle();
+
+      final guideLink = find.byKey(const ValueKey('esim-setup-guide-link'));
+      await tester.ensureVisible(guideLink);
+      await tester.tap(guideLink);
+      await tester.pumpAndSettle();
+
+      expect(launched, hasLength(1));
+      expect(launched.single, contains('guides/esim-setup-guide'));
+    });
+
+    testWidgets('a failed install launch shows an error snack, never crashes',
+        (tester) async {
+      await tester
+          .pumpWidget(_app(_FakeEsimStatusApi(_status()), launchResult: false));
+      await tester.pumpAndSettle();
+
+      final installButton =
+          find.byKey(const ValueKey('esim-one-tap-install-button'));
+      await tester.ensureVisible(installButton);
+      await tester.tap(installButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't open the install link."), findsOneWidget);
+    });
   });
 }
 
