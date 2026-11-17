@@ -171,16 +171,15 @@ Session log. Read first at session start, update last at session end.
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
   referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
-  FR-1001, and now **FR-1002** (Profile) all done (see Done below),
-  plus a non-FR UI refresh pass (visual polish only, see Done entry).
-  Continuing forward in strict array order, next is **FR-1003** (KYC --
-  `GET /kyc/me` status display already built in FR-1001's Account
-  screen; this FR adds the actual submission form: NID number + front
-  photo (required) + back photo (optional), `POST /kyc/submit`
-  multipart), finishing **section L (Account & KYC)**. FR-201b stays
-  blocked -- it needs real eSIM usage data (FR-402/403, already
-  passing) AND "the referral promo context (FR-801)"; now that FR-801
-  exists, re-check FR-201b's blocker text and consider unblocking it.
+  and all of **section L (FR-1001 through FR-1003, Account & KYC)**
+  all done (see Done below), plus a non-FR UI refresh pass (visual
+  polish only, see Done entry). Section L is complete. Continuing
+  forward in strict array order, next is **FR-1101** (Support ticket
+  list -- reference, subject, status chip, last activity), opening
+  **section M (Support)**. FR-201b stays blocked -- it needs real eSIM
+  usage data (FR-402/403, already passing) AND "the referral promo
+  context (FR-801)"; now that FR-801 exists, re-check FR-201b's
+  blocker text and consider unblocking it.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -602,6 +601,41 @@ Session log. Read first at session start, update last at session end.
   genuinely absent (not just hidden) when false, and the 6 touched
   auth test files each got only a trivial 3-line stub with nothing
   else changed. Commits: `49100a9` (feature), `b3c8b52` (state).
+- 2026-11-17 — FR-1003 passing (KYC status and submission), closing
+  **section L (Account & KYC)**. New `KycScreen` at `/kyc`: real status
+  display (reusing FR-1001's `kycStatusLabel`), real `rejection_reason`/
+  `submitted_at` shown when present, an NID field, required front photo
+  + optional back photo (`image_picker`'s first real use in this
+  codebase, via a new `kycImagePickerProvider` seam mirroring the
+  existing `urlLauncherProvider`/`topupLauncherProvider` pattern so
+  tests never drive the real platform channel), and Submit for review
+  -> `POST /kyc/submit` multipart (`document_back` genuinely omitted
+  from the form, not sent null, when no back photo is picked). APPROVED
+  shows a plain success state with no form; PENDING/REJECTED/not-
+  submitted all fall through to the form, matching the API's
+  documented resubmission-resets-to-PENDING behavior. Post-submit, the
+  screen does a real re-fetch (`ref.invalidate(kycStatusProvider)`),
+  never a locally-faked status. The Account tab's "Identity
+  verification" row (previously a coming-soon snack, per FR-1001's own
+  scope note) now navigates here for real. 10 new/changed tests; full
+  suite green; `flutter analyze`/`dart format` clean; `bash harness.sh
+  verify` green. Non-vacuousness proof: changed the APPROVED gate's
+  string comparison to a non-matching value, confirmed 2 real test
+  failures, reverted. **Real-device evidence deliberately stops short
+  of a real submission:** live navigation reaches the real form
+  showing the real account's genuine "Not verified" status, and a real
+  client-side validation snackbar fires correctly ("Enter your NID
+  number.") -- did NOT submit a real NID/document photo, since that
+  would be an irreversible real submission of personal ID data to the
+  live beta backend with no way to undo it; the actual `POST /kyc/
+  submit` call itself is covered by the test suite's fakes instead.
+  Reviewer: PASS, independently confirmed the multipart omission of
+  `document_back`, the APPROVED-only gate against all four real status
+  combinations, that the image-picker seam is never bypassed to a real
+  platform channel in any test, and flagged one cosmetic stale doc
+  comment (fixed in a same-day follow-up, `77bedac`) -- no functional
+  issues. Commits: `39f842d` (feature), `77bedac` (doc fix), `3956176`
+  (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
