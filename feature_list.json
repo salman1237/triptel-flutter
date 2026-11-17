@@ -696,8 +696,12 @@
       "id": "FR-801",
       "behavior": "Refer & earn screen with code, invite, stats, lists",
       "verification": "flutter test test/features/referrals && bash harness.sh shot FR-801",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "b2bab24",
+        "screens": ["artifacts/FR-801-refer-earn.png", "artifacts/FR-801-refer-earn-stats.png", "artifacts/FR-801-refer-earn-rewards.png"],
+        "notes": "GET /referrals/me: code chip + Invite (shares real share_url via SharePlus, no new dependency), BalanceCard stats (promo balance/total earned/people joined), how-it-works per-event amounts (JOINING/FIRST_PURCHASE; NEW_MERCHANT filtered out at the model layer, a merchant-only event), referred-people and rewards lists with empty states. New lib/features/referrals/ data layer + screen, opening section I. 'Refer & earn' link added to the still-placeholder Account tab, gated on signed-in only (matches the existing AuthAuthenticated switch pattern already used for Sign out/Set password on the same screen). FR-802 (claim)/FR-803 (pre-fill) deliberately not built -- claim() exists on the API unused. Real-device evidence: artifacts/FR-801-refer-earn.png is genuinely real (the real signed-in account's live beta data) and shows is_enabled:false -- this beta account's referral programme is actually disabled server-side, so the EmptyState path is real, not simulated. The populated-stats/list views (-stats.png, -rewards.png) could not be captured from this real account for that reason, so they use the established disclosed local-main.dart-rig technique (synthetic ReferralSummary with 2 referrals/rewards); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. 11 new/changed tests; full suite 598 green; flutter analyze/dart format clean; bash harness.sh verify green. Caught and fixed a real widget-test layout bug myself before review: PillButton's primary/secondary variants set an infinite-width minimumSize regardless of fullWidth, which broke the Invite button next to an Expanded code chip -- fixed with an explicit SizedBox(width: 110). Reviewer: PASS, independently confirmed the NEW_MERCHANT filter and is_enabled gating are enforced at the data/widget-branch level (not just UI dressing), the layout fix is correct and sufficient, and no FR-802/803 scope crept in."
+      }
     },
     {
       "id": "FR-802",
