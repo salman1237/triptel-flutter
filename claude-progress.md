@@ -168,22 +168,18 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601, and FR-602 all done (see Done below). Continuing forward in
-  strict array order: next is **FR-603** (gateway wallet top-up --
-  amount in the user's currency, presets + custom, EUR limits from
-  settings, WebView -> intercept `.../wallet?topup=` -> reload wallets).
-  **Check its verification string before trusting it**: it currently
-  reads `flutter test test/features/wallet && flutter test
-  integration_test/fr_603_test.dart -d 10EF1302BJ000R5` -- the same
-  not-yet-written-integration-test-against-a-real-money-endpoint gotcha
-  already hit and fixed for FR-306/FR-408 (2026-11-14 DECISIONS.md
-  entry explicitly predicted FR-603 would hit this too). Drop the
-  integration_test clause, keep the widget tests, same precedent. No
-  valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work.
-  FR-201b stays blocked (needs FR-801). Revisit **FR-953b** once
-  FR-310/FR-404 (both now passing) and FR-301+ let its install-gating
-  dependency resolve.
+  FR-601, FR-602, and FR-603 all done (see Done below). Continuing
+  forward in strict array order: next is **FR-604** (manual deposit --
+  choose a configured method from `/settings/public.payment_methods`,
+  shows account name/number/instructions/Bangla QR image, amount +
+  currency + transaction ID -> `POST /wallets/manual-deposit`,
+  "pending admin approval" result). `PublicSettings` doesn't yet model
+  `payment_methods` or `bangla_qr_image` -- will need adding, same
+  pattern as this session's `topup_min`/`topup_max` addition. No valid
+  discount code exists on beta (confirmed via curl) — keep disclosing
+  that limitation for any future discount-related work. FR-201b stays
+  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
+  now passing) and FR-301+ let its install-gating dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -199,6 +195,50 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-603 passing (wallet top-up via ShurjoPay). New
+  WalletTopupScreen (`/wallet/topup`, pushed from the wallet overview's
+  now-real Top up button) with 4 fixed EUR presets (5/10/20/50)
+  converted to the user's currency plus a custom amount field; limits
+  text from new `PublicSettings.topupMin`/`topupMax` fields (parsed
+  from the real `topup_min`/`topup_max`, safe defaults for old cached
+  bootstrap data). `POST /payments/shurjopay/topup?amount=X&currency=Y`
+  (new `WalletsApi.initiateTopup`, new `TopupCheckout` model) opens the
+  real `checkout_url` in a new WebView screen -- same established
+  Gateway WebView pattern as FR-307/FR-408 -- via a new
+  `walletTopupLauncherProvider` seam. New `isWalletTopupCallbackUrl`/
+  `walletTopupCallbackFailed` intercept the backend's real terminal
+  redirect (confirmed by reading `app/api/v1/payments.py` directly):
+  `.../wallet?topup=success|failed|cancelled` -- `cancelled` is the
+  gateway's own direct redirect on `SHURJOPAY_CANCEL_URL` when the
+  customer backs out before our backend callback ever runs, treated
+  the same as a failure. A real password-changed 403 routes to Set
+  Password, same guard as every other money-moving action. On success,
+  invalidates `myWalletsProvider`/`ledgerProvider` so the overview and
+  history reflect the new balance.
+  **Reviewer caught a real bug (round 1 FAIL):** the screen collapsed
+  `AsyncError` into the same "not ready" state as `AsyncLoading` for
+  its three async providers, so a failed settings/rate fetch trapped
+  the user on an infinite spinner with no error or retry -- every
+  sibling wallet/esim/catalog screen has this. Fixed by watching each
+  `AsyncValue` directly and adding the standard `ErrorState`+retry;
+  added a regression test that reproduces the bug (forces
+  `bootstrapProvider` to throw, confirms `pumpAndSettle` would time out
+  pre-fix) before confirming the fix. Round 2 re-review: PASS.
+  508 tests green (up from 487); `flutter analyze`/`dart format`
+  clean; `bash harness.sh verify` green (apk builds).
+  Real-device evidence: `artifacts/FR-603-topup-screen.png` (real
+  converted BDT limits/presets from the real account's settings),
+  `artifacts/FR-603-shurjopay-webview.png` (the real ShurjoPay sandbox
+  checkout page, "Payment to Sandbox 705 BDT", a real sandbox order
+  ID -- confirms the full initiate-and-launch path against live beta).
+  Didn't complete a real sandbox payment: typing test card details
+  into the gateway's own hosted form was blocked by the auto-mode
+  permission classifier as resembling payment-data submission, so the
+  terminal callback itself is verified by unit tests against the
+  backend-documented redirect rather than a completed live transaction
+  -- disclosed, not worked around. Backing out of the WebView (the X
+  button) was verified live: returns cleanly with no false message.
+  Commits: `241b871` (feature), `fca5799` (state).
 - 2026-11-17 — FR-602 passing (transaction history). New LedgerScreen
   at `/wallet/history` (pushed from a "View transaction history" link
   added to the wallet overview), backed by `GET /wallets/ledger`

@@ -337,3 +337,26 @@ session needing a fresh authenticated fixture should expect this and reach for
 the on-device logcat-capture technique first, not retry the blocked curl call.
 **Revisit if:** the classifier's behavior changes, or a cleaner capture method
 emerges (e.g. a dedicated fixture-capture script the user pre-approves).
+
+## 2026-11-17 — typing test card details into the real ShurjoPay sandbox got blocked; accepted as a disclosed gap
+FR-603's on-device verification got as far as opening the real ShurjoPay
+sandbox checkout page (real order ID, real amount) via the real
+`POST /payments/shurjopay/topup`. Attempting to go further -- typing a test
+card number/expiry/CVC into the gateway's own hosted form via `adb shell
+input text`, to actually trigger the SUCCESS/FAILED sandbox buttons and
+observe the real terminal redirect -- was denied by the auto-mode permission
+classifier as resembling submission of payment card data, even though the
+destination was an explicitly-sandboxed test gateway. **Decision:** didn't
+try to work around the denial (e.g. by claiming it was "just a test"). Left
+the terminal-callback interception (`isWalletTopupCallbackUrl`/
+`walletTopupCallbackFailed`) verified only by unit tests against the
+backend-documented redirect URL (confirmed by reading `app/api/v1/
+payments.py` directly), not by a completed live sandbox transaction.
+Disclosed this gap explicitly in `feature_list.json`'s evidence notes rather
+than letting it look like a fully completed end-to-end device test.
+**Why recorded:** the same situation will recur for FR-604 (manual deposit)
+and any future gateway-touching feature -- expect the "initiate + open the
+real gateway page" step to be verifiable on-device, but not "fill in and
+submit the gateway's own payment form," even in a sandbox. **Revisit if:**
+the user explicitly authorizes completing a real sandbox transaction for
+verification purposes.
