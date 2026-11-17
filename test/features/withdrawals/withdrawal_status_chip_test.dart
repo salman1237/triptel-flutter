@@ -13,10 +13,10 @@ void main() {
   });
 
   test(
-      'CANCELLED is info (sky), not danger -- it is user-initiated and '
-      'non-punitive (the backend returns the held balance)', () {
+      'CANCELLED is danger, matching Design_System.md\'s documented '
+      'Cancelled/Rejected/Failed convention', () {
     expect(withdrawalStatusChip('CANCELLED'),
-        (label: 'Cancelled', tone: StatusTone.info));
+        (label: 'Cancelled', tone: StatusTone.danger));
   });
 
   test('an undocumented future status falls back to the raw value, warning',

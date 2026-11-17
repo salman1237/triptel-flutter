@@ -433,3 +433,21 @@ real FR entries, not forgotten. **Revisit if:** the client specifically asks
 for the AI assistant or similar as a real feature -- that needs its own FR
 entry (and, for an AI assistant, real backend support) before the loop can
 build and verify it like anything else.
+
+## 2026-11-17 — FR-703: withdrawal CANCELLED chip stays `danger`, not a new exception
+Initially shipped `CANCELLED -> StatusTone.info`, reasoned as "non-punitive
+because the backend returns the held balance on cancel (unlike REJECTED)."
+The reviewer agent checked `D:\eSim\backend\app\services\withdrawal_svc.py`
+and found both `cancel_withdrawal` and `reject_withdrawal` call the same
+`_return_held_balance` helper -- the balance-return claim was false and did
+not distinguish the two statuses at all. **Decision:** reverted to
+`StatusTone.danger` for `CANCELLED`, matching `Design_System.md`'s already-
+documented convention (Cancelled/Rejected/Failed -> danger) instead of
+carving out an undocumented exception. **Why recorded:** a plausible-sounding
+but unverified "the backend does X" justification is exactly the kind of
+claim that needs checking against the real backend source before it's used
+to deviate from a documented rule -- it wasn't checked the first time.
+**How to apply:** before mapping a status to a chip tone that disagrees with
+`Design_System.md`'s documented table, either update that doc with a verified
+exception or don't deviate; never justify a deviation with an unverified
+claim about backend behavior.
