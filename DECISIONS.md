@@ -1,6 +1,24 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-17 — FR-501's public tracker has no lifecycle gate (flagged by the reviewer, not fixed yet)
+FR-501's new `TrackingScreen` (public `GET /esims/public/{token}`, no
+login) shows the QR and manual install codes unconditionally whenever
+the lookup succeeds. **Why this is a gap:** the authenticated detail
+screen (FR-405) replaces that exact section with a lifecycle banner for
+SUSPENDED/REVOKED/CANCELLED/EXPIRED eSIMs, but the public tracker has no
+equivalent check -- an anonymous visitor following a tracking link to a
+dead eSIM still sees install codes with no warning they won't work.
+**Why not fixed now:** FR-501's own text ("read-only detail view, invalid
+→ error + Support") never mentions lifecycle states, and the reviewer
+confirmed this isn't a corner cut on FR-501's actual scope -- it's a
+real product gap one layer up, surfaced by review rather than required
+by the FR being worked. **Revisit if:** picking up polish work on the
+tracking screen, or if a user reports seeing install codes for a dead
+eSIM via a shared link -- reuse `lifecycleBannerMessage()`
+(`lib/features/esims/application/esim_lifecycle_shape.dart`, already
+built for FR-405) the same way the authenticated screen does.
+
 ## 2026-11-17 — FR-203 regional packages were unbuyable; FR-408's verification string had the same integration_test gap predicted for it
 Two judgment calls from the same session stretch, both worth recording.
 

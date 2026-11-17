@@ -105,8 +105,20 @@ Session log. Read first at session start, update last at session end.
   ESIM. The real `order_id` FK isn't available on this screen's data
   path (only `esim_id`/`order_no` are) — embedded in the ticket body
   text instead of guessing a value that would fail the FK constraint.
-  My eSIMs (section D cont'd/E) is now fully done through FR-410;
-  FR-501 (public tracking, section F) is next.
+  My eSIMs (section D cont'd/E) is now fully done through FR-410.
+  **FR-501** (section F, public tracking) also now passing — replaced
+  the FR-007-era placeholder `TrackingScreen` with a real
+  `GET /esims/public/{token}` lookup, reusing `EsimStatus` and FR-403's
+  pure usage/validity formatters directly. Deliberately scoped down
+  from the authenticated detail screen: no refresh/top-up/report-a-
+  problem (all auth-gated), no FR-405 lifecycle banner, no FR-406
+  history. **Follow-up flagged by the reviewer, not yet built:** a
+  SUSPENDED/REVOKED/CANCELLED/EXPIRED eSIM's public tracker page still
+  shows full install codes/QR with no lifecycle warning — the
+  authenticated screen gates this via FR-405's banner, the public one
+  has no equivalent. Not a blocker for FR-501 (its own FR text doesn't
+  mention lifecycle states), but worth a small follow-up fix later.
+  Section G (Wallet, FR-601+) is next.
 - **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
   now both **passing** (see Done below). FR-201b stays *partially*
   blocked (needs FR-801 referrals, still not_started). FR-202b stays
@@ -141,21 +153,31 @@ Session log. Read first at session start, update last at session end.
   unsticks it. `adb pull`'s local destination path also needs
   `MSYS_NO_PATHCONV` *unset* (only the remote path needs it set) in this
   Git Bash environment, or it mis-resolves the local file arg.
+  New this session: the vivo can also get genuinely stuck ON its own
+  lock screen (not just a screencap glitch) -- `adb shell input swipe`
+  stopped registering as an unlock gesture, `adb shell wm dismiss-
+  keyguard` had no effect either, screen size is 720x1612 so a swipe
+  starting below ~y1600 is off-screen and silently clamped/ignored
+  (easy to get wrong). If this recurs, physically touch the device
+  rather than burning adb retries. One on-device screenshot (FR-501's
+  valid-token path) was skipped this session for exactly this reason,
+  disclosed rather than faked -- see FR-501's Done entry.
   If a differently-signed debug build is already installed on a newly
   connected device, `adb install -r` fails with
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, and FR-410 all
-  done (see Done below). Continuing forward in strict array order: next
-  is **FR-501** (section F, public tracking by token without login --
-  `GET /esims/public/{token}`, read-only detail view, invalid token →
-  error + Support). Note: a `/track/:token` route and
-  `lib/features/tracking/presentation/tracking_screen.dart` already
-  exist in the router (pulled forward earlier for FR-007's deep-link
-  target) -- check what's actually built there before assuming this is
-  starting from scratch. No valid discount code exists on beta
-  (confirmed via curl) — keep disclosing that limitation for any future
+- **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, and
+  FR-501 all done (see Done below). Continuing forward in strict array
+  order: next is **FR-601** (section G, wallet overview -- balance hero
+  card: DEFAULT/REWARD "not withdrawable"/COMMISSION only if > 0;
+  actions Top up · Withdraw · Refer). `lib/features/wallet/` already
+  has a real data layer (`Wallet` model, `WalletsApi.getMyWallets()`,
+  `spendableBalance`/`walletCoversTotal`) built ahead for FR-305/306 --
+  reuse it, don't rebuild. `lib/features/wallet/presentation/
+  wallet_screen.dart` is still the original placeholder (the `/wallet`
+  tab) -- that's what FR-601 replaces. No valid discount code exists on
+  beta (confirmed via curl) — keep disclosing that limitation for any future
   discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
   install-gating dependency resolve.
@@ -174,6 +196,41 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-501, public eSIM tracking by
+  token without login):
+  - Replaced the FR-007-era `TrackingScreen` placeholder with a real
+    `GET /esims/public/{token}` lookup -- new `lib/features/tracking/`
+    data layer reusing the existing `EsimStatus` model (API.md section
+    7: "same shape" as the authenticated endpoint, `share_url` always
+    null) and FR-403's existing pure usage/validity formatters.
+  - Shows product title, status, usage ring, validity, the QR, and
+    manual install codes -- a gift recipient without an account still
+    needs to install it. Deliberately NOT replicated: refresh/top-up/
+    report-a-problem (all auth-gated), FR-405's lifecycle banner,
+    FR-406's history section -- kept this a focused read-only view.
+  - Invalid token's 404 shows the real message + Support contacts,
+    reusing FR-109's suspended-screen pattern.
+  - Fixed an unrelated test gap this surfaced: FR-007's own routing
+    test asserted against the old placeholder's literal text and
+    didn't mock the tracking API -- fixed to check the real widget's
+    `token` property with a proper fake override.
+  - 11 new/changed tests; full suite (466 tests) green, `flutter
+    analyze` clean, `bash harness.sh verify` green. Non-vacuous:
+    disabled the Support-contact box's null-guard, got a real failure,
+    restored.
+  - On-device evidence is PARTIAL, disclosed: a real invalid-token deep
+    link against the real rebuilt app correctly shows "Not found" +
+    real support contacts. The valid-token path (needs the synthetic-
+    data rig since it shows a real QR/LPA) could NOT be screenshotted
+    -- the test device got stuck on its own lock screen (see the
+    device-quirks note above). Relied on the 5 passing widget tests
+    covering that render path instead of fabricating or skipping it.
+  - Reviewer: PASS. Flagged one real, non-blocking follow-up: a
+    SUSPENDED/REVOKED/CANCELLED/EXPIRED eSIM's public tracker shows
+    full install codes with no lifecycle warning (the authenticated
+    screen gates this via FR-405; the public one doesn't). Worth a
+    small fix later, not required by FR-501's own text.
+  - Commits: `f9ed3b9` (feature code), `97e7b90` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-410, report a problem for an
   eSIM):
   - New `lib/features/support/` data layer: `SupportTicket` model (real
