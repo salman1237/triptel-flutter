@@ -17,6 +17,7 @@ import '../features/support/presentation/report_problem_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/ledger_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
+import '../features/wallet/presentation/wallet_topup_screen.dart';
 import 'app_shell.dart';
 
 /// FR-004's 4-tab shell, one branch per tab so each keeps its own navigation
@@ -76,6 +77,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/wallet/history',
       builder: (context, state) => const LedgerScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/topup',
+      builder: (context, state) => const WalletTopupScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

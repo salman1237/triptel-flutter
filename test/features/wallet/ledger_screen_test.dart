@@ -7,6 +7,7 @@ import 'package:triptel/core/theme/tokens.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
+import 'package:triptel/features/wallet/data/models/topup_checkout.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/ledger_screen.dart';
@@ -31,6 +32,11 @@ class _FakeWalletsApi implements WalletsApi {
     if (walletType == null) return _entries;
     return _entries.where((e) => e.referenceType == walletType).toList();
   }
+
+  @override
+  Future<TopupCheckout> initiateTopup(
+          {required double amount, required String currency}) =>
+      throw UnimplementedError();
 }
 
 LedgerEntry _entry({

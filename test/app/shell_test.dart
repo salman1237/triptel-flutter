@@ -14,6 +14,7 @@ import 'package:triptel/features/esims/data/my_esims_api.dart';
 import 'package:triptel/features/esims/presentation/my_esims_screen.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
+import 'package:triptel/features/wallet/data/models/topup_checkout.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
@@ -30,6 +31,11 @@ class _FakeWalletsApi implements WalletsApi {
 
   @override
   Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<TopupCheckout> initiateTopup(
+          {required double amount, required String currency}) =>
       throw UnimplementedError();
 }
 

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
+import 'package:triptel/features/wallet/data/models/topup_checkout.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
@@ -29,6 +31,11 @@ class _FakeWalletsApi implements WalletsApi {
   @override
   Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
       throw UnimplementedError();
+
+  @override
+  Future<TopupCheckout> initiateTopup(
+          {required double amount, required String currency}) =>
+      throw UnimplementedError();
 }
 
 Widget _app(Object result) => ProviderScope(
@@ -37,8 +44,20 @@ Widget _app(Object result) => ProviderScope(
         selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
         currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
       ],
-      child: const MaterialApp(home: WalletScreen()),
+      child: MaterialApp.router(routerConfig: _testRouter()),
     );
+
+GoRouter _testRouter() => GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const WalletScreen(),
+      ),
+      GoRoute(
+        path: '/wallet/topup',
+        builder: (context, state) =>
+            const Scaffold(body: Text('topup-screen-placeholder')),
+      ),
+    ]);
 
 void main() {
   testWidgets(
@@ -87,18 +106,17 @@ void main() {
     expect(find.text('€0.00'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets(
-      'tapping Top up shows a real "coming soon" note, not a '
-      'dead tap', (tester) async {
+  testWidgets('tapping Top up navigates to the real top-up screen (FR-603)',
+      (tester) async {
     await tester.pumpWidget(_app(const [
       Wallet(walletType: 'DEFAULT', balance: Money(100), isFrozen: false),
     ]));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('wallet-topup-button')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Top up is coming soon.'), findsOneWidget);
+    expect(find.text('topup-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets(
