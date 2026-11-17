@@ -169,12 +169,12 @@ Session log. Read first at session start, update last at session end.
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
-  withdrawals)**, and now **FR-801** (refer & earn) all done (see Done
-  below), plus a non-FR UI refresh pass (visual polish only, see Done
-  entry). Continuing forward in strict array order, next is **FR-802**
-  (claim a referrer while `can_claim` -- `POST /referrals/claim`), then
-  **FR-803** (referral link pre-fill from `?ref=CODE` + `GET /referrals/
-  validate`), finishing section I. FR-201b stays blocked -- it needs real
+  withdrawals)**, **FR-801**, and now **FR-802** (claim a referrer) all
+  done (see Done below), plus a non-FR UI refresh pass (visual polish
+  only, see Done entry). Continuing forward in strict array order, next
+  is **FR-803** (referral link pre-fill from `?ref=CODE` + `GET
+  /referrals/validate`, shows "Invited by @user, you get X" on
+  register), finishing section I. FR-201b stays blocked -- it needs real
   eSIM usage data (FR-402/403, already passing) AND "the referral promo
   context (FR-801)"; now that FR-801 exists, re-check FR-201b's blocker
   text and consider unblocking it. Revisit **FR-953b** once FR-310/FR-404
@@ -373,6 +373,30 @@ Session log. Read first at session start, update last at session end.
   dressing), the layout fix is correct and sufficient (110px is enough
   for "Invite" at `FittedBox` scale), and no FR-802/803 scope crept in.
   Commits: `b2bab24` (feature), `8669bd7` (state).
+- 2026-11-17 — FR-802 passing (claim a referrer while `can_claim`). Added
+  a code field + Claim button to the refer & earn screen, visible only
+  while `GET /referrals/me`'s `can_claim` is true (`_ReferEarnBody`
+  converted to a `ConsumerStatefulWidget` to hold the form state).
+  `POST /referrals/claim` on submit; success clears the field and calls
+  `ref.invalidate(referralSummaryProvider)` -- a real server re-fetch,
+  not client-side hiding, so the form only disappears once the backend
+  actually flips `can_claim` to false. A real 4xx (already has a
+  referrer/invalid/self/after first purchase) shows the server's own
+  message and the form stays for retry; a 3-16 char client-side check
+  is a UX nicety only, never a substitute for real server error
+  handling. 3 new tests; full suite 601 green; `flutter analyze`/`dart
+  format` clean; `bash harness.sh verify` green. Non-vacuousness proof:
+  flipped the `can_claim` condition to its inverse, confirmed 3 real
+  test failures, reverted. Real-device evidence via the established
+  disclosed local-`main.dart`-rig technique -- the real signed-in
+  account's referral programme is `is_enabled:false` (confirmed live in
+  FR-801), so `can_claim` can never be exercised against the real
+  account; `lib/main.dart` restored and confirmed byte-identical before/
+  after, real app rebuilt+reinstalled afterward. Reviewer: PASS,
+  independently confirmed the condition isn't inverted, the re-fetch is
+  real (not local state), the form survives a failed submit for retry,
+  and no FR-803/`referred_by` scope crept in. Commits: `230fba9`
+  (feature), `efa61fa` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
