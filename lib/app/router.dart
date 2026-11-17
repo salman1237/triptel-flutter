@@ -19,6 +19,8 @@ import '../features/wallet/presentation/ledger_screen.dart';
 import '../features/wallet/presentation/manual_deposit_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
 import '../features/wallet/presentation/wallet_topup_screen.dart';
+import '../features/withdrawals/presentation/add_payout_account_screen.dart';
+import '../features/withdrawals/presentation/payout_accounts_screen.dart';
 import 'app_shell.dart';
 
 /// FR-004's 4-tab shell, one branch per tab so each keeps its own navigation
@@ -86,6 +88,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/wallet/manual-deposit',
       builder: (context, state) => const ManualDepositScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/withdraw',
+      builder: (context, state) => const PayoutAccountsScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/withdraw/accounts/add',
+      builder: (context, state) => const AddPayoutAccountScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

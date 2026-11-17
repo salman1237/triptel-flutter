@@ -67,6 +67,11 @@ GoRouter _testRouter() => GoRouter(routes: [
         builder: (context, state) =>
             const Scaffold(body: Text('topup-screen-placeholder')),
       ),
+      GoRoute(
+        path: '/wallet/withdraw',
+        builder: (context, state) =>
+            const Scaffold(body: Text('withdraw-screen-placeholder')),
+      ),
     ]);
 
 void main() {
@@ -129,18 +134,17 @@ void main() {
     expect(find.text('topup-screen-placeholder'), findsOneWidget);
   });
 
-  testWidgets(
-      'tapping Withdraw shows a real "coming soon" note, not a '
-      'dead tap', (tester) async {
+  testWidgets('tapping Withdraw navigates to payout accounts (FR-701)',
+      (tester) async {
     await tester.pumpWidget(_app(const [
       Wallet(walletType: 'DEFAULT', balance: Money(100), isFrozen: false),
     ]));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('wallet-withdraw-button')));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.text('Withdraw is coming soon.'), findsOneWidget);
+    expect(find.text('withdraw-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets(

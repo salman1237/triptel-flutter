@@ -35,6 +35,8 @@ class ApiClient {
   Future<dynamic> put(String path, {Object? data}) =>
       _unwrap(() => _dio.put(path, data: data));
 
+  Future<dynamic> delete(String path) => _unwrap(() => _dio.delete(path));
+
   Future<dynamic> _unwrap(Future<Response<dynamic>> Function() call) async {
     try {
       final response = await call();

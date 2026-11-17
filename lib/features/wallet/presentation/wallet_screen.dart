@@ -15,9 +15,9 @@ import '../data/models/wallet.dart';
 /// `BalanceCard`) -- Main balance (DEFAULT), Reward credit (REWARD,
 /// "not withdrawable"), Commission only shown when > 0 (a customer never
 /// earns commission unless they're also a partner/agent, Rules.md/API.md
-/// section 5). Actions Top up (FR-603, real) · Withdraw (FR-701+) · Refer
-/// (FR-801+) -- the latter two don't exist yet, so each still shows a
-/// "coming soon" note instead of a dead tap.
+/// section 5). Actions Top up (FR-603, real) · Withdraw (FR-701, real --
+/// opens payout-account management; the full withdrawal request flow is
+/// FR-702, not yet built) · Refer (FR-801+, still "coming soon").
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
 
@@ -46,7 +46,7 @@ class WalletScreen extends ConsumerWidget {
             wallets: value,
             formatMoney: (amount) => _formatMoney(rate, code, amount),
             onTopUp: () => context.push('/wallet/topup'),
-            onWithdraw: () => _comingSoon(context, 'Withdraw'),
+            onWithdraw: () => context.push('/wallet/withdraw'),
             onRefer: () => _comingSoon(context, 'Refer a friend'),
             onViewHistory: () => context.push('/wallet/history'),
           ),
