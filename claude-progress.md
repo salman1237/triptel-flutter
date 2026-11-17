@@ -168,7 +168,8 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601 through FR-605, FR-701, and FR-702 all done (see Done below).
+  FR-601 through FR-605, FR-701, and FR-702 all done (see Done below),
+  plus a non-FR UI refresh pass (visual polish only, see Done entry).
   Session paused here at the user's explicit request ("stop after
   committing this feature") -- continuing forward in strict array
   order, next is **FR-703** (withdrawal history -- `GET /withdrawals`,
@@ -196,6 +197,37 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — UI refresh pass (visual polish only, not tied to a single
+  FR). The client sent an 8-panel branded mockup asking to "polish the
+  existing UI... throughout the app." The mockup also shows real
+  features that don't exist today (AI chat assistant, "Adapter Store",
+  "Compare Plans") and a differently-labeled 4-tab bar. Asked the user
+  to clarify scope first (two multiple-choice questions) rather than
+  guess on something this size -- chose "visual polish only" + "put
+  the guidance in Design_System.md." Delivered: Home hero gets a bold
+  two-line tagline; two new shared components (`StatusDot`,
+  `PromoBanner`) added to the FR-001 gallery but deliberately not wired
+  into any real screen yet (no presence indicator or real promo
+  content exists to attach them to); `Design_System.md` §5 documents
+  what already matched the mockup and, explicitly, everything skipped
+  and why (AI assistant/Adapter Store/Compare Plans aren't real FRs;
+  nav relabel was out of scope; per-row usage bars would show
+  fabricated data since `GET /orders/my-esims` has no live usage
+  field, confirmed in `esim_card_shape.dart`; the emoji greeting is
+  FR-201b, still blocked). Mockup saved to `docs/design-reference/
+  16-client-ui-refresh-reference.png`, with a README section
+  distinguishing it from the pre-existing Eskimo layout references
+  (different brand, different purpose). 2 new tests (PromoBanner tap,
+  Home hero tagline); full suite 569 tests green; `flutter analyze`/
+  `dart format` clean; `bash harness.sh verify` green (apk builds).
+  Real-device evidence: `artifacts/ui-refresh-home-hero.png` (the real
+  Home tab with the new tagline), `artifacts/ui-refresh-gallery-1.png`/
+  `-2.png` (the dev-only FR-001 gallery via the established temporary
+  local-rig technique, disclosed via a visible DEBUG banner, reverted
+  via `git checkout` and confirmed byte-identical). Reviewer: PASS
+  after two small doc-accuracy fixes (a wrong `§6` cross-reference in
+  two doc comments, meant `§5`; and a dangling "see DECISIONS.md"
+  pointer with no matching entry yet, now added). Commit: `b073196`.
 - 2026-11-17 — FR-702 passing (withdrawal request with blockers and
   fee preview). New `WithdrawalRequestScreen` is now the real
   destination of the wallet overview's Withdraw button at
