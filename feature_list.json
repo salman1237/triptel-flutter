@@ -685,8 +685,12 @@
       "id": "FR-704",
       "behavior": "Withdrawal receipt share",
       "verification": "flutter test test/features/withdrawals",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "ea4156a",
+        "screens": ["artifacts/FR-704-receipt.png"],
+        "notes": "GET /withdrawals/{id} receipt: reference, status chip, date, EUR amount/fee/net (shown raw, never re-converted through a display-currency rate), frozen conversion_rate/payout_amount (payout_currency, shown as 'Pending approval' when null rather than fabricated), account line, payment reference, rejection reason. Reuses FR-409's generic receiptSharerProvider (RepaintBoundary -> PNG -> native share sheet) unchanged. History rows now navigate to the receipt on tap; the nested Cancel PillButton inside the tappable row does not double-fire (confirmed by the existing cancel test passing with no GoRouter ancestor in its tree). Real-device evidence via the disclosed local main.dart rig technique (the real signed-in account's withdrawal history is still empty); lib/main.dart restored and verified byte-identical before/after, real app rebuilt+reinstalled afterward. Caught and fixed a real on-device-only layout bug myself before review: the reference-number Row overflowed next to the StatusChip at real device font scale (no Expanded) -- wrapped in Expanded, re-screenshotted clean. Reviewer: PASS, independently confirmed the overflow fix, the null-payout 'Pending approval' test exercises a genuinely null fixture, and the EUR fields are never passed through rate conversion."
+      }
     },
     {
       "id": "FR-801",
