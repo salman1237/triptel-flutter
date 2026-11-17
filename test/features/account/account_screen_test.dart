@@ -63,6 +63,14 @@ class _FakeKycApi implements KycApi {
 
   @override
   Future<KycStatus> getMe() async => _status;
+
+  @override
+  Future<void> submit({
+    required String nidNumber,
+    required String documentFrontPath,
+    String? documentBackPath,
+  }) =>
+      throw UnimplementedError();
 }
 
 Widget _testApp(
@@ -103,6 +111,10 @@ Widget _testApp(
       GoRoute(
         path: '/profile',
         builder: (context, state) => const Text('profile-screen-placeholder'),
+      ),
+      GoRoute(
+        path: '/kyc',
+        builder: (context, state) => const Text('kyc-screen-placeholder'),
       ),
     ],
   );
@@ -222,6 +234,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('profile-screen-placeholder'), findsOneWidget);
+  });
+
+  testWidgets(
+      'tapping Identity verification navigates to the real FR-1003 screen',
+      (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('account-kyc-row')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('kyc-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets(

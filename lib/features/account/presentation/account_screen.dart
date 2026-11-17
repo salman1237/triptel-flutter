@@ -22,13 +22,10 @@ import '../application/track_input.dart';
 
 /// FR-1001: Eskimo Account pattern -- greeting card (name, wallet balance,
 /// reward credit) + Invite CTA, then grouped rows (Account/Settings/
-/// Support/About), Sign out. Profile -> FR-1002's real screen. Rows that
-/// still need a not-yet-built destination (Help/Support tickets ->
-/// FR-1101, legal docs -> FR-1201) show a "coming soon" snack rather than
-/// a dead link -- the Identity verification row is the one exception:
-/// `GET /kyc/me` is cheap and already documented, so it shows the real
-/// status even though the submission flow itself (FR-1003) isn't built
-/// yet.
+/// Support/About), Sign out. Profile -> FR-1002's real screen, Identity
+/// verification -> FR-1003's real screen. Rows that still need a
+/// not-yet-built destination (Help/Support tickets -> FR-1101, legal
+/// docs -> FR-1201) show a "coming soon" snack rather than a dead link.
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
@@ -194,7 +191,7 @@ class _AuthedBody extends ConsumerWidget {
                   AsyncData(:final value) => kycStatusLabel(value).color,
                   _ => null,
                 },
-                onTap: () => _comingSoon(context, 'Identity verification'),
+                onTap: () => context.push('/kyc'),
               ),
             ],
           ),
