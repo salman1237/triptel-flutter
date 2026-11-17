@@ -169,16 +169,16 @@ Session log. Read first at session start, update last at session end.
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
-  withdrawals)**, **FR-801**, and now **FR-802** (claim a referrer) all
-  done (see Done below), plus a non-FR UI refresh pass (visual polish
-  only, see Done entry). Continuing forward in strict array order, next
-  is **FR-803** (referral link pre-fill from `?ref=CODE` + `GET
-  /referrals/validate`, shows "Invited by @user, you get X" on
-  register), finishing section I. FR-201b stays blocked -- it needs real
-  eSIM usage data (FR-402/403, already passing) AND "the referral promo
-  context (FR-801)"; now that FR-801 exists, re-check FR-201b's blocker
-  text and consider unblocking it. Revisit **FR-953b** once FR-310/FR-404
-  (both now passing) and FR-301+ let its install-gating dependency
+  withdrawals)**, and all of **section I (FR-801 through FR-803,
+  referrals)** now done (see Done below), plus a non-FR UI refresh pass
+  (visual polish only, see Done entry). Section I is complete. Continuing
+  forward in strict array order, next is **FR-953b** (compatibility gate
+  wired into checkout (FR-301) and install gating wired into eSIM detail
+  (FR-404/FR-310)) -- its dependencies (FR-310/FR-404/FR-301+) are now
+  all passing, so this should be unblockable; investigate first. FR-201b
+  stays blocked -- it needs real eSIM usage data (FR-402/403, already
+  passing) AND "the referral promo context (FR-801)"; now that FR-801
+  exists, re-check FR-201b's blocker text and consider unblocking it.
   resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
@@ -397,6 +397,35 @@ Session log. Read first at session start, update last at session end.
   real (not local state), the form survives a failed submit for retry,
   and no FR-803/`referred_by` scope crept in. Commits: `230fba9`
   (feature), `efa61fa` (state).
+- 2026-11-17 — FR-803 passing (referral link pre-fill + validate),
+  closing **section I (Referrals)**. The register screen's referral-
+  code field already pre-filled from a `?ref=` link (FR-007, untouched
+  by this change) -- what FR-803 added is live validation against the
+  public `GET /referrals/validate`, 400ms debounced (same pattern as
+  the catalog search sheet's debounced search): "Invited by @user, you
+  get €X" (success colour) or "This referral code is not valid."
+  (danger colour), with a race guard so a slow response for a since-
+  changed code is discarded, and clearing the field clears the message
+  immediately (no stale state). New `ReferralValidation` model +
+  `ReferralsApi.validate(code)`. 5 new tests; full suite 606 green;
+  `flutter analyze`/`dart format` clean; `bash harness.sh verify`
+  green. **Real-device evidence is genuinely mixed, disclosed
+  honestly:** validating this beta account's own real code `ALICE12`
+  against the live beta API for real returned `valid:false` --
+  consistent with FR-801's separately-confirmed finding that this
+  account's referral programme is `is_enabled:false` server-side
+  (expected, not a bug). No real valid code is obtainable from this
+  account, so the "Invited by @bob" success-state screenshot uses the
+  established disclosed local-`main.dart`-rig technique; `lib/main.dart`
+  restored and confirmed byte-identical before/after, real app
+  rebuilt+reinstalled afterward. Reviewer: PASS, independently confirmed
+  the debounce race-guard logic, that the pre-fill block is byte-
+  identical to before this commit, and caught a real process gap --
+  FR-803's `verification` command only covered `test/features/
+  referrals`, missing `test/features/auth/register_screen_test.dart`
+  where the feature's primary tests actually live (so reverting the
+  feature wouldn't have failed the stated command) -- fixed before
+  marking passing. Commits: `d4fedab` (feature), `d93ba4f` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
