@@ -776,9 +776,13 @@
     {
       "id": "FR-1001",
       "behavior": "Account screen groups and greeting card",
-      "verification": "flutter test test/features/account && bash harness.sh shot FR-1001",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/account && flutter test test/features/kyc && bash harness.sh shot FR-1001",
+      "state": "passing",
+      "evidence": {
+        "commit": "c21d371",
+        "screens": ["artifacts/FR-1001-account-top.png", "artifacts/FR-1001-account-groups.png", "artifacts/FR-1001-track-dialog.png"],
+        "notes": "Replaces the long-standing AccountScreen placeholder with the real Eskimo-pattern screen, opening section L. Greeting BalanceCard (username, real DEFAULT wallet balance, REWARD stat via FR-601's existing walletBalance() helper) + Invite friends CTA pushing /refer -- consolidates FR-801's old standalone 'Refer & earn' button into this one real entry point (same destination, confirmed no functionality lost). 4 ListGroups: Account (Profile coming-soon/FR-1002; Identity verification shows the REAL GET /kyc/me status -- a minimal read confined to this row's subtitle, submission stays FR-1003's separate scope), Settings (Language/Currency rows embedding the existing pill switchers via a new _SwitcherRow, justified since ListRow has no trailing-widget slot), Support (Check device compatibility -> real FR-952; Setup guide -> real FR-901; Help/Support tickets coming-soon/FR-1101; Track an eSIM -> a new dialog accepting a full tracking link or bare token, reusing FR-007's deep-link parser), About (Legal documents coming-soon/FR-1201; Version -> real PackageInfo.fromPlatform(), never hardcoded). New minimal lib/features/kyc/ data layer (read-only). 26 new/changed tests; full suite 638 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof on resolveTrackingToken: hardcoded a wrong return value, confirmed a real test failure, reverted. Real-device evidence is genuinely real: live navigation (Account tab) shows the real signed-in balance, real 'Not verified' KYC status, real app version (1.0.0 (1)), and the real native Track-an-eSIM dialog -- no rig needed, everything on this screen is either real data or a coming-soon placeholder for a genuinely not-yet-built feature. Reviewer: PASS, independently confirmed the wallet-type lookups aren't swapped, the KYC subtitle genuinely reflects the async state (not hardcoded), Cancel never navigates, the FR-801 button consolidation loses no functionality, the KYC read stays within FR-1001's own scope (not FR-1003's write path), no FR-1002/1101-1104 UI leaked beyond inert coming-soon snacks, and no regressions in FR-801/FR-601's own test suites."
+      }
     },
     {
       "id": "FR-1002",
