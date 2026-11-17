@@ -168,20 +168,13 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601 through FR-605, FR-701, and FR-702 all done (see Done below),
-  plus a non-FR UI refresh pass (visual polish only, see Done entry).
-  Session paused here at the user's explicit request ("stop after
-  committing this feature") -- continuing forward in strict array
-  order, next is **FR-703** (withdrawal history -- `GET /withdrawals`,
-  status chips, cancel while pending via `POST /withdrawals/{id}/
-  cancel`). The `Withdrawal` model built for FR-702 is deliberately
-  minimal (only reference_no/amount/fee_amount/net_amount/
-  account_line/status) -- FR-703 will need to extend it with
-  note/account/payout_amount/created_at/etc. No valid discount code
-  exists on beta (confirmed via curl) — keep disclosing that
-  limitation for any future discount-related work. FR-201b stays
-  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
-  now passing) and FR-301+ let its install-gating dependency resolve.
+  FR-601 through FR-605, FR-701, FR-702, and now **FR-703** all done (see
+  Done below), plus a non-FR UI refresh pass (visual polish only, see Done
+  entry). Continuing forward in strict array order, next is **FR-704**
+  (withdrawal receipt -- reference, amounts, frozen rate, payout, account
+  line; share). FR-201b stays blocked (needs FR-801). Revisit **FR-953b**
+  once FR-310/FR-404 (both now passing) and FR-301+ let its install-gating
+  dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -266,6 +259,36 @@ Session log. Read first at session start, update last at session end.
   fee formula and the lowercase-`fee_type` discovery against the
   backend source, re-ran the suite and harness verify itself. Commits:
   `b7da380` (feature), `1a4db36` (state).
+- 2026-11-17 — FR-703 passing (withdrawal history and cancel pending).
+  New `WithdrawalHistoryScreen` at `/wallet/withdraw/history`, linked
+  from FR-702's request screen via a new "View withdrawal history"
+  action. `Withdrawal` model extended with `id`/`createdAt`/
+  `rejectionReason`; `WithdrawalsApi` gained `getWithdrawals`/
+  `cancelWithdrawal` (`GET /withdrawals`, `POST /withdrawals/{id}/
+  cancel`). Status chips (`withdrawal_status_chip.dart`): PENDING
+  warning, PAID success, REJECTED/CANCELLED danger. Cancel on a
+  PENDING row confirms via `AlertDialog` first, then calls the real
+  API and refreshes via `ref.invalidate`. Rejected rows show the real
+  `rejection_reason` text. 11 new tests (7 history screen, 4 status
+  chip); full suite 581 green; `flutter analyze`/`dart format` clean;
+  `bash harness.sh verify` green (apk builds). Real-device evidence:
+  the real signed-in account has no withdrawal history yet, so
+  `artifacts/FR-703-history-list.png` (all 4 statuses) and
+  `artifacts/FR-703-cancel-confirm-dialog.png` use the established
+  temporary local-`main.dart`-rig technique (synthetic data,
+  `withdrawalsApiProvider` overridden), disclosed, reverted via `git
+  checkout` and confirmed byte-identical before rebuilding the real
+  app. **Reviewer: FAIL then PASS** -- first pass caught a real defect:
+  `CANCELLED` was shipped as `StatusTone.info` on the claim "only
+  cancel returns the held balance, unlike reject," but the reviewer
+  checked `D:\eSim\backend\app\services\withdrawal_svc.py` and found
+  both `cancel_withdrawal` and `reject_withdrawal` call the same
+  `_return_held_balance` -- the justification was false and
+  contradicted `Design_System.md`'s already-documented
+  Cancelled/Rejected/Failed->danger convention with no doc update to
+  back the exception. Fixed to `danger`, screenshot re-captured,
+  decision logged in `DECISIONS.md`. Commits: `6b22f77` (feature),
+  `7715d0f` (reviewer fix).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
