@@ -15,9 +15,9 @@ import '../data/models/wallet.dart';
 /// `BalanceCard`) -- Main balance (DEFAULT), Reward credit (REWARD,
 /// "not withdrawable"), Commission only shown when > 0 (a customer never
 /// earns commission unless they're also a partner/agent, Rules.md/API.md
-/// section 5). Actions Top up (FR-603, real) · Withdraw (FR-701, real --
-/// opens payout-account management; the full withdrawal request flow is
-/// FR-702, not yet built) · Refer (FR-801+, still "coming soon").
+/// section 5). Actions Top up (FR-603, real) · Withdraw (FR-702's request
+/// screen, real -- FR-701's payout-account management lives one level
+/// deeper, reached from within it) · Refer (FR-801+, still "coming soon").
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
 

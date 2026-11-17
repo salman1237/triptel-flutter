@@ -1,7 +1,12 @@
 import '../../../core/network/api_client.dart';
 import 'models/payout_account.dart';
+import 'models/withdrawal.dart';
+import 'models/withdrawal_config.dart';
 
 abstract class WithdrawalsApi {
+  /// `GET /withdrawals/config` (auth).
+  Future<WithdrawalConfig> getConfig();
+
   /// `GET /withdrawals/accounts` (auth).
   Future<List<PayoutAccount>> getAccounts();
 
@@ -25,12 +30,28 @@ abstract class WithdrawalsApi {
   /// `DELETE /withdrawals/accounts/{id}` (auth). 400 if a pending
   /// withdrawal uses it.
   Future<void> deleteAccount(String accountId);
+
+  /// `POST /withdrawals` (auth, password-changed). `note` is capped at 500
+  /// chars server-side; `noteCategory` must be one of config's
+  /// `note_categories`.
+  Future<Withdrawal> createWithdrawal({
+    required double amount,
+    required String bankAccountId,
+    String? noteCategory,
+    String? note,
+  });
 }
 
 class WithdrawalsApiImpl implements WithdrawalsApi {
   WithdrawalsApiImpl(this._client);
 
   final ApiClient _client;
+
+  @override
+  Future<WithdrawalConfig> getConfig() async {
+    final response = await _client.get('/withdrawals/config');
+    return WithdrawalConfig.fromJson(response as Map<String, dynamic>);
+  }
 
   @override
   Future<List<PayoutAccount>> getAccounts() async {
@@ -70,5 +91,21 @@ class WithdrawalsApiImpl implements WithdrawalsApi {
   @override
   Future<void> deleteAccount(String accountId) async {
     await _client.delete('/withdrawals/accounts/$accountId');
+  }
+
+  @override
+  Future<Withdrawal> createWithdrawal({
+    required double amount,
+    required String bankAccountId,
+    String? noteCategory,
+    String? note,
+  }) async {
+    final response = await _client.post('/withdrawals', data: {
+      'amount': amount,
+      'bank_account_id': bankAccountId,
+      'note_category': noteCategory,
+      'note': note,
+    });
+    return Withdrawal.fromJson(response as Map<String, dynamic>);
   }
 }

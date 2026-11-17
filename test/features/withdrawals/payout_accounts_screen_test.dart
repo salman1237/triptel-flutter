@@ -6,6 +6,8 @@ import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/withdrawals/application/withdrawals_providers.dart';
 import 'package:triptel/features/withdrawals/data/models/payout_account.dart';
+import 'package:triptel/features/withdrawals/data/models/withdrawal.dart';
+import 'package:triptel/features/withdrawals/data/models/withdrawal_config.dart';
 import 'package:triptel/features/withdrawals/data/withdrawals_api.dart';
 import 'package:triptel/features/withdrawals/presentation/payout_accounts_screen.dart';
 
@@ -56,6 +58,18 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
     lastDeletedId = accountId;
     _accounts = _accounts.where((a) => a.id != accountId).toList();
   }
+
+  @override
+  Future<WithdrawalConfig> getConfig() => throw UnimplementedError();
+
+  @override
+  Future<Withdrawal> createWithdrawal({
+    required double amount,
+    required String bankAccountId,
+    String? noteCategory,
+    String? note,
+  }) =>
+      throw UnimplementedError();
 }
 
 const _account1 = PayoutAccount(

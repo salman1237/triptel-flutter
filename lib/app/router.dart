@@ -21,6 +21,7 @@ import '../features/wallet/presentation/wallet_screen.dart';
 import '../features/wallet/presentation/wallet_topup_screen.dart';
 import '../features/withdrawals/presentation/add_payout_account_screen.dart';
 import '../features/withdrawals/presentation/payout_accounts_screen.dart';
+import '../features/withdrawals/presentation/withdrawal_request_screen.dart';
 import 'app_shell.dart';
 
 /// FR-004's 4-tab shell, one branch per tab so each keeps its own navigation
@@ -91,6 +92,10 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/wallet/withdraw',
+      builder: (context, state) => const WithdrawalRequestScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/withdraw/accounts',
       builder: (context, state) => const PayoutAccountsScreen(),
     ),
     GoRoute(
