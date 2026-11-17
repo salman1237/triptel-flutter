@@ -170,13 +170,15 @@ Session log. Read first at session start, update last at session end.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
-  referrals)**, FR-953b, and now **FR-901** (eSIM setup guide, opening
-  **section K**) all done (see Done below), plus a non-FR UI refresh
-  pass (visual polish only, see Done entry). Continuing forward in
-  strict array order, next is **FR-902** ("New to eSIM?" sheet -- short
-  explainer + links to the guide, compatibility, support). FR-201b
-  stays blocked -- it needs real eSIM usage data (FR-402/403, already
-  passing) AND "the referral promo context (FR-801)"; now that FR-801
+  referrals)**, FR-953b, and all of **section K (FR-901, FR-902,
+  guides)** all done (see Done below), plus a non-FR UI refresh pass
+  (visual polish only, see Done entry). Section K is complete.
+  Continuing forward in strict array order, next is **FR-1001**
+  (Account screen groups and greeting card), opening **section L
+  (Account & KYC)** -- the real one to finally replace the
+  `AccountScreen` placeholder that's been standing in since FR-101.
+  FR-201b stays blocked -- it needs real eSIM usage data (FR-402/403,
+  already passing) AND "the referral promo context (FR-801)"; now that FR-801
   exists, re-check FR-201b's blocker text and consider unblocking it.
   resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
@@ -493,6 +495,36 @@ Session log. Read first at session start, update last at session end.
   an inline comment explaining why; re-verified, re-captured both
   screenshots live showing the restored text. Commits: `18779e0`
   (feature), `09d63f1` (reviewer fix), `043f80f` (state).
+- 2026-11-17 — FR-902 passing ("New to eSIM?" sheet), closing **section
+  K (Guides & help)**. No documented web/Eskimo source for this exact
+  sheet (checked the frontend source and `docs/design-reference/` --
+  the closest screenshot, `15-help-sheet.png`, is FR-1104's separate
+  AI-assistant sheet, confirmed via the design-reference README), so
+  content was designed fresh from the one-line FR spec, built on the
+  existing `coverage_sheet.dart` bottom-sheet pattern rather than
+  inventing new chrome. Short explainer of what an eSIM is + "View
+  setup guide" (FR-901) and "Check device compatibility" (FR-952)
+  buttons, both popping the sheet before pushing the real route; a
+  plain-text "Contact Support" line since no general `/support` screen
+  exists yet -- same disclosed-limitation convention just established
+  fixing FR-901 earlier today. Entry point: a "New to eSIM?" link in My
+  eSIMs' empty state (shown only with zero eSIMs) -- the natural place
+  a first-time user would want this explained; FR-902's spec names no
+  entry point, so this was a judgment call, not a documented
+  requirement. 5 new/changed tests; full suite 615 green; `flutter
+  analyze`/`dart format` clean; `bash harness.sh verify` green.
+  Non-vacuousness proof: temporarily pointed the setup-guide button at
+  a wrong route, confirmed a real test failure, restored. Real-device
+  evidence via the established disclosed local-`main.dart`-rig
+  technique (the real signed-in account already has eSIMs, so the
+  empty-state entry point can't be reached live); `lib/main.dart`
+  restored and confirmed byte-identical before/after, real app
+  rebuilt+reinstalled afterward. Reviewer: PASS, independently
+  confirmed pop-before-push navigation, that both hardcoded route
+  strings match the real router's registered paths, that the Support
+  line is genuinely inert (no tap handler), and that no scope crept
+  beyond the 4 changed files. Commits: `5e3dcf0` (feature), `422d185`
+  (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
