@@ -1,6 +1,29 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-17 — general rule: `PillButton(fullWidth: false)` still needs an explicit width bound inside a `Row`
+Hit in FR-801: the Invite button (primary variant) next to an `Expanded`
+code chip threw "BoxConstraints forces an infinite width" in a widget
+test. **Root cause:** `PillButton`'s primary/secondary variants
+(`lib/core/widgets/pill_button.dart`) set `minimumSize: const
+Size.fromHeight(56)` unconditionally in their `ElevatedButton`/
+`OutlinedButton` style -- `Size.fromHeight` has an infinite *width*
+component, so it demands infinite width regardless of the `fullWidth`
+flag. Every pre-existing `fullWidth: false` call site in this codebase
+happened to either use `variant: text` (no such override) or sit
+outside an unconstrained `Row`, so this never surfaced before.
+**Decision:** did not change the shared `PillButton` widget (would need
+checking every existing call site); instead wrapped the one new call
+site in an explicit `SizedBox(width: 110, ...)`, documented inline.
+**Why recorded:** a future `fullWidth: false` PillButton placed inside a
+`Row` next to any flexible sibling (`Expanded`/`Flexible`) will hit the
+exact same crash -- check for this proactively instead of waiting to
+hit it by accident, same category as the already-documented
+`TriptelScaffold(scrollable: true)` + `Expanded` conflict. **Revisit
+if:** this pattern recurs a third time -- worth fixing `PillButton`
+itself (e.g. `minimumSize: Size(fullWidth ? double.infinity : 0, 56)`)
+rather than wrapping every call site individually.
+
 ## 2026-11-17 — FR-501's public tracker has no lifecycle gate (flagged by the reviewer, not fixed yet)
 FR-501's new `TrackingScreen` (public `GET /esims/public/{token}`, no
 login) shows the QR and manual install codes unconditionally whenever

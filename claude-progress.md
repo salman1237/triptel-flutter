@@ -168,15 +168,18 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601 through FR-605, and all of **section H (FR-701 through FR-704,
-  withdrawals)** now done (see Done below), plus a non-FR UI refresh pass
-  (visual polish only, see Done entry). Section H is complete. Continuing
-  forward in strict array order, next is **FR-801** (refer & earn screen --
-  code chip + invite via share_url, how-it-works event amounts, stats,
-  referred people/rewards list), opening **section I (Referrals)**. FR-201b
-  (which needs FR-801's data) can likely be revisited once FR-801 lands.
-  Revisit **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let
-  its install-gating dependency resolve.
+  FR-601 through FR-605, all of **section H (FR-701 through FR-704,
+  withdrawals)**, and now **FR-801** (refer & earn) all done (see Done
+  below), plus a non-FR UI refresh pass (visual polish only, see Done
+  entry). Continuing forward in strict array order, next is **FR-802**
+  (claim a referrer while `can_claim` -- `POST /referrals/claim`), then
+  **FR-803** (referral link pre-fill from `?ref=CODE` + `GET /referrals/
+  validate`), finishing section I. FR-201b stays blocked -- it needs real
+  eSIM usage data (FR-402/403, already passing) AND "the referral promo
+  context (FR-801)"; now that FR-801 exists, re-check FR-201b's blocker
+  text and consider unblocking it. Revisit **FR-953b** once FR-310/FR-404
+  (both now passing) and FR-301+ let its install-gating dependency
+  resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -327,6 +330,49 @@ Session log. Read first at session start, update last at session end.
   fixture genuinely has null payout fields (not a withdrawal that
   happens to already have one), and that EUR fields never pass through
   rate conversion. Commits: `ea4156a` (feature), `c8a08b5` (state).
+- 2026-11-17 — FR-801 passing (refer & earn screen), opening **section I
+  (Referrals)** -- new `lib/features/referrals/` data layer from scratch
+  (`ReferralSummary`/`ReferralEvent`/`ReferredPerson`/`ReferralReward`
+  models, `ReferralsApi.getMe`/`claim`). Screen reached from a new
+  "Refer & earn" link on the still-placeholder Account tab (gated
+  signed-in-only, same `AuthAuthenticated` switch pattern already used
+  for Sign out/Set password there). Eskimo "Free data" card pattern
+  (`docs/design-reference/10-rewards-referral.png`) re-skinned in
+  Triptel tokens: `BalanceCard` for promo balance/total earned/people
+  joined, code chip + Invite (shares the real `share_url` via the
+  existing `SharePlus.instance` pattern, no new dependency), "how it
+  works" with real per-event referrer/referred amounts (`NEW_MERCHANT`
+  filtered out at the model layer -- merchant-only, per API.md §8),
+  referred-people/rewards lists with empty states. `is_enabled:false`
+  hides the whole programme behind an `EmptyState` rather than a
+  zeroed-out real UI. FR-802 (claim)/FR-803 (pre-fill) deliberately not
+  built -- `claim()` exists on the API unused, no `can_claim`/
+  `referred_by` UI. **Caught and fixed a real widget-test layout bug
+  myself before review:** `PillButton`'s primary/secondary variants set
+  `minimumSize: Size.fromHeight(56)` (infinite width) unconditionally,
+  regardless of `fullWidth` -- broke the Invite button sitting next to
+  an `Expanded` code chip in a `Row` (every other `fullWidth: false`
+  call site in this codebase happens to use `variant: text` or sit
+  outside an unconstrained `Row`, so this was never hit before); fixed
+  with an explicit `SizedBox(width: 110, ...)` wrapper, documented
+  inline. 11 new/changed tests; full suite 598 green; `flutter
+  analyze`/`dart format` clean; `bash harness.sh verify` green (apk
+  builds). **Real-device evidence is genuinely mixed, disclosed
+  honestly:** `artifacts/FR-801-refer-earn.png` is real (the real
+  signed-in account's live beta data) and happens to show
+  `is_enabled:false` -- this beta account's referral programme is
+  actually disabled server-side, so that EmptyState screenshot is
+  authentic, not simulated. The populated-stats/list views
+  (`-stats.png`/`-rewards.png`) couldn't be captured from this account
+  for that reason, so they use the established disclosed local-
+  `main.dart`-rig technique (synthetic `ReferralSummary`, 2 referrals/
+  rewards); `lib/main.dart` restored and confirmed byte-identical
+  before/after, real app rebuilt+reinstalled afterward. Reviewer: PASS,
+  independently confirmed `NEW_MERCHANT` filtering and `is_enabled`
+  gating are enforced at the data/widget-branch level (not just UI
+  dressing), the layout fix is correct and sufficient (110px is enough
+  for "Invite" at `FittedBox` scale), and no FR-802/803 scope crept in.
+  Commits: `b2bab24` (feature), `8669bd7` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
