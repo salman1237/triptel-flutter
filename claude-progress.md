@@ -170,10 +170,11 @@ Session log. Read first at session start, update last at session end.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
-  referrals)**, and now **FR-953b** all done (see Done below), plus a
-  non-FR UI refresh pass (visual polish only, see Done entry).
-  Continuing forward in strict array order, next is **FR-901** (eSIM
-  setup guide), opening **section K (Guides & help)**. FR-201b
+  referrals)**, FR-953b, and now **FR-901** (eSIM setup guide, opening
+  **section K**) all done (see Done below), plus a non-FR UI refresh
+  pass (visual polish only, see Done entry). Continuing forward in
+  strict array order, next is **FR-902** ("New to eSIM?" sheet -- short
+  explainer + links to the guide, compatibility, support). FR-201b
   stays blocked -- it needs real eSIM usage data (FR-402/403, already
   passing) AND "the referral promo context (FR-801)"; now that FR-801
   exists, re-check FR-201b's blocker text and consider unblocking it.
@@ -462,6 +463,36 @@ Session log. Read first at session start, update last at session end.
   prematurely to dodge this FR), and confirmed `pre_checkout_gate.dart`
   is untouched in the final commit. Commits: `1fe7135` (feature),
   `d49c7d2` (state).
+- 2026-11-17 — FR-901 passing (eSIM setup guide), opening **section K
+  (Guides & help)**. New `lib/features/guides/` from scratch. Content
+  ported line-by-line from the real web app's static
+  `guides/esim-setup-guide` page (`D:\eSim\frontend\src\app\guides\
+  esim-setup-guide\page.tsx`) -- iOS/Android numbered steps,
+  install-once warning, troubleshooting checklist, link to FR-952's
+  supported-devices list. No backend endpoint needed (static copy,
+  identical on both platforms). Replaced FR-404's previous "launch the
+  web page in an external browser" placeholder on the eSIM detail
+  screen's "View setup guide" link (that placeholder was explicitly
+  documented as temporary in FR-404's own evidence notes, pending this
+  screen existing) -- now navigates in-app; deleted the now-dead
+  `esim_install_links.dart`/`setupGuideUrl()` and its test. Full suite
+  green; `flutter analyze`/`dart format` clean; `bash harness.sh
+  verify` green. Real-device evidence is genuine: reached via real
+  navigation (My eSIMs -> a real eSIM -> View setup guide), screens
+  show the actual ported content live. **Reviewer: FAIL then PASS** --
+  first pass diffed the port against the real web source directly and
+  caught two real, silently-dropped Support references: the
+  troubleshooting list was missing "Still stuck? Contact Support with
+  your order number." and the install-once warning was missing "...and
+  contact Support before removing it." Both had been deleted rather
+  than disclosed, even though no general `/support` screen exists yet
+  (FR-1101/1102 `not_started`, only FR-410's per-eSIM report-problem
+  does) -- this session's own established convention is to disclose
+  such a forward-dependency gap, not silently delete the instruction.
+  Fixed by restoring both as plain text (no route to link to yet) with
+  an inline comment explaining why; re-verified, re-captured both
+  screenshots live showing the restored text. Commits: `18779e0`
+  (feature), `09d63f1` (reviewer fix), `043f80f` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New

@@ -1,6 +1,23 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-17 — general rule: when porting static web content and a referenced feature doesn't exist yet, disclose it -- never silently delete the reference
+Hit in FR-901: porting the web's eSIM setup guide, two real instructions
+("contact Support...") got silently dropped because no general
+`/support` screen exists yet in this app. The reviewer caught this by
+diffing against the real web source line-by-line; the fix was NOT to
+invent a route, but to keep the real instruction as plain text with an
+inline comment explaining why it isn't a tappable link yet. **Why
+recorded:** this is the same "disclosed limitation, not silent
+deletion" principle already applied throughout this session (coming-
+soon snacks for forward dependencies, documented blockers in
+`feature_list.json`) -- but it's easy to forget it applies to *content*
+ported from an external source, not just to UI affordances being
+stubbed. **How to apply:** when porting copy from the web app (or any
+external source) and a referenced link/feature doesn't exist in this
+app yet, keep the real words and disclose the gap in a comment; never
+quietly cut the sentence to make the port "cleaner."
+
 ## 2026-11-17 — general rule: `PillButton(fullWidth: false)` still needs an explicit width bound inside a `Row`
 Hit in FR-801: the Invite button (primary variant) next to an `Expanded`
 code chip threw "BoxConstraints forces an infinite width" in a widget
