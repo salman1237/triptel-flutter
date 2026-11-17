@@ -171,16 +171,16 @@ Session log. Read first at session start, update last at session end.
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
   referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
-  and now **FR-1001** (real Account screen, replacing the placeholder
-  that's stood in since FR-101) all done (see Done below), plus a
-  non-FR UI refresh pass (visual polish only, see Done entry).
-  Continuing forward in strict array order, next is **FR-1002**
-  (Profile -- avatar, name, username, email + verified badge, Google
-  badge, phone edit via `PUT /auth/me/preferences`, change password),
-  still in **section L (Account & KYC)**. FR-201b stays blocked -- it
-  needs real eSIM usage data (FR-402/403, already passing) AND "the
-  referral promo context (FR-801)"; now that FR-801 exists, re-check
-  FR-201b's blocker text and consider unblocking it.
+  FR-1001, and now **FR-1002** (Profile) all done (see Done below),
+  plus a non-FR UI refresh pass (visual polish only, see Done entry).
+  Continuing forward in strict array order, next is **FR-1003** (KYC --
+  `GET /kyc/me` status display already built in FR-1001's Account
+  screen; this FR adds the actual submission form: NID number + front
+  photo (required) + back photo (optional), `POST /kyc/submit`
+  multipart), finishing **section L (Account & KYC)**. FR-201b stays
+  blocked -- it needs real eSIM usage data (FR-402/403, already
+  passing) AND "the referral promo context (FR-801)"; now that FR-801
+  exists, re-check FR-201b's blocker text and consider unblocking it.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -571,6 +571,37 @@ Session log. Read first at session start, update last at session end.
   within FR-1001's own scope, no FR-1002/1101-1104 UI leaked beyond
   inert coming-soon snacks, and no regressions in FR-801/FR-601's own
   suites. Commits: `c21d371` (feature), `b311b7f` (state).
+- 2026-11-17 — FR-1002 passing (Profile view/edit phone, change
+  password). New `ProfileScreen` at `/profile` (`GET /auth/me`):
+  avatar (real `avatar_url` or a plain icon fallback -- no upload UI,
+  no endpoint is documented for it), name/username, email + a real
+  `StatusDot` badge driven by `email_verified`, a Google-linked row
+  shown only when `has_google` is true, phone edit (`PUT /auth/me/
+  preferences` sending only `{"phone"}` -- never touching the separate,
+  already client-local-only `preferred_currency` preference from
+  FR-005/006), and a "Change password" button that reuses FR-105's
+  existing `/set-password` screen as-is rather than duplicating its
+  logic. `CurrentUser` extended with `phone`/`fullName`/
+  `isKycVerified`/`avatarUrl`/`emailVerified`/`hasGoogle` per the full
+  documented `GET /auth/me` shape. The Account tab's "Profile" row
+  (previously a coming-soon snack) now navigates here for real. 10 new
+  tests + 1 navigation test + 6 trivial `updatePhone` stub overrides
+  added to pre-existing `AuthApi` fakes elsewhere; full suite 649
+  green; `flutter analyze`/`dart format` clean; `bash harness.sh
+  verify` green. Non-vacuousness proof: inverted the email-verified
+  ternary, confirmed a real test failure, reverted. **Real-device
+  evidence required redaction:** live navigation to the real Profile
+  screen showed the real signed-in account's actual avatar photo, full
+  name, email, and phone number -- genuine evidence, but since this
+  repo is public, the raw screenshot was redacted (solid boxes over
+  the avatar/name/username/email/phone) with Python/Pillow before
+  saving to `artifacts/`, keeping only the UI structure/badges/buttons
+  visible. Reviewer: PASS, independently confirmed `updatePhone` sends
+  only the phone field, the post-save refresh is a real re-fetch (not
+  optimistic local state), the avatar/Google-row conditionals are
+  genuinely absent (not just hidden) when false, and the 6 touched
+  auth test files each got only a trivial 3-line stub with nothing
+  else changed. Commits: `49100a9` (feature), `b3c8b52` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
