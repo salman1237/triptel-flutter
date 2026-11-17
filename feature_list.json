@@ -707,8 +707,12 @@
       "id": "FR-802",
       "behavior": "Claim referrer while can_claim",
       "verification": "flutter test test/features/referrals",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "230fba9",
+        "screens": ["artifacts/FR-802-claim-form.png"],
+        "notes": "Code field + Claim button added to the refer & earn screen, shown only while GET /referrals/me's can_claim is true. POST /referrals/claim on submit; success clears the field and invalidates referralSummaryProvider (a real server re-fetch, not client-side hiding -- confirmed can_claim flips server-side); a real 4xx (already has a referrer/invalid/self/post-purchase) shows the server's own message, form stays for retry. 3-16 char client-side check is a UX nicety only, never replaces real server error handling. Real-device evidence via the established disclosed local-main.dart-rig technique (this beta account's referral programme is is_enabled:false, so can_claim can never be exercised live); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. 3 new tests (shows+disappears after claim, hidden when can_claim false, real server error retains the form); full suite 601 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: flipped the canClaim condition to its inverse, confirmed 3 real test failures, reverted. Reviewer: PASS, independently confirmed the condition is not inverted, the re-fetch is real (not local state), no FR-803/referred_by scope crept in, and all 12 referrals tests plus the full 601-test suite pass with no regressions."
+      }
     },
     {
       "id": "FR-803",
