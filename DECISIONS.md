@@ -1,6 +1,27 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-17 — FR-1101: support ticket status chip tones (OPEN/ANSWERED/RESOLVED/CLOSED)
+The backend's `TicketStatus` enum (`D:\eSim\backend\app\models\support.py`)
+isn't covered by `Design_System.md`'s existing status-chip convention
+(`Active/Installed success, Not installed sky, Preparing warning,
+Suspended/Revoked/Cancelled/Expired/Failed danger` -- an eSIM-lifecycle
+vocabulary). **Decision:** `OPEN` -> `info` (just filed, waiting on
+support -- informational, not urgent for the customer); `ANSWERED` ->
+`warning` (support replied, it's the customer's turn to read/respond --
+the one state that actually needs their attention); `RESOLVED` ->
+`success`; `CLOSED` -> `danger`, matching Design_System.md's existing
+"terminal state" family (Cancelled/Expired/Failed) rather than reusing
+`info` -- the first version of this code shared `info` between OPEN and
+CLOSED, which a reviewer correctly flagged as confusing (opposite ends
+of the lifecycle look visually identical in a skimmed list); fixed
+before merging. **Why recorded:** this mapping doesn't follow an
+existing documented convention, so a future session touching ticket
+statuses should extend this table rather than re-deriving tones from
+scratch. **Revisit if:** the backend adds a new `TicketStatus` value --
+extend `ticketStatusChip`'s switch rather than falling back to the
+default `warning` case silently.
+
 ## 2026-11-17 — general rule: when porting static web content and a referenced feature doesn't exist yet, disclose it -- never silently delete the reference
 Hit in FR-901: porting the web's eSIM setup guide, two real instructions
 ("contact Support...") got silently dropped because no general

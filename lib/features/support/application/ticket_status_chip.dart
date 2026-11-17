@@ -5,12 +5,15 @@ import '../../../core/widgets/status_chip.dart';
 /// eSIM-lifecycle convention, so this is its own judgment call (see
 /// DECISIONS.md): ANSWERED means "support replied, it's your turn" --
 /// the one state that actually needs the customer's attention, so it
-/// gets `warning`, not OPEN (which just means "waiting on support").
+/// gets `warning`. CLOSED is `danger` (terminal, same family as
+/// Design_System.md's Cancelled/Expired -- distinct from OPEN's `info`,
+/// since conflating "just filed" with "done" would make the two
+/// opposite ends of the lifecycle visually identical).
 ({String label, StatusTone tone}) ticketStatusChip(String status) =>
     switch (status) {
       'OPEN' => (label: 'Open', tone: StatusTone.info),
       'ANSWERED' => (label: 'Answered', tone: StatusTone.warning),
       'RESOLVED' => (label: 'Resolved', tone: StatusTone.success),
-      'CLOSED' => (label: 'Closed', tone: StatusTone.info),
+      'CLOSED' => (label: 'Closed', tone: StatusTone.danger),
       _ => (label: status, tone: StatusTone.warning),
     };

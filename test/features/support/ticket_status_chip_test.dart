@@ -10,7 +10,7 @@ void main() {
     expect(ticketStatusChip('RESOLVED'),
         (label: 'Resolved', tone: StatusTone.success));
     expect(
-        ticketStatusChip('CLOSED'), (label: 'Closed', tone: StatusTone.info));
+        ticketStatusChip('CLOSED'), (label: 'Closed', tone: StatusTone.danger));
   });
 
   test('an undocumented future status falls back to the raw value, warning',
