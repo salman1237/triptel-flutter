@@ -155,6 +155,7 @@ class _WithdrawalRequestScreenState
                 onManageAccounts: () =>
                     context.push('/wallet/withdraw/accounts'),
                 onSubmit: () => _submit(value),
+                onViewHistory: () => context.push('/wallet/withdraw/history'),
               ),
         AsyncError() => Center(
             child: ErrorState(
@@ -236,6 +237,7 @@ class _RequestForm extends ConsumerWidget {
     required this.onCategoryChanged,
     required this.onManageAccounts,
     required this.onSubmit,
+    required this.onViewHistory,
   });
 
   final WithdrawalConfig config;
@@ -248,6 +250,7 @@ class _RequestForm extends ConsumerWidget {
   final ValueChanged<String> onCategoryChanged;
   final VoidCallback onManageAccounts;
   final VoidCallback onSubmit;
+  final VoidCallback onViewHistory;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -331,6 +334,14 @@ class _RequestForm extends ConsumerWidget {
             key: const ValueKey('withdrawal-submit-button'),
             label: 'Request withdrawal',
             onPressed: submitting ? null : onSubmit,
+          ),
+          const SizedBox(height: 8),
+          PillButton(
+            key: const ValueKey('withdrawal-view-history-link'),
+            label: 'View withdrawal history',
+            variant: PillButtonVariant.text,
+            fullWidth: false,
+            onPressed: onViewHistory,
           ),
         ],
       ),

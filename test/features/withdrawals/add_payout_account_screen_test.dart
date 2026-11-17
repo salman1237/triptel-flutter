@@ -70,6 +70,14 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
     String? note,
   }) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<Withdrawal>> getWithdrawals({int limit = 50}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Withdrawal> cancelWithdrawal(String withdrawalId) =>
+      throw UnimplementedError();
 }
 
 Future<void> _pumpAddScreen(

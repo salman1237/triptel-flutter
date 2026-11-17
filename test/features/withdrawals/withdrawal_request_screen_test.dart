@@ -109,14 +109,24 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
     lastNoteCategory = noteCategory;
     lastNote = note;
     return Withdrawal(
+      id: 'wd-rig-1',
       referenceNo: 'WD-20261117-0001',
       amount: Money((amount * 100).round()),
       feeAmount: const Money(0),
       netAmount: Money((amount * 100).round()),
       accountLine: 'bKash · 01700000000 (Alice)',
       status: 'PENDING',
+      createdAt: DateTime.utc(2026, 11, 17),
     );
   }
+
+  @override
+  Future<List<Withdrawal>> getWithdrawals({int limit = 50}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Withdrawal> cancelWithdrawal(String withdrawalId) =>
+      throw UnimplementedError();
 }
 
 Future<void> _pumpScreen(WidgetTester tester, _FakeWithdrawalsApi api) async {
@@ -134,6 +144,11 @@ Future<void> _pumpScreen(WidgetTester tester, _FakeWithdrawalsApi api) async {
       path: '/wallet/withdraw/accounts',
       builder: (context, state) =>
           const Scaffold(body: Text('accounts-screen-placeholder')),
+    ),
+    GoRoute(
+      path: '/wallet/withdraw/history',
+      builder: (context, state) =>
+          const Scaffold(body: Text('history-screen-placeholder')),
     ),
     GoRoute(
       path: '/set-password',
@@ -188,6 +203,20 @@ void main() {
     expect(
         find.byKey(const ValueKey('withdrawal-amount-field')), findsOneWidget);
     expect(find.textContaining('Available: €100.00'), findsOneWidget);
+  });
+
+  testWidgets('tapping View withdrawal history navigates to FR-703',
+      (tester) async {
+    await _pumpScreen(tester, _FakeWithdrawalsApi(config: _openConfig));
+
+    await tester.ensureVisible(
+        find.byKey(const ValueKey('withdrawal-view-history-link')));
+    await tester.pumpAndSettle();
+    await tester
+        .tap(find.byKey(const ValueKey('withdrawal-view-history-link')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('history-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets('typing an amount shows a live PERCENT fee/net preview',

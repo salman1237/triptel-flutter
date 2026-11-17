@@ -40,6 +40,13 @@ abstract class WithdrawalsApi {
     String? noteCategory,
     String? note,
   });
+
+  /// `GET /withdrawals?limit=50` (auth), newest first.
+  Future<List<Withdrawal>> getWithdrawals({int limit = 50});
+
+  /// `POST /withdrawals/{id}/cancel` (auth). 400 if the request isn't
+  /// PENDING anymore.
+  Future<Withdrawal> cancelWithdrawal(String withdrawalId);
 }
 
 class WithdrawalsApiImpl implements WithdrawalsApi {
@@ -106,6 +113,20 @@ class WithdrawalsApiImpl implements WithdrawalsApi {
       'note_category': noteCategory,
       'note': note,
     });
+    return Withdrawal.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<Withdrawal>> getWithdrawals({int limit = 50}) async {
+    final response = await _client.get('/withdrawals', query: {'limit': limit});
+    return (response as List)
+        .map((w) => Withdrawal.fromJson(w as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<Withdrawal> cancelWithdrawal(String withdrawalId) async {
+    final response = await _client.post('/withdrawals/$withdrawalId/cancel');
     return Withdrawal.fromJson(response as Map<String, dynamic>);
   }
 }

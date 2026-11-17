@@ -26,11 +26,32 @@ void main() {
       'created_at': '2026-11-17T00:00:00Z',
     });
 
+    expect(withdrawal.id, 'wd-1');
     expect(withdrawal.referenceNo, 'WD-20261117-0001');
     expect(withdrawal.amount.eurCents, 1000);
     expect(withdrawal.feeAmount.eurCents, 15);
     expect(withdrawal.netAmount.eurCents, 985);
     expect(withdrawal.accountLine, 'bKash · 01700000000 (Alice)');
     expect(withdrawal.status, 'PENDING');
+    expect(withdrawal.createdAt, DateTime.parse('2026-11-17T00:00:00Z'));
+    expect(withdrawal.rejectionReason, isNull);
+  });
+
+  test('a rejected withdrawal carries the real rejection reason', () {
+    final withdrawal = Withdrawal.fromJson(const {
+      'id': 'wd-2',
+      'reference_no': 'WD-20261116-0002',
+      'amount': '20',
+      'fee_amount': '0.30',
+      'net_amount': '19.70',
+      'account_line': 'Dutch-Bangla · 1234567890 (Bob)',
+      'status': 'REJECTED',
+      'rejection_reason': 'Account details could not be verified.',
+      'created_at': '2026-11-16T00:00:00Z',
+    });
+
+    expect(withdrawal.status, 'REJECTED');
+    expect(
+        withdrawal.rejectionReason, 'Account details could not be verified.');
   });
 }

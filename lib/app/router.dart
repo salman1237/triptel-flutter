@@ -21,6 +21,7 @@ import '../features/wallet/presentation/wallet_screen.dart';
 import '../features/wallet/presentation/wallet_topup_screen.dart';
 import '../features/withdrawals/presentation/add_payout_account_screen.dart';
 import '../features/withdrawals/presentation/payout_accounts_screen.dart';
+import '../features/withdrawals/presentation/withdrawal_history_screen.dart';
 import '../features/withdrawals/presentation/withdrawal_request_screen.dart';
 import 'app_shell.dart';
 
@@ -101,6 +102,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/wallet/withdraw/accounts/add',
       builder: (context, state) => const AddPayoutAccountScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/withdraw/history',
+      builder: (context, state) => const WithdrawalHistoryScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
