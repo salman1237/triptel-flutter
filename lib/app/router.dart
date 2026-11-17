@@ -16,6 +16,7 @@ import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/ledger_screen.dart';
+import '../features/wallet/presentation/manual_deposit_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
 import '../features/wallet/presentation/wallet_topup_screen.dart';
 import 'app_shell.dart';
@@ -81,6 +82,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/wallet/topup',
       builder: (context, state) => const WalletTopupScreen(),
+    ),
+    GoRoute(
+      path: '/wallet/manual-deposit',
+      builder: (context, state) => const ManualDepositScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

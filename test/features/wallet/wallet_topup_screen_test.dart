@@ -11,6 +11,7 @@ import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
 import 'package:triptel/features/wallet/application/topup_launcher.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
+import 'package:triptel/features/wallet/data/models/manual_deposit.dart';
 import 'package:triptel/features/wallet/data/models/topup_checkout.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
@@ -44,6 +45,15 @@ class _FakeWalletsApi implements WalletsApi {
     if (error != null) throw error!;
     return checkoutResult!;
   }
+
+  @override
+  Future<ManualDeposit> submitManualDeposit({
+    required double amount,
+    required String currency,
+    required String bankName,
+    required String transactionId,
+  }) =>
+      throw UnimplementedError();
 }
 
 /// WalletTopupScreen is always reached by a `context.push` from the wallet

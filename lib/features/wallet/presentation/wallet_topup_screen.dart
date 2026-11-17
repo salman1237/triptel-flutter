@@ -155,6 +155,14 @@ class _WalletTopupScreenState extends ConsumerState<WalletTopupScreen> {
                       label: 'Top up',
                       onPressed: _submitting ? null : () => _submit(code),
                     ),
+                    const SizedBox(height: 12),
+                    PillButton(
+                      key: const ValueKey('wallet-topup-manual-deposit-button'),
+                      label: 'Pay by bKash / bank transfer instead',
+                      variant: PillButtonVariant.text,
+                      fullWidth: false,
+                      onPressed: () => context.push('/wallet/manual-deposit'),
+                    ),
                   ],
                 ),
     );

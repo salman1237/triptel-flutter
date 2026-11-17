@@ -1,4 +1,5 @@
 import '../../../../core/money/money.dart';
+import 'payment_method.dart';
 
 /// `GET /settings/public` response (API.md §1). Any contact field may be null
 /// — hide that contact row, never invent one.
@@ -14,6 +15,8 @@ class PublicSettings {
     this.googleClientId,
     this.topupMin = const Money(1),
     this.topupMax = const Money(200000),
+    this.paymentMethods = const [],
+    this.banglaQrImage,
   });
 
   final String platformName;
@@ -28,6 +31,13 @@ class PublicSettings {
   /// `topup_min`/`topup_max` (API.md §1): wallet top-up limits, EUR.
   final Money topupMin;
   final Money topupMax;
+
+  /// FR-604: manual-deposit destinations (`payment_methods`), already
+  /// active-only from the backend, and a shared QR image for bKash/Nagad
+  /// style transfers (`bangla_qr_image`) -- both server-relative paths,
+  /// resolved via `resolveApiUrl`.
+  final List<PaymentMethod> paymentMethods;
+  final String? banglaQrImage;
 
   factory PublicSettings.fromJson(Map<String, dynamic> json) => PublicSettings(
         platformName: json['platform_name'] as String? ?? 'Triptel',
@@ -44,6 +54,11 @@ class PublicSettings {
         topupMax: json['topup_max'] != null
             ? Money.parseEur(json['topup_max'] as String)
             : const Money(200000),
+        paymentMethods: (json['payment_methods'] as List?)
+                ?.map((m) => PaymentMethod.fromJson(m as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        banglaQrImage: json['bangla_qr_image'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -57,5 +72,18 @@ class PublicSettings {
         'google_client_id': googleClientId,
         'topup_min': (topupMin.eurCents / 100).toStringAsFixed(2),
         'topup_max': (topupMax.eurCents / 100).toStringAsFixed(2),
+        'payment_methods': paymentMethods
+            .map((m) => {
+                  'id': m.id,
+                  'name': m.name,
+                  'kind': m.kind,
+                  'account_name': m.accountName,
+                  'account_number': m.accountNumber,
+                  'branch': m.branch,
+                  'instructions': m.instructions,
+                  'is_active': m.isActive,
+                })
+            .toList(),
+        'bangla_qr_image': banglaQrImage,
       };
 }

@@ -1,0 +1,33 @@
+{
+  "platform_name": "Triptel",
+  "tagline_en": "Instant Global eSIM Data in 200+ Destinations",
+  "tagline_bn": "২০০+ দেশে ইন্সট্যান্ট গ্লোবাল ই-সিম ইন্টারনেট ডাটা",
+  "logo_light": "/api/v1/uploads/branding/logo_light-5779797466534f49ade9e9442e302259.png",
+  "logo_dark": "/api/v1/uploads/branding/logo_dark-2a75fe1ebe284bfead034a4792f40380.png",
+  "favicon": "/api/v1/uploads/branding/favicon-5e2e1fd79a49460ab673ec5e15659efc.png",
+  "support_phone": "+8801979891996",
+  "support_email": "support@triptel.co",
+  "support_whatsapp": "+8801979891996",
+  "default_currency": "EUR",
+  "maintenance_mode": false,
+  "social_links": {},
+  "seo_title": "Triptel - Connect Beyond Borders",
+  "seo_description": "Instant eSiM for all your travel destinations",
+  "og_image": "/api/v1/uploads/branding/og_image-5e2a8aeca6a346d5b06ce2175aa0cdad.png",
+  "bangla_qr_image": "/api/v1/uploads/branding/bangla_qr_image-69b07a9b5dee4ffba4221b0c182e4932.png",
+  "payment_methods": [
+    {
+      "id": "bkash-account",
+      "name": "bKash Account",
+      "kind": "mobile",
+      "account_name": "01750726094",
+      "account_number": "01750726094",
+      "branch": null,
+      "instructions": null,
+      "is_active": true
+    }
+  ],
+  "topup_min": "0.01",
+  "topup_max": "2000.00",
+  "google_client_id": "1095507553767-hkuh44db04q1lvrnptill6frtckcb42t.apps.googleusercontent.com"
+}

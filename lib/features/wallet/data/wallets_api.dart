@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import 'models/ledger_entry.dart';
+import 'models/manual_deposit.dart';
 import 'models/topup_checkout.dart';
 import 'models/wallet.dart';
 
@@ -16,6 +17,15 @@ abstract class WalletsApi {
   /// server-side (API.md §5).
   Future<TopupCheckout> initiateTopup(
       {required double amount, required String currency});
+
+  /// `POST /wallets/manual-deposit` (auth). `bankName` must equal one of
+  /// `/settings/public.payment_methods[].name` exactly (API.md §5).
+  Future<ManualDeposit> submitManualDeposit({
+    required double amount,
+    required String currency,
+    required String bankName,
+    required String transactionId,
+  });
 }
 
 class WalletsApiImpl implements WalletsApi {
@@ -51,5 +61,21 @@ class WalletsApiImpl implements WalletsApi {
       'currency': currency,
     });
     return TopupCheckout.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<ManualDeposit> submitManualDeposit({
+    required double amount,
+    required String currency,
+    required String bankName,
+    required String transactionId,
+  }) async {
+    final response = await _client.post('/wallets/manual-deposit', data: {
+      'amount': amount,
+      'currency': currency,
+      'bank_name': bankName,
+      'transaction_id': transactionId,
+    });
+    return ManualDeposit.fromJson(response as Map<String, dynamic>);
   }
 }
