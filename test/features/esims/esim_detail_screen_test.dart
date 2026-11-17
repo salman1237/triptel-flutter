@@ -19,6 +19,7 @@ import 'package:triptel/features/esims/data/models/esim_topup.dart';
 import 'package:triptel/features/esims/data/models/topup_option.dart';
 import 'package:triptel/features/esims/data/models/topup_shurjopay_checkout.dart';
 import 'package:triptel/features/esims/presentation/esim_detail_screen.dart';
+import 'package:triptel/features/support/presentation/report_problem_screen.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
@@ -214,6 +215,15 @@ GoRouter _testRouter() => GoRouter(routes: [
         path: '/my-esims/:id/print',
         builder: (context, state) => Scaffold(
             body: Text('receipt-placeholder-${state.pathParameters['id']}')),
+      ),
+      GoRoute(
+        path: '/my-esims/:id/report-problem',
+        builder: (context, state) {
+          final args = state.extra! as ReportProblemArgs;
+          return Scaffold(
+              body: Text('report-problem-placeholder-'
+                  '${args.esimId}-${args.orderNo}-${args.planTitle}'));
+        },
       ),
     ]);
 
@@ -930,6 +940,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('receipt-placeholder-esim-1'), findsOneWidget);
+    });
+  });
+
+  group('FR-410: report a problem', () {
+    testWidgets(
+        'tapping "Report a problem" navigates, passing the real order '
+        'no, eSIM id, and plan title as args', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      final button = find.byKey(const ValueKey('esim-report-problem-button'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('report-problem-placeholder-esim-1-ORD-TEST-1-'
+              'Japan 100MB 7Days'),
+          findsOneWidget);
     });
   });
 }

@@ -31,6 +31,7 @@ import '../application/topup_launcher.dart';
 import '../data/models/esim_status.dart';
 import '../data/models/topup_option.dart';
 import '../data/models/topup_shurjopay_checkout.dart';
+import '../../support/presentation/report_problem_screen.dart';
 
 /// FR-403: eSIM detail -- usage. `GET /esims/{id}/status`: usage ring/bar
 /// (allowance incl. top-ups; none for unlimited), remaining, validity
@@ -125,6 +126,15 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't open the setup guide.")));
     }
+  }
+
+  void _onReportProblem(EsimStatus status) {
+    context.push('/my-esims/${widget.esimId}/report-problem',
+        extra: ReportProblemArgs(
+          esimId: widget.esimId,
+          orderNo: status.orderNo,
+          planTitle: status.product.title,
+        ));
   }
 
   String _formatMoney(Money amount) {
@@ -269,6 +279,7 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
             onOpenSetupGuide: _openSetupGuide,
             topupOptions: topupOptions,
             onTopupOptionTap: _onTopupOptionTap,
+            onReportProblem: () => _onReportProblem(_override ?? value),
           ),
         AsyncError() => Center(
             child: ErrorState(
@@ -294,6 +305,7 @@ class _Body extends StatelessWidget {
     required this.onOpenSetupGuide,
     required this.topupOptions,
     required this.onTopupOptionTap,
+    required this.onReportProblem,
   });
 
   final EsimStatus status;
@@ -306,6 +318,7 @@ class _Body extends StatelessWidget {
   final VoidCallback onOpenSetupGuide;
   final List<TopupOption> topupOptions;
   final ValueChanged<TopupOption> onTopupOptionTap;
+  final VoidCallback onReportProblem;
 
   @override
   Widget build(BuildContext context) {
@@ -455,6 +468,15 @@ class _Body extends StatelessWidget {
                 ),
             ],
           ],
+          const SizedBox(height: 32),
+          const Divider(color: AppColors.line),
+          const SizedBox(height: 16),
+          PillButton(
+            key: const ValueKey('esim-report-problem-button'),
+            label: 'Report a problem',
+            variant: PillButtonVariant.text,
+            onPressed: onReportProblem,
+          ),
         ],
       ),
     );
