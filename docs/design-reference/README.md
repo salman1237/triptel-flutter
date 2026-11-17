@@ -24,3 +24,14 @@ mascot, copy or colours. These are internal references; don't ship them in the a
 
 Note: the device owner's name (`12-account-top.png`) and referral code (`10-rewards-referral.png`)
 are blurred out; this repo is public.
+
+## Client UI refresh reference (2026-11-17)
+Unlike the Eskimo references above (layout/flow only, different brand), this one
+**is** Triptel's own branding and was sent by the client as direct visual-polish
+guidance -- applied project-wide, see `../Design_System.md`'s "2026-11-17 UI
+refresh" section for exactly what was extracted and implemented vs. deliberately
+left alone.
+
+| File | Screen | Notes |
+|---|---|---|
+| `16-client-ui-refresh-reference.png` | 8-panel app mockup (Home, Dashboard, eSIM Packages, AI Recommendations, My eSIMs, Install Guide, Support, Wallet) | Palette/card/shadow/typography already matched closely; see Design_System.md for the concrete deltas applied (hero tagline, `StatusDot`, `PromoBanner`) and the ones explicitly NOT applied (AI chat assistant, Adapter Store, Compare Plans, bottom-nav relabel, per-row usage bars where the API has no live data) and why. |

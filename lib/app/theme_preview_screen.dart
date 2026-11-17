@@ -64,6 +64,19 @@ class _ThemePreviewScreenState extends State<ThemePreviewScreen> {
           const SizedBox(height: 16),
           const UsageRing(fraction: 0.4, centerText: '2.0 / 5 GB'),
           const SizedBox(height: 16),
+          const Wrap(spacing: 16, children: [
+            StatusDot(label: 'Active', tone: StatusTone.success),
+            StatusDot(label: 'Online', tone: StatusTone.info),
+          ]),
+          const SizedBox(height: 16),
+          PromoBanner(
+            icon: Icons.card_giftcard,
+            title: 'Sample offer banner',
+            subtitle: 'Only shown here with real campaign content',
+            ctaLabel: 'Shop now',
+            onTap: () {},
+          ),
+          const SizedBox(height: 16),
           const EmptyState(
               icon: Icons.sim_card_outlined, message: 'No eSIMs yet.'),
           const SizedBox(height: 24),

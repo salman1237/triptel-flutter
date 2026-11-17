@@ -31,6 +31,8 @@ void main() {
     expect(find.byType(PlanOptionTile), findsOneWidget);
     expect(find.byType(PriceText), findsOneWidget);
     expect(find.byType(UsageRing), findsOneWidget);
+    expect(find.byType(StatusDot), findsNWidgets(2));
+    expect(find.byType(PromoBanner), findsOneWidget);
     expect(find.byType(EmptyState), findsOneWidget);
     expect(find.byType(StickyTotalBar), findsOneWidget);
     expect(find.byType(PillButton), findsWidgets);
@@ -44,5 +46,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('Regional'), findsOneWidget);
+  });
+
+  testWidgets('PromoBanner reports taps via onTap', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(
+        body: PromoBanner(
+          icon: Icons.card_giftcard,
+          title: 'Offer',
+          ctaLabel: 'Go',
+          onTap: () => tapped = true,
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byKey(const ValueKey('promo-banner-cta-button')));
+    await tester.pump();
+
+    expect(tapped, isTrue);
   });
 }

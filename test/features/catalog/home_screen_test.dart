@@ -71,6 +71,14 @@ void main() {
     expect(find.text('Bangladesh'), findsOneWidget);
   });
 
+  testWidgets('2026-11-17 UI refresh: the hero shows the real branding tagline',
+      (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Travel smart.\nStay connected.'), findsOneWidget);
+  });
+
   testWidgets(
       "there's no 'My eSIMs' or 'Top up' quick action in the hero -- both "
       'would just duplicate an existing bottom tab today', (tester) async {

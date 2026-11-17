@@ -33,6 +33,11 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              'Travel smart.\nStay connected.',
+              style: AppTypography.title(color: AppColors.surface),
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(

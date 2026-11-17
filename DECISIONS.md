@@ -413,3 +413,23 @@ catch it by accident. **How to apply:** before writing a callback that reads
 a `FutureProvider`'s current value, ask whether anything else in the widget
 tree already `ref.watch`es it (guaranteeing it's resolved by the time the
 callback can run) -- if not, use `.future`.
+
+## 2026-11-17 — UI refresh scope: visual polish only, no new features or nav changes
+The client sent an 8-panel branded mockup asking to "polish the existing UI...
+throughout the app." The mockup also shows real features that don't exist
+today (an AI chat assistant, an "Adapter Store," a "Compare Plans" flow) and a
+differently-labeled 4-tab bar (Home/Dashboard/Support/Profile vs. the real
+app's Home/My eSIMs/Wallet/Account, which map to actual FRs). Before touching
+any of the 59 already-passing features, asked the user to clarify scope via
+two multiple-choice questions. **Decision (user's choice):** visual polish
+only, applied to existing screens/features -- no new unplanned features, no
+navigation restructuring -- with the design language documented in
+`docs/Design_System.md` (the doc every feature already reads before
+building/styling a screen) so future features pick it up automatically.
+**Why recorded:** so a future session doesn't see the mockup still sitting in
+`docs/design-reference/` and assume the AI assistant / Adapter Store / Compare
+Plans were meant to be built from it -- they were explicitly deferred pending
+real FR entries, not forgotten. **Revisit if:** the client specifically asks
+for the AI assistant or similar as a real feature -- that needs its own FR
+entry (and, for an AI assistant, real backend support) before the loop can
+build and verify it like anything else.

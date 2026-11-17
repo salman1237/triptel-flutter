@@ -20,6 +20,11 @@ class AppColors {
   static const warning = Color(0xFFF59E0B);
   static const danger = Color(0xFFE5484D);
   static const promo = Color(0xFFC026D3);
+
+  /// Gradient pair for `PromoBanner` only (2026-11-17 UI refresh,
+  /// Design_System.md §6) — a deeper shade of `warning` for real
+  /// promotional offers, never used for status/warning meaning.
+  static const offerDeep = Color(0xFFC2720A);
 }
 
 /// Shape tokens from Design_System.md §1.
