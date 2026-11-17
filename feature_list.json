@@ -809,9 +809,13 @@
     {
       "id": "FR-1101",
       "behavior": "Support ticket list",
-      "verification": "flutter test test/features/support",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/support && flutter test test/features/account",
+      "state": "passing",
+      "evidence": {
+        "commit": "39c5dd3",
+        "screens": ["artifacts/FR-1101-support-list.png"],
+        "notes": "New SupportTicketListScreen at /support (GET /support/tickets): reference, subject, status chip, last activity (last_message_at, falling back to created_at -- confirmed against the real backend model that last_message_at genuinely drives queue ordering, the right field to prefer). SupportTicket extended with order_id/created_at/last_message_at/resolved_at/closed_at. New ticketStatusChip pure function (OPEN info, ANSWERED warning -- the one status needing the customer's attention, RESOLVED success, CLOSED danger -- a documented judgment call since Design_System.md's eSIM-lifecycle convention doesn't cover ticket statuses). TriptelScaffold(scrollable: false) since the screen hosts a ListView directly. Account tab's 'Help / Support tickets' row now navigates here instead of a coming-soon snack. Rows aren't tappable yet (FR-1103 not built). 9 new/changed tests; full suite 667 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: forced the last-activity fallback to always use created_at, confirmed a real test failure, reverted. Real-device evidence is genuine: live navigation to the real signed-in account's Support screen shows its actual real ticket (TKT-261110-9A1CD, from this session's earlier FR-410 work) with its real 'Answered' status and real timestamp. Reviewer: FAIL then PASS -- first pass caught that CLOSED and OPEN shared the same info tone (opposite lifecycle ends looking visually identical) and that the code's own comment pointed to a DECISIONS.md entry that didn't exist. Fixed CLOSED to danger (matching the existing Cancelled/Expired/Failed terminal-state convention) and added the missing DECISIONS.md entry; re-verified, no re-capture needed since the real screenshot shows ANSWERED (untouched by the fix)."
+      }
     },
     {
       "id": "FR-1102",
