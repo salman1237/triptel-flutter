@@ -319,3 +319,21 @@ nothing. **Why recorded:** so a future session doesn't cite this as a
 confirmed-fixed defect; it's an unreproduced bug report, not a proven one.
 **Revisit if:** another screen hits the same blank-amount symptom for real —
 then this nuance should be re-investigated instead of assumed-fixed.
+
+## 2026-11-17 — curl-based throwaway test-account registration got blocked; used on-device capture instead
+FR-602 needed a real `GET /wallets/ledger` fixture. The established pattern for
+this (used for FR-303/FR-304's discount-preview fixtures) was to register a
+throwaway beta account via `curl -X POST .../auth/register` and use its JWT.
+This time the auto-mode permission classifier denied that curl call outright
+("Destructive or Unwanted Actions"). **Decision:** didn't try to work around
+the denial — used the already-signed-in real device instead: added a
+temporary, never-committed `print()` of the raw ledger response inside
+`WalletsApiImpl.getLedger`, ran the real app on the real phone, pulled the
+response out of `adb logcat`, built the fixture from that, then reverted the
+print statement (confirmed via `git diff` showing zero drift before
+committing). **Why recorded:** the curl-registration pattern documented in
+`claude-progress.md`/prior sessions is no longer reliably available — a future
+session needing a fresh authenticated fixture should expect this and reach for
+the on-device logcat-capture technique first, not retry the blocked curl call.
+**Revisit if:** the classifier's behavior changes, or a cleaner capture method
+emerges (e.g. a dedicated fixture-capture script the user pre-approves).

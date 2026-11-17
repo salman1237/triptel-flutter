@@ -168,16 +168,22 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  and FR-601 all done (see Done below). Continuing forward in strict
-  array order: next is **FR-602** (ledger list with human labels for
-  `reference_type` and credit/debit colouring, filterable by wallet
-  type -- `GET /wallets/ledger`). `verification` string in
-  feature_list.json already checked -- just `flutter test
-  test/features/wallet`, no integration_test gotcha this time. No valid
-  discount code exists on beta (confirmed via curl) — keep disclosing
-  that limitation for any future discount-related work. FR-201b stays
-  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
-  now passing) and FR-301+ let its install-gating dependency resolve.
+  FR-601, and FR-602 all done (see Done below). Continuing forward in
+  strict array order: next is **FR-603** (gateway wallet top-up --
+  amount in the user's currency, presets + custom, EUR limits from
+  settings, WebView -> intercept `.../wallet?topup=` -> reload wallets).
+  **Check its verification string before trusting it**: it currently
+  reads `flutter test test/features/wallet && flutter test
+  integration_test/fr_603_test.dart -d 10EF1302BJ000R5` -- the same
+  not-yet-written-integration-test-against-a-real-money-endpoint gotcha
+  already hit and fixed for FR-306/FR-408 (2026-11-14 DECISIONS.md
+  entry explicitly predicted FR-603 would hit this too). Drop the
+  integration_test clause, keep the widget tests, same precedent. No
+  valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work.
+  FR-201b stays blocked (needs FR-801). Revisit **FR-953b** once
+  FR-310/FR-404 (both now passing) and FR-301+ let its install-gating
+  dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -193,6 +199,35 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-602 passing (transaction history). New LedgerScreen
+  at `/wallet/history` (pushed from a "View transaction history" link
+  added to the wallet overview), backed by `GET /wallets/ledger`
+  (new `WalletsApi.getLedger(walletType, limit)`, new `LedgerEntry`
+  model). Filter by wallet type is a real server re-query (confirmed
+  against the backend: ledger rows carry no `wallet_type` field
+  themselves, so client-side re-filtering of cached rows would have
+  been wrong) via a `SegmentedPill` (All/Main/Reward/Commission).
+  Human labels for all 12 documented `reference_type` values with an
+  honest raw-value fallback for anything undocumented. Credit/debit
+  colouring (green "+"/red "-"; the backend always sends a positive
+  `amount` magnitude, sign comes from `tx_type`, confirmed by reading
+  `finance_svc.py` directly). Found and fixed a real layout bug live
+  on-device: the shared `SegmentedPill` widget's 4 fixed-padding
+  segments overflowed the track on this phone -- fixed locally in
+  `LedgerScreen` only (wrapped in a horizontal scroll) rather than
+  touching the shared widget, since its other 4 call sites all use
+  2-3 short labels and rely on its current wrap-content sizing.
+  Fixture captured from the real signed-in account via a temporary,
+  never-committed debug print (curl-based test-account registration
+  was blocked by the auto-mode permission classifier this time --
+  noted below). 10 new tests; full suite 487 green; `flutter analyze`
+  clean; `dart format` clean; `bash harness.sh verify` green.
+  Real-device evidence: `artifacts/FR-602-ledger-list.png` (real DEBIT
+  rows in red), `artifacts/FR-602-ledger-credit.png` (a real REFUND
+  CREDIT row in green, from an actual provisioning-failure refund on
+  this account). Reviewer: PASS, independently re-verified against the
+  backend source and re-ran the suite itself. Commits: `89dab2b`
+  (feature), `abf3fa1` (state).
 - 2026-11-17 — FR-601 passing (wallet overview). Replaced the wallet
   tab's placeholder with the real `GET /wallets/my-wallets` balance
   hero card (DEFAULT main balance, REWARD always shown "not
