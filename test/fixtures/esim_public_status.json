@@ -1,0 +1,50 @@
+{
+  "esim_id": "0cd5db2f-c73d-459e-9008-3fd7941ab25c",
+  "order_no": "ORD-20261116-8AAB6A",
+  "purchased_at": "2026-11-16T13:46:47.048662+00:00",
+  "product": {
+    "title": "Saudi Arabia 1GB 7Days",
+    "validity_days": 7,
+    "is_unlimited": false,
+    "data_amount_gb": "1.00"
+  },
+  "iccid": "EXAMPLE0000000000000",
+  "lpa_string": "LPA:1$smdp.example.invalid$EXAMPLEACTIVATIONCODE1",
+  "qr_code_data": "LPA:1$smdp.example.invalid$EXAMPLEACTIVATIONCODE1",
+  "smdp_address": "smdp.example.invalid",
+  "matching_id": "EXAMPLEACTIVATIONCODE1",
+  "supplier_reference": "EXAMPLE-REFERENCE",
+  "supplier": "esimaccess",
+  "esim_status": "RELEASED",
+  "status": {
+    "label": "IN_USE",
+    "code": 1,
+    "is_installed": true,
+    "is_activated": true,
+    "device_model": null
+  },
+  "usage": {
+    "used_mb": "617.10",
+    "used_bytes": 647075134,
+    "formatted": "617.10 MB",
+    "allowance_mb": "2048.00",
+    "remaining_mb": "1430.90",
+    "remaining_formatted": "1.40 GB",
+    "used_pct": 30.1,
+    "is_unlimited": false
+  },
+  "validity": {
+    "days": 14,
+    "activated_at": "2026-11-16T20:00:00+00:00",
+    "expires_at": "2026-11-30T20:00:00+00:00",
+    "note": null
+  },
+  "share_url": null,
+  "history": [],
+  "daily_breakdown": [],
+  "telemetry": {
+    "fetched_at": "2026-11-17T00:45:26.272359+00:00",
+    "error": null,
+    "available": true
+  }
+}
