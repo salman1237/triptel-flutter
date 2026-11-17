@@ -169,13 +169,11 @@ Session log. Read first at session start, update last at session end.
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
-  withdrawals)**, and all of **section I (FR-801 through FR-803,
-  referrals)** now done (see Done below), plus a non-FR UI refresh pass
-  (visual polish only, see Done entry). Section I is complete. Continuing
-  forward in strict array order, next is **FR-953b** (compatibility gate
-  wired into checkout (FR-301) and install gating wired into eSIM detail
-  (FR-404/FR-310)) -- its dependencies (FR-310/FR-404/FR-301+) are now
-  all passing, so this should be unblockable; investigate first. FR-201b
+  withdrawals)**, all of **section I (FR-801 through FR-803,
+  referrals)**, and now **FR-953b** all done (see Done below), plus a
+  non-FR UI refresh pass (visual polish only, see Done entry).
+  Continuing forward in strict array order, next is **FR-901** (eSIM
+  setup guide), opening **section K (Guides & help)**. FR-201b
   stays blocked -- it needs real eSIM usage data (FR-402/403, already
   passing) AND "the referral promo context (FR-801)"; now that FR-801
   exists, re-check FR-201b's blocker text and consider unblocking it.
@@ -426,6 +424,44 @@ Session log. Read first at session start, update last at session end.
   where the feature's primary tests actually live (so reverting the
   feature wouldn't have failed the stated command) -- fixed before
   marking passing. Commits: `d4fedab` (feature), `d93ba4f` (state).
+- 2026-11-17 — FR-953b passing (compatibility gate wired into checkout/
+  eSIM detail). Investigated before writing any new code, since its
+  dependencies (FR-301/FR-310/FR-404) were all already passing: both
+  `runPreCheckoutCompatibilityGate` (FR-301) and the install-gating
+  (FR-404/FR-310, `verdict.kind == supported` gates the one-tap
+  install button/link) were ALREADY wired into their real call sites
+  (`destination_plans_screen.dart`, `esim_detail_screen.dart`,
+  `purchase_success_screen.dart`) as a natural consequence of building
+  those features correctly from day one -- `Rules.md`'s "compatibility
+  never blocks, only gates install" was a hard constraint followed
+  throughout, not retrofitted. The one real gap: no end-to-end test
+  proved the checkout-side wiring actually fires from
+  `destination_plans_screen`'s real Continue button --
+  `pre_checkout_gate_test.dart` only tested the gate function in a bare
+  harness, and `destination_plans_screen_test.dart` (where such a test
+  belongs) sat outside FR-953b's original `verification` command's
+  scope (`test/features/catalog`, not `checkout`/`esims`). Added 2
+  end-to-end tests there and extended the verification command to
+  include that file. FR-404/FR-310 already had equivalent real
+  end-to-end gating tests in their own test files -- confirmed by
+  reading them, no gap there. Non-vacuousness proof: temporarily
+  short-circuited the gate's not-supported branch to always proceed,
+  got 3 real failures, restored via `git checkout` (confirmed
+  untouched in the final commit). Full suite green; `flutter analyze`/
+  `dart format` clean; `bash harness.sh verify` green. Real-device
+  evidence is genuine: this connected device has no eSIM hardware
+  (confirmed originally when FR-301 was built), so live-tapping
+  Continue on a real Japan plan for real shows the actual "Buy Now,
+  Use Later!" dialog end-to-end (Home -> Japan -> select plan ->
+  Continue) -- the same real behavior FR-301/FR-404/FR-310 already
+  captured in their own evidence, now with a fresh confirming
+  screenshot and a regression test that would catch it breaking.
+  Reviewer: PASS, independently confirmed the wiring claims by reading
+  all three call sites directly, confirmed FR-301/FR-310/FR-404 were
+  genuinely already passing with real evidence (not marked passing
+  prematurely to dodge this FR), and confirmed `pre_checkout_gate.dart`
+  is untouched in the final commit. Commits: `1fe7135` (feature),
+  `d49c7d2` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
