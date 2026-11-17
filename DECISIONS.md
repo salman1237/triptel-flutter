@@ -302,3 +302,20 @@ the global SDK is the user's call (affects other projects on this machine).
 
 ## 2026-11-12 — Gradle 8.11.1 / AGP 8.7.3 / Kotlin 2.1.0
 Template's Gradle 8.3 can't run on the installed JDK 23.
+
+## 2026-11-17 — FR-601's ref.watch fix kept despite not being provably load-bearing
+While building FR-601 (wallet overview), `WalletScreen` was changed to
+`ref.watch` the currency providers instead of `ref.read`, on the theory that
+`ref.read` without any watcher elsewhere in the tree left them stuck in
+`AsyncLoading` and blanked every formatted amount. The FR-601 reviewer
+reproduced the code with `ref.read` restored and found all 8
+`wallet_screen_test.dart` cases still passed — in this screen's structure,
+`build()` already reruns on `myWalletsProvider`'s loading→data transition, and
+by then the currency providers (in-memory/bootstrap, almost certainly faster
+than the real wallet network call) have already resolved, in both the test
+clock and practice. **Decision:** keep `ref.watch` anyway — it's the more
+defensive choice for a screen with no guaranteed sibling watcher, and costs
+nothing. **Why recorded:** so a future session doesn't cite this as a
+confirmed-fixed defect; it's an unreproduced bug report, not a proven one.
+**Revisit if:** another screen hits the same blank-amount symptom for real —
+then this nuance should be re-investigated instead of assumed-fixed.

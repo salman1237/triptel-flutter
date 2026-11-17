@@ -167,20 +167,17 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, and
-  FR-501 all done (see Done below). Continuing forward in strict array
-  order: next is **FR-601** (section G, wallet overview -- balance hero
-  card: DEFAULT/REWARD "not withdrawable"/COMMISSION only if > 0;
-  actions Top up · Withdraw · Refer). `lib/features/wallet/` already
-  has a real data layer (`Wallet` model, `WalletsApi.getMyWallets()`,
-  `spendableBalance`/`walletCoversTotal`) built ahead for FR-305/306 --
-  reuse it, don't rebuild. `lib/features/wallet/presentation/
-  wallet_screen.dart` is still the original placeholder (the `/wallet`
-  tab) -- that's what FR-601 replaces. No valid discount code exists on
-  beta (confirmed via curl) — keep disclosing that limitation for any future
-  discount-related work. FR-201b stays blocked (needs FR-801). Revisit
-  **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
-  install-gating dependency resolve.
+- **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
+  and FR-601 all done (see Done below). Continuing forward in strict
+  array order: next is **FR-602** (ledger list with human labels for
+  `reference_type` and credit/debit colouring, filterable by wallet
+  type -- `GET /wallets/ledger`). `verification` string in
+  feature_list.json already checked -- just `flutter test
+  test/features/wallet`, no integration_test gotcha this time. No valid
+  discount code exists on beta (confirmed via curl) — keep disclosing
+  that limitation for any future discount-related work. FR-201b stays
+  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
+  now passing) and FR-301+ let its install-gating dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -196,6 +193,26 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-601 passing (wallet overview). Replaced the wallet
+  tab's placeholder with the real `GET /wallets/my-wallets` balance
+  hero card (DEFAULT main balance, REWARD always shown "not
+  withdrawable", COMMISSION only when > 0), reusing the pre-existing
+  wallet data layer and the previously-unused `BalanceCard` widget --
+  its first real producer. Top up/Withdraw/Refer show real "coming
+  soon" snacks (FR-603/701+/801+ don't exist yet). Found and fixed a
+  real, visible layout bug in the shared `PillButton`: three
+  equal-width buttons in a Row wrapped "Withdraw" mid-word onto two
+  lines -- fixed globally with `FittedBox(fit: scaleDown)`, verified
+  against the full suite (no regressions). Also fixed
+  `test/app/shell_test.dart`'s missing `walletsApiProvider` fake
+  override (same pattern as the My eSIMs tab fix). 477 tests green,
+  `flutter analyze` clean, `bash harness.sh verify` green. Real-device
+  evidence: `artifacts/FR-601-wallet-overview.png`,
+  `artifacts/FR-601-coming-soon-snack.png` (real account, real BDT
+  balances). Reviewer: PASS, with one advisory nuance logged in
+  DECISIONS.md about the ref.watch-vs-ref.read fix not being provably
+  load-bearing from current tests. Commits: `dfa0171` (feature),
+  `b3c7aa7` (state).
 - 2026-11-17 — Session 10 continued (FR-501, public eSIM tracking by
   token without login):
   - Replaced the FR-007-era `TrackingScreen` placeholder with a real
