@@ -116,6 +116,10 @@ Widget _testApp(
         path: '/kyc',
         builder: (context, state) => const Text('kyc-screen-placeholder'),
       ),
+      GoRoute(
+        path: '/support',
+        builder: (context, state) => const Text('support-screen-placeholder'),
+      ),
     ],
   );
 
@@ -276,17 +280,17 @@ void main() {
   });
 
   testWidgets(
-      'tapping Help / Support tickets shows a coming-soon snack, no crash',
+      'tapping Help / Support tickets navigates to the real FR-1101 screen',
       (tester) async {
     await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
     await tester.pumpAndSettle();
 
-    final row = find.text('Help / Support tickets');
+    final row = find.byKey(const ValueKey('account-support-row'));
     await tester.ensureVisible(row);
     await tester.tap(row);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    expect(find.text('support-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets(

@@ -18,6 +18,7 @@ import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/guides/presentation/esim_setup_guide_screen.dart';
 import '../features/kyc/presentation/kyc_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
+import '../features/support/presentation/support_ticket_list_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/ledger_screen.dart';
 import '../features/wallet/presentation/manual_deposit_screen.dart';
@@ -128,6 +129,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/kyc',
       builder: (context, state) => const KycScreen(),
+    ),
+    GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportTicketListScreen(),
     ),
     GoRoute(
       path: '/guides/esim-setup-guide',

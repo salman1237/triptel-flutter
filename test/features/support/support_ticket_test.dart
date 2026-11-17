@@ -18,5 +18,12 @@ void main() {
     expect(ticket.reference, 'TKT-261110-9A1CD');
     expect(ticket.category, 'OTHER');
     expect(ticket.status, 'ANSWERED');
+    expect(ticket.orderId, isNull);
+    expect(
+        ticket.createdAt, DateTime.parse('2026-11-10T14:55:37.673223+00:00'));
+    expect(ticket.lastMessageAt,
+        DateTime.parse('2026-11-10T14:55:37.763231+00:00'));
+    expect(ticket.resolvedAt, isNull);
+    expect(ticket.closedAt, isNull);
   });
 }

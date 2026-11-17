@@ -23,9 +23,9 @@ import '../application/track_input.dart';
 /// FR-1001: Eskimo Account pattern -- greeting card (name, wallet balance,
 /// reward credit) + Invite CTA, then grouped rows (Account/Settings/
 /// Support/About), Sign out. Profile -> FR-1002's real screen, Identity
-/// verification -> FR-1003's real screen. Rows that still need a
-/// not-yet-built destination (Help/Support tickets -> FR-1101, legal
-/// docs -> FR-1201) show a "coming soon" snack rather than a dead link.
+/// verification -> FR-1003's real screen, Help/Support tickets ->
+/// FR-1101's real screen. Legal docs -> FR-1201, still not built, shows
+/// a "coming soon" snack rather than a dead link.
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
@@ -232,9 +232,10 @@ class _AuthedBody extends ConsumerWidget {
                 onTap: () => context.push('/guides/esim-setup-guide'),
               ),
               ListRow(
+                key: const ValueKey('account-support-row'),
                 icon: Icons.support_agent_outlined,
                 title: 'Help / Support tickets',
-                onTap: () => _comingSoon(context, 'Support tickets'),
+                onTap: () => context.push('/support'),
               ),
               ListRow(
                 key: const ValueKey('account-track-row'),

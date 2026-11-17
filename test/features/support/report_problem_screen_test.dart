@@ -40,6 +40,9 @@ class _FakeSupportApi implements SupportApi {
           status: 'OPEN',
         );
   }
+
+  @override
+  Future<List<SupportTicket>> getTickets() => throw UnimplementedError();
 }
 
 Widget _app(SupportApi api) => ProviderScope(

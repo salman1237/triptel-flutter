@@ -15,6 +15,9 @@ abstract class SupportApi {
     required String body,
     required String category,
   });
+
+  /// `GET /support/tickets` (auth), up to 100, newest activity first.
+  Future<List<SupportTicket>> getTickets();
 }
 
 class SupportApiImpl implements SupportApi {
@@ -37,5 +40,13 @@ class SupportApiImpl implements SupportApi {
       }),
     );
     return SupportTicket.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<SupportTicket>> getTickets() async {
+    final response = await _client.get('/support/tickets');
+    return (response as List)
+        .map((t) => SupportTicket.fromJson(t as Map<String, dynamic>))
+        .toList();
   }
 }
