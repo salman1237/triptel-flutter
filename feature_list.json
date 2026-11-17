@@ -743,9 +743,13 @@
     {
       "id": "FR-953b",
       "behavior": "Compatibility gate wired into checkout (FR-301) and install gating wired into eSIM detail (FR-404/FR-310)",
-      "verification": "flutter test test/features/checkout && flutter test test/features/esims",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/checkout && flutter test test/features/esims && flutter test test/features/catalog/destination_plans_screen_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "1fe7135",
+        "screens": ["artifacts/FR-953b-compat-gate-live.png"],
+        "notes": "Investigated first rather than assuming new work was needed: FR-301's runPreCheckoutCompatibilityGate was already called from destination_plans_screen.dart's Continue handler, and FR-404/FR-310's install-gating (verdict.kind == supported gates the one-tap install button/link) was already wired into esim_detail_screen.dart and purchase_success_screen.dart -- all as part of building those features correctly the first time (Rules.md's 'compatibility never blocks, only gates install' was followed from day one). The one real gap: no end-to-end test proved the checkout-side wiring fires from its real call site -- pre_checkout_gate_test.dart only exercised runPreCheckoutCompatibilityGate in a bare harness, not through destination_plans_screen itself, and that screen's own test file lives outside this FR's stated verification command's original scope (test/features/catalog, not checkout/esims). Added 2 end-to-end tests there (unsupported device shows the real 'Buy Now, Use Later' dialog instead of navigating straight to checkout; supported device skips it) and updated the verification command to include that file. FR-404/FR-310's install-gating already had equivalent end-to-end tests in test/features/esims and test/features/checkout (confirmed by reading them), so no gap there. Non-vacuousness proof: temporarily short-circuited the gate's not-supported branch to always proceed, confirmed 3 real test failures, restored via git checkout. Full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence is genuine: this connected device has no eSIM hardware (confirmed originally in FR-301), so live-tapping Continue on a real Japan plan for real shows the actual 'Buy Now, Use Later!' dialog end-to-end (Home -> Japan -> select plan -> Continue) -- the same real behavior FR-301/FR-404/FR-310 already captured in their own evidence (artifacts/FR-301.png, FR-404.png, FR-310.png), now with a fresh confirming screenshot and a regression test that would catch it breaking."
+      }
     },
     {
       "id": "FR-901",
