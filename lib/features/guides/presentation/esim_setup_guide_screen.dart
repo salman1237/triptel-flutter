@@ -33,7 +33,8 @@ class EsimSetupGuideScreen extends StatelessWidget {
             icon: Icons.warning_amber_outlined,
             text: 'An eSIM can only be installed once. If you delete it '
                 "from your phone, it usually can't be reinstalled -- check "
-                'your plan details before removing it.',
+                'your plan details, and contact Support before removing '
+                'it.',
           ),
           const SizedBox(height: 24),
           Text('iPhone', style: AppTypography.title()),

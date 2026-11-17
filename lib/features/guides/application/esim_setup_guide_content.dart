@@ -38,4 +38,9 @@ const setupGuideTroubleshooting = [
   'Make sure the eSIM line (not your home SIM) is selected for mobile '
       'data.',
   "Check your eSIM's usage and expiry any time from My eSIMs.",
+  // Web's source links this to /support with the order number; no
+  // general support-ticket screen exists yet (FR-1101/1102, not_started
+  // -- only FR-410's per-eSIM "Report a problem" does), so this stays
+  // plain text rather than a dead link.
+  'Still stuck? Contact Support with your order number.',
 ];
