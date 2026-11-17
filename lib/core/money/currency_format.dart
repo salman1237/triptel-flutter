@@ -28,6 +28,13 @@ String currencySymbol(String currencyCode) =>
 String formatMoney(Money amount,
     {required String currencyCode, required double rateToBase}) {
   final converted = amount.eurValue * rateToBase;
+  return formatRawAmount(converted, currencyCode: currencyCode);
+}
+
+/// Formats [amount] that is already denominated in [currencyCode] (no
+/// conversion) -- e.g. a withdrawal's `payout_amount`, frozen server-side
+/// in `payout_currency` (API.md §10, never EUR).
+String formatRawAmount(double amount, {required String currencyCode}) {
   final decimals = _zeroDecimalCurrencies.contains(currencyCode) ? 0 : 2;
-  return '${currencySymbol(currencyCode)}${converted.toStringAsFixed(decimals)}';
+  return '${currencySymbol(currencyCode)}${amount.toStringAsFixed(decimals)}';
 }

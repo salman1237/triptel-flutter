@@ -72,6 +72,10 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
   String? lastNote;
 
   @override
+  Future<Withdrawal> getWithdrawal(String withdrawalId) =>
+      throw UnimplementedError();
+
+  @override
   Future<WithdrawalConfig> getConfig() async => config;
 
   @override

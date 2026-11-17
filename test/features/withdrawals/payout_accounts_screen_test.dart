@@ -63,6 +63,10 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
   Future<WithdrawalConfig> getConfig() => throw UnimplementedError();
 
   @override
+  Future<Withdrawal> getWithdrawal(String withdrawalId) =>
+      throw UnimplementedError();
+
+  @override
   Future<Withdrawal> createWithdrawal({
     required double amount,
     required String bankAccountId,

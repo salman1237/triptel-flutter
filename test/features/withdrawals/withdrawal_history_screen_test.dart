@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/network/api_exception.dart';
@@ -49,6 +50,10 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
     ];
     return _withdrawals.firstWhere((w) => w.id == withdrawalId);
   }
+
+  @override
+  Future<Withdrawal> getWithdrawal(String withdrawalId) async =>
+      _withdrawals.firstWhere((w) => w.id == withdrawalId);
 
   @override
   Future<WithdrawalConfig> getConfig() => throw UnimplementedError();
@@ -205,5 +210,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ErrorState), findsOneWidget);
+  });
+
+  testWidgets('tapping a row navigates to its FR-704 receipt', (tester) async {
+    final api = _FakeWithdrawalsApi([_withdrawal()]);
+    final router = GoRouter(initialLocation: '/history', routes: [
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const WithdrawalHistoryScreen(),
+      ),
+      GoRoute(
+        path: '/wallet/withdraw/:id/receipt',
+        builder: (context, state) => Scaffold(
+            body: Text('receipt-placeholder-${state.pathParameters['id']}')),
+      ),
+    ]);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        withdrawalsApiProvider.overrideWithValue(api),
+        selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
+        currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('WD-20261117-0001'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('receipt-placeholder-wd-1'), findsOneWidget);
   });
 }

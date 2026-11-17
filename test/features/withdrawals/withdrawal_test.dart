@@ -37,6 +37,28 @@ void main() {
     expect(withdrawal.rejectionReason, isNull);
   });
 
+  test('a paid withdrawal carries its frozen payout rate/amount', () {
+    final withdrawal = Withdrawal.fromJson(const {
+      'id': 'wd-3',
+      'reference_no': 'WD-20261110-0004',
+      'amount': '50',
+      'fee_amount': '0.75',
+      'net_amount': '49.25',
+      'account_line': 'bKash · 01700000000 (Alice)',
+      'status': 'PAID',
+      'payout_currency': 'BDT',
+      'conversion_rate': '120.5',
+      'payout_amount': '5934.63',
+      'payment_reference': 'TXN-998877',
+      'created_at': '2026-11-10T00:00:00Z',
+    });
+
+    expect(withdrawal.payoutCurrency, 'BDT');
+    expect(withdrawal.conversionRate, 120.5);
+    expect(withdrawal.payoutAmount, 5934.63);
+    expect(withdrawal.paymentReference, 'TXN-998877');
+  });
+
   test('a rejected withdrawal carries the real rejection reason', () {
     final withdrawal = Withdrawal.fromJson(const {
       'id': 'wd-2',

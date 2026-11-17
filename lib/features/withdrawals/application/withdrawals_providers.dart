@@ -23,3 +23,9 @@ final withdrawalConfigProvider = FutureProvider<WithdrawalConfig>((ref) {
 final withdrawalsProvider = FutureProvider<List<Withdrawal>>((ref) {
   return ref.watch(withdrawalsApiProvider).getWithdrawals();
 });
+
+/// FR-704: a single withdrawal's receipt detail.
+final withdrawalProvider =
+    FutureProvider.family<Withdrawal, String>((ref, withdrawalId) {
+  return ref.watch(withdrawalsApiProvider).getWithdrawal(withdrawalId);
+});

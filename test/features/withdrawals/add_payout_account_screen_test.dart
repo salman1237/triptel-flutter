@@ -60,6 +60,10 @@ class _FakeWithdrawalsApi implements WithdrawalsApi {
   Future<void> deleteAccount(String accountId) => throw UnimplementedError();
 
   @override
+  Future<Withdrawal> getWithdrawal(String withdrawalId) =>
+      throw UnimplementedError();
+
+  @override
   Future<WithdrawalConfig> getConfig() => throw UnimplementedError();
 
   @override

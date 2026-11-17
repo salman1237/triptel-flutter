@@ -44,6 +44,11 @@ abstract class WithdrawalsApi {
   /// `GET /withdrawals?limit=50` (auth), newest first.
   Future<List<Withdrawal>> getWithdrawals({int limit = 50});
 
+  /// `GET /withdrawals/{id}` (auth) -- the receipt detail, including
+  /// `payout_amount`/`conversion_rate` (frozen at approval) that the list
+  /// endpoint's objects also carry but a receipt screen reads on its own.
+  Future<Withdrawal> getWithdrawal(String withdrawalId);
+
   /// `POST /withdrawals/{id}/cancel` (auth). 400 if the request isn't
   /// PENDING anymore.
   Future<Withdrawal> cancelWithdrawal(String withdrawalId);
@@ -122,6 +127,12 @@ class WithdrawalsApiImpl implements WithdrawalsApi {
     return (response as List)
         .map((w) => Withdrawal.fromJson(w as Map<String, dynamic>))
         .toList();
+  }
+
+  @override
+  Future<Withdrawal> getWithdrawal(String withdrawalId) async {
+    final response = await _client.get('/withdrawals/$withdrawalId');
+    return Withdrawal.fromJson(response as Map<String, dynamic>);
   }
 
   @override

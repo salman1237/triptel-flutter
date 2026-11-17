@@ -16,6 +16,10 @@ class Withdrawal {
     required this.status,
     required this.createdAt,
     this.rejectionReason,
+    this.payoutCurrency,
+    this.conversionRate,
+    this.payoutAmount,
+    this.paymentReference,
   });
 
   final String id;
@@ -27,6 +31,13 @@ class Withdrawal {
   final String status; // PENDING | PAID | REJECTED | CANCELLED
   final DateTime createdAt;
   final String? rejectionReason;
+  final String? payoutCurrency;
+  final double? conversionRate;
+
+  /// In [payoutCurrency], not EUR -- frozen at approval (API.md §10). Null
+  /// until the withdrawal is approved/paid.
+  final double? payoutAmount;
+  final String? paymentReference;
 
   factory Withdrawal.fromJson(Map<String, dynamic> json) => Withdrawal(
         id: json['id'] as String,
@@ -38,5 +49,13 @@ class Withdrawal {
         status: json['status'] as String,
         createdAt: DateTime.parse(json['created_at'] as String),
         rejectionReason: json['rejection_reason'] as String?,
+        payoutCurrency: json['payout_currency'] as String?,
+        conversionRate: json['conversion_rate'] == null
+            ? null
+            : double.parse(json['conversion_rate'].toString()),
+        payoutAmount: json['payout_amount'] == null
+            ? null
+            : double.parse(json['payout_amount'].toString()),
+        paymentReference: json['payment_reference'] as String?,
       );
 }

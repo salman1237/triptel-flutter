@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/money/currency_format.dart';
@@ -14,9 +15,8 @@ import '../application/withdrawals_providers.dart';
 import '../data/models/withdrawal.dart';
 
 /// FR-703: withdrawal history. `GET /withdrawals`, status chips, cancel
-/// while pending (`POST /withdrawals/{id}/cancel`). No endpoint detail view
-/// exists yet -- FR-704 (receipt) is a separate, not-yet-built screen, so
-/// rows here aren't tappable beyond the Cancel action.
+/// while pending (`POST /withdrawals/{id}/cancel`). Rows open FR-704's
+/// receipt screen.
 class WithdrawalHistoryScreen extends ConsumerWidget {
   const WithdrawalHistoryScreen({super.key});
 
@@ -83,6 +83,8 @@ class WithdrawalHistoryScreen extends ConsumerWidget {
                   withdrawal: value[i],
                   amountText: money(value[i].amount),
                   onCancel: () => _confirmCancel(context, ref, value[i]),
+                  onTap: () =>
+                      context.push('/wallet/withdraw/${value[i].id}/receipt'),
                 ),
               ),
         AsyncError() => Center(
@@ -102,57 +104,62 @@ class _WithdrawalRow extends StatelessWidget {
     required this.withdrawal,
     required this.amountText,
     required this.onCancel,
+    required this.onTap,
   });
 
   final Withdrawal withdrawal;
   final String amountText;
   final VoidCallback onCancel;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final chip = withdrawalStatusChip(withdrawal.status);
-    return Padding(
+    return InkWell(
       key: ValueKey('withdrawal-row-${withdrawal.id}'),
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child:
-                    Text(withdrawal.referenceNo, style: AppTypography.body()),
-              ),
-              Text(amountText, style: AppTypography.body()),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              StatusChip(label: chip.label, tone: chip.tone),
-              const SizedBox(width: 8),
-              Text(
-                DateFormat.yMMMd().format(withdrawal.createdAt.toLocal()),
-                style: AppTypography.caption(color: AppColors.inkMuted),
-              ),
-            ],
-          ),
-          if (withdrawal.rejectionReason != null) ...[
-            const SizedBox(height: 4),
-            Text(withdrawal.rejectionReason!,
-                style: AppTypography.caption(color: AppColors.danger)),
-          ],
-          if (withdrawal.status == 'PENDING') ...[
-            const SizedBox(height: 8),
-            PillButton(
-              key: ValueKey('withdrawal-cancel-${withdrawal.id}'),
-              label: 'Cancel',
-              variant: PillButtonVariant.text,
-              fullWidth: false,
-              onPressed: onCancel,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child:
+                      Text(withdrawal.referenceNo, style: AppTypography.body()),
+                ),
+                Text(amountText, style: AppTypography.body()),
+              ],
             ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                StatusChip(label: chip.label, tone: chip.tone),
+                const SizedBox(width: 8),
+                Text(
+                  DateFormat.yMMMd().format(withdrawal.createdAt.toLocal()),
+                  style: AppTypography.caption(color: AppColors.inkMuted),
+                ),
+              ],
+            ),
+            if (withdrawal.rejectionReason != null) ...[
+              const SizedBox(height: 4),
+              Text(withdrawal.rejectionReason!,
+                  style: AppTypography.caption(color: AppColors.danger)),
+            ],
+            if (withdrawal.status == 'PENDING') ...[
+              const SizedBox(height: 8),
+              PillButton(
+                key: ValueKey('withdrawal-cancel-${withdrawal.id}'),
+                label: 'Cancel',
+                variant: PillButtonVariant.text,
+                fullWidth: false,
+                onPressed: onCancel,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
