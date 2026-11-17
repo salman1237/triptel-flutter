@@ -168,13 +168,17 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601 through FR-605 all done (see Done below) -- **section G
-  (Wallet) is now fully complete.** Continuing forward in strict array
-  order: next is **FR-701** (section H, Withdrawals -- payout accounts
-  CRUD, bank/mobile, set default, delete, max 5). This is a new
-  section with no pre-existing data layer (unlike wallet's FR-305/306
-  head start) -- read docs/API.md's withdrawals section and
-  docs/Functional_Requirements.md's FR-701..704 before building. No
+  FR-601 through FR-605, and FR-701 all done (see Done below).
+  Continuing forward in strict array order: next is **FR-702**
+  (withdrawal request -- config + blockers from `GET /withdrawals/
+  config`, amount with fee/net preview, account picker reusing
+  FR-701's `payoutAccountsProvider`, category, note -> `POST
+  /withdrawals`). `GET /withdrawals/config` returns `can_withdraw`/
+  `blockers`/`kyc_verified` -- show `blockers` verbatim, and if KYC is
+  a blocker offer "Verify now" (FR-1002, not built yet, so that link
+  will need a "coming soon" placeholder same as other forward
+  dependencies this session). Check `account_count` in the config
+  response against FR-701's own account list for consistency. No
   valid discount code exists on beta (confirmed via curl) — keep
   disclosing that limitation for any future discount-related work.
   FR-201b stays blocked (needs FR-801). Revisit **FR-953b** once
@@ -195,6 +199,37 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
+  **section H (Withdrawals)** -- built from scratch, no pre-existing
+  data layer (unlike wallet's FR-305/306 head start). New
+  `PayoutAccount` model, `WithdrawalsApi` (getAccounts/addAccount/
+  setDefaultAccount/deleteAccount against the real `GET/POST/POST
+  .../default/DELETE /withdrawals/accounts` endpoints, confirmed
+  field-for-field against the real backend source directly). New
+  `ApiClient.delete()` -- the client's first DELETE verb. Two screens:
+  `PayoutAccountsScreen` (list, tap a card for a bottom sheet with Set
+  as default/Delete, a real `AlertDialog` delete confirmation, a
+  disabled Add button with a real inline message at 5 accounts) and
+  `AddPayoutAccountScreen` (Bank/Mobile toggle hides branch_name/
+  routing_number for Mobile -- a bKash/Nagad wallet genuinely has
+  neither, even though the backend accepts them for either type).
+  Fixed a real layout bug caught by my own tests before review:
+  `PayoutAccountsScreen`'s `Expanded` doesn't work inside
+  `TriptelScaffold`'s default scrollable wrapper (unbounded height) --
+  fixed with `scrollable: false`, same precedent as the earlier
+  `LedgerScreen` fix. 20 new tests; full suite 546 green; `flutter
+  analyze`/`dart format` clean; `bash harness.sh verify` green (apk
+  builds). Real-device evidence, full CRUD lifecycle genuinely
+  exercised end-to-end against the live beta backend: real empty
+  state -> added a real BANK account (auto-defaulted, confirmed
+  against the backend's "first account becomes default" logic) ->
+  added a real MOBILE account -> switched the default to it via a
+  real tap -> deleted both, restoring the account to its original
+  empty state (cleanup, since this is the real signed-in beta
+  account). Reviewer: PASS, independently reproduced the
+  non-vacuousness test and the scrollable/Expanded bug claim, re-ran
+  the full suite and harness verify itself. Commits: `cdf74c1`
+  (feature), `427ec64` (state).
 - 2026-11-17 — FR-605 passing (top-up result states), **closing out
   section G (Wallet) entirely.** FR-603's gateway WebView previously
   collapsed the terminal redirect to a bool (failed/cancelled vs.

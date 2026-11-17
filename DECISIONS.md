@@ -378,3 +378,19 @@ session touches any other ShurjoPay-hosted redirect (checkout FR-307, eSIM
 top-up FR-408) -- check whether their own cancel/back-out links have the same
 malformed-query quirk, since neither currently defends against it the same
 way.
+
+## 2026-11-17 — TriptelScaffold's default `scrollable: true` breaks `Expanded` bodies
+Hit twice now (FR-602's `LedgerScreen`, FR-701's `PayoutAccountsScreen`): any
+screen body that uses `Expanded` (e.g. a fixed header + a `ListView` that
+should fill the rest of the screen) must pass `scrollable: false` to
+`TriptelScaffold`. The default `scrollable: true` wraps `body` in a
+`SingleChildScrollView`, which gives its child unbounded height --
+`Expanded` requires a bounded-height ancestor and fails at layout time
+otherwise. **Why recorded:** this is exactly the kind of mistake a future
+screen will make again without a test that pumps the widget (a `find.text`
+only on static content won't catch it; the error only appears when
+`pumpAndSettle`/`pump` actually lays out the tree). **How to apply:** before
+writing a new screen, check whether its body plans to use `Expanded`/
+`Flexible` for a scrolling list alongside fixed content -- if so, set
+`scrollable: false` on `TriptelScaffold` from the start, same as
+`LedgerScreen`/`PayoutAccountsScreen`.
