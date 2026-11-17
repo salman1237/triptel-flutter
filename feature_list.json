@@ -787,9 +787,13 @@
     {
       "id": "FR-1002",
       "behavior": "Profile view/edit phone, change password",
-      "verification": "flutter test test/features/account",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/account && flutter test test/features/auth/current_user_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "49100a9",
+        "screens": ["artifacts/FR-1002-profile.png"],
+        "notes": "New ProfileScreen at /profile (GET /auth/me): avatar (real avatar_url or a plain icon fallback, no upload UI since none is documented), name/username, email + a real StatusDot badge driven by email_verified, a Google-linked row shown only when has_google, phone edit (PUT /auth/me/preferences sending only {\"phone\"}, never touching the separate client-local preferred_currency preference), and a Change password button reusing FR-105's existing /set-password screen as-is. CurrentUser extended with phone/fullName/isKycVerified/avatarUrl/emailVerified/hasGoogle per the full documented GET /auth/me shape. Account tab's Profile row now navigates here instead of a coming-soon snack. 10 new tests + 1 navigation test + 6 trivial stub overrides in pre-existing AuthApi fakes; full suite 649 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: inverted the email-verified ternary, confirmed a real test failure, reverted. Real-device evidence is genuinely real (live navigation to the real signed-in account's Profile screen shows the real avatar, name, email with its real verified badge, Google-linked status, and real phone) -- redacted before saving (avatar photo, full name, username, email, and phone blanked out with solid boxes) since this is real personal data of the account used for all this session's device testing and the repo is public; the UI structure, badges, and buttons remain visible as evidence. Reviewer: PASS, independently confirmed updatePhone sends only the phone field, the post-save refresh is a real re-fetch (not optimistic local state), the avatar/Google-row conditionals are genuine (not just hidden), Change password reuses FR-105's screen without duplicating logic, and the 6 touched auth test files each got only a trivial 3-line stub with no other changes."
+      }
     },
     {
       "id": "FR-1003",
