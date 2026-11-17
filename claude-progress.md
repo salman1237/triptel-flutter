@@ -170,17 +170,17 @@ Session log. Read first at session start, update last at session end.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
-  referrals)**, FR-953b, and all of **section K (FR-901, FR-902,
-  guides)** all done (see Done below), plus a non-FR UI refresh pass
-  (visual polish only, see Done entry). Section K is complete.
-  Continuing forward in strict array order, next is **FR-1001**
-  (Account screen groups and greeting card), opening **section L
-  (Account & KYC)** -- the real one to finally replace the
-  `AccountScreen` placeholder that's been standing in since FR-101.
-  FR-201b stays blocked -- it needs real eSIM usage data (FR-402/403,
-  already passing) AND "the referral promo context (FR-801)"; now that FR-801
-  exists, re-check FR-201b's blocker text and consider unblocking it.
-  resolve.
+  referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
+  and now **FR-1001** (real Account screen, replacing the placeholder
+  that's stood in since FR-101) all done (see Done below), plus a
+  non-FR UI refresh pass (visual polish only, see Done entry).
+  Continuing forward in strict array order, next is **FR-1002**
+  (Profile -- avatar, name, username, email + verified badge, Google
+  badge, phone edit via `PUT /auth/me/preferences`, change password),
+  still in **section L (Account & KYC)**. FR-201b stays blocked -- it
+  needs real eSIM usage data (FR-402/403, already passing) AND "the
+  referral promo context (FR-801)"; now that FR-801 exists, re-check
+  FR-201b's blocker text and consider unblocking it.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -525,6 +525,52 @@ Session log. Read first at session start, update last at session end.
   line is genuinely inert (no tap handler), and that no scope crept
   beyond the 4 changed files. Commits: `5e3dcf0` (feature), `422d185`
   (state).
+- 2026-11-17 — FR-1001 passing (real Account screen), opening
+  **section L (Account & KYC)** -- replaces the `AccountScreen`
+  placeholder that's stood in since FR-101. Greeting `BalanceCard`
+  (username, real DEFAULT wallet balance, REWARD stat -- reusing
+  FR-601's existing `walletBalance()` helper verbatim) + "Invite
+  friends" CTA pushing `/refer`, which consolidates FR-801's earlier
+  standalone "Refer & earn" button into this one real entry point
+  (same destination, no functionality lost, confirmed by the
+  reviewer against FR-801's own commit history). 4 `ListGroup`s:
+  **Account** (Profile -> coming-soon/FR-1002; Identity verification
+  -> the REAL `GET /kyc/me` status, a deliberately minimal read --
+  the write/submission flow stays FR-1003's separate scope, judged
+  defensible by the reviewer against both FRs' actual spec text),
+  **Settings** (Language/Currency rows embedding the existing header
+  pill switchers via a new `_SwitcherRow`, justified since `ListRow`
+  has no trailing-widget slot), **Support** (Check device
+  compatibility -> real FR-952; Setup guide -> real FR-901; Help/
+  Support tickets -> coming-soon/FR-1101; Track an eSIM -> a new
+  dialog accepting a full tracking link or bare token, reusing FR-007's
+  existing deep-link parser to extract the token either way), **About**
+  (Legal documents -> coming-soon/FR-1201; Version -> real
+  `PackageInfo.fromPlatform()`, never hardcoded). New minimal
+  `lib/features/kyc/` data layer (read-only, `GET /kyc/me` only). 26
+  new/changed tests; full suite 638 green; `flutter analyze`/`dart
+  format` clean; `bash harness.sh verify` green. Non-vacuousness proof
+  on `resolveTrackingToken`: hardcoded a wrong return value, confirmed
+  a real test failure, reverted. Real-device evidence is genuinely
+  real, no rig needed: live navigation to the Account tab shows the
+  actual signed-in balance, the real "Not verified" KYC status, the
+  real app version (`1.0.0 (1)`), and the real native Track-an-eSIM
+  dialog. (One hiccup this session, not feature-related: the USB-
+  connected test device dropped its adb connection mid-session --
+  `adb devices` came back empty, `adb kill-server`/`start-server`
+  didn't help, it reconnected on its own a few minutes later; the
+  device-check run that happened to straddle the disconnect silently
+  produced a stale APK install, caught by noticing the on-device
+  screenshot still showed the OLD placeholder text -- re-ran
+  `device-check` once the device was back and got the real screen.)
+  Reviewer: PASS (initial attempt stalled/failed with no output after
+  600s, re-dispatched fresh and it completed normally on retry) --
+  independently confirmed the wallet-type lookups aren't swapped, the
+  KYC subtitle genuinely reflects async state, Cancel never navigates,
+  the FR-801 consolidation loses no functionality, the KYC read stays
+  within FR-1001's own scope, no FR-1002/1101-1104 UI leaked beyond
+  inert coming-soon snacks, and no regressions in FR-801/FR-601's own
+  suites. Commits: `c21d371` (feature), `b311b7f` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
