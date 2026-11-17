@@ -5,6 +5,7 @@ import 'package:triptel/core/money/currency_providers.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
@@ -24,6 +25,10 @@ class _FakeWalletsApi implements WalletsApi {
     if (r is Exception) throw r;
     return r as List<Wallet>;
   }
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }
 
 Widget _app(Object result) => ProviderScope(

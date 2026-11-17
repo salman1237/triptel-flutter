@@ -1,0 +1,52 @@
+[
+  {
+    "id": "8b9dba5d-1c5e-4473-8009-4bb436c5bc3f",
+    "tx_type": "DEBIT",
+    "amount": "4.8600",
+    "balance_before": "524.3720",
+    "balance_after": "519.5120",
+    "reference_type": "ESIM_TOPUP_PURCHASE",
+    "description": "Top-up: Saudi Arabia 1GB 7Days",
+    "created_at": "2026-11-16T20:59:37.271478Z"
+  },
+  {
+    "id": "95c74cab-6cef-4e6a-a1ab-39ef0364f987",
+    "tx_type": "DEBIT",
+    "amount": "4.8600",
+    "balance_before": "529.2320",
+    "balance_after": "524.3720",
+    "reference_type": "ORDER_PURCHASE",
+    "description": "Purchase eSIM: Saudi Arabia 1GB 7Days",
+    "created_at": "2026-11-16T13:46:47.107408Z"
+  },
+  {
+    "id": "79a7c46b-cfee-48bb-b309-d12a1c5b9fe8",
+    "tx_type": "CREDIT",
+    "amount": "1.6500",
+    "balance_before": "536.3720",
+    "balance_after": "538.0220",
+    "reference_type": "REFUND",
+    "description": "Refund: eSIM provisioning failed for order ORD-20261111-00D166",
+    "created_at": "2026-11-10T21:04:51.088410Z"
+  },
+  {
+    "id": "a087c0c8-8834-4c7f-862c-06a0558076ae",
+    "tx_type": "CREDIT",
+    "amount": "0.0800",
+    "balance_before": "547.7820",
+    "balance_after": "547.8620",
+    "reference_type": "DEPOSIT_GATEWAY",
+    "description": "ShurjoPay Deposit: 11.3500 BDT",
+    "created_at": "2026-09-17T05:48:13.616954Z"
+  },
+  {
+    "id": "088fdd50-49f4-4613-8ef7-0002107162ff",
+    "tx_type": "CREDIT",
+    "amount": "500.0000",
+    "balance_before": "2.6144",
+    "balance_after": "502.6144",
+    "reference_type": "ADMIN_ADJUSTMENT",
+    "description": "Admin balance recharge by superadmin",
+    "created_at": "2026-09-04T20:14:04.575485Z"
+  }
+]

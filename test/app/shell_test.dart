@@ -13,6 +13,7 @@ import 'package:triptel/features/esims/data/models/my_esim.dart';
 import 'package:triptel/features/esims/data/my_esims_api.dart';
 import 'package:triptel/features/esims/presentation/my_esims_screen.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
@@ -26,6 +27,10 @@ class _FakeMyEsimsApi implements MyEsimsApi {
 class _FakeWalletsApi implements WalletsApi {
   @override
   Future<List<Wallet>> getMyWallets() async => const [];
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }
 
 Future<void> _pumpApp(WidgetTester tester) async {

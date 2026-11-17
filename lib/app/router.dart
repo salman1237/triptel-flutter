@@ -15,6 +15,7 @@ import '../features/esims/presentation/esim_receipt_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
+import '../features/wallet/presentation/ledger_screen.dart';
 import '../features/wallet/presentation/wallet_screen.dart';
 import 'app_shell.dart';
 
@@ -71,6 +72,10 @@ final appRouter = GoRouter(
       path: '/my-esims/:id/report-problem',
       builder: (context, state) =>
           ReportProblemScreen(args: state.extra! as ReportProblemArgs),
+    ),
+    GoRoute(
+      path: '/wallet/history',
+      builder: (context, state) => const LedgerScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/money/currency_format.dart';
 import '../../../core/money/currency_providers.dart';
@@ -48,6 +49,7 @@ class WalletScreen extends ConsumerWidget {
             onTopUp: () => _comingSoon(context, 'Top up'),
             onWithdraw: () => _comingSoon(context, 'Withdraw'),
             onRefer: () => _comingSoon(context, 'Refer a friend'),
+            onViewHistory: () => context.push('/wallet/history'),
           ),
         AsyncError() => Center(
             child: ErrorState(
@@ -68,6 +70,7 @@ class _Body extends StatelessWidget {
     required this.onTopUp,
     required this.onWithdraw,
     required this.onRefer,
+    required this.onViewHistory,
   });
 
   final List<Wallet> wallets;
@@ -75,6 +78,7 @@ class _Body extends StatelessWidget {
   final VoidCallback onTopUp;
   final VoidCallback onWithdraw;
   final VoidCallback onRefer;
+  final VoidCallback onViewHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -126,6 +130,14 @@ class _Body extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        PillButton(
+          key: const ValueKey('wallet-view-history-button'),
+          label: 'View transaction history',
+          variant: PillButtonVariant.text,
+          fullWidth: false,
+          onPressed: onViewHistory,
         ),
       ],
     );

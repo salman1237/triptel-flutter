@@ -28,6 +28,7 @@ import 'package:triptel/features/checkout/data/models/shurjopay_checkout.dart';
 import 'package:triptel/features/checkout/data/orders_api.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 
@@ -88,6 +89,10 @@ class _FakeWalletsApi implements WalletsApi {
 
   @override
   Future<List<Wallet>> getMyWallets() async => _wallets;
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }
 
 Order _order(String status, {EsimProfile? esimProfile}) => Order(
@@ -1159,4 +1164,8 @@ class _ThrowingWalletsApi implements WalletsApi {
   @override
   Future<List<Wallet>> getMyWallets() async =>
       throw const ApiException(statusCode: 500, message: 'Network error');
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }

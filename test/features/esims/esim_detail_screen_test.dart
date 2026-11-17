@@ -22,6 +22,7 @@ import 'package:triptel/features/esims/presentation/esim_detail_screen.dart';
 import 'package:triptel/features/support/presentation/report_problem_screen.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
 import 'package:triptel/features/wallet/data/models/wallet.dart';
 import 'package:triptel/features/wallet/data/wallets_api.dart';
 
@@ -110,12 +111,20 @@ class _FakeWalletsApi implements WalletsApi {
 
   @override
   Future<List<Wallet>> getMyWallets() async => _wallets;
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }
 
 class _ThrowingWalletsApi implements WalletsApi {
   @override
   Future<List<Wallet>> getMyWallets() async =>
       throw const ApiException(statusCode: 500, message: 'Network error');
+
+  @override
+  Future<List<LedgerEntry>> getLedger({String? walletType, int limit = 50}) =>
+      throw UnimplementedError();
 }
 
 class _FakeEsimStatusApi implements EsimStatusApi {
