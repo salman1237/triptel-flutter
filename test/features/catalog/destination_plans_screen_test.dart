@@ -67,7 +67,7 @@ Product _unlimited(
       isFeatured: featured,
     );
 
-Widget _app(List<Product> products) {
+Widget _app(List<Product> products, {EsimVerdict verdict = _supportedVerdict}) {
   final router = GoRouter(
     initialLocation: '/explore/japan',
     routes: [
@@ -91,7 +91,7 @@ Widget _app(List<Product> products) {
       ),
       selectedCurrencyRateProvider.overrideWith((ref) async => 1.0),
       currencyPreferenceProvider.overrideWith(() => _FixedCurrency()),
-      esimVerdictProvider.overrideWith((ref) async => _supportedVerdict),
+      esimVerdictProvider.overrideWith((ref) async => verdict),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -185,6 +185,49 @@ void main() {
 
     expect(find.byType(CheckoutReviewScreen), findsOneWidget);
     expect(find.text('Japan 1.0GB 7Days'), findsOneWidget);
+  });
+
+  testWidgets(
+      'FR-953b: an unsupported device shows the "Buy Now, Use Later" gate '
+      'instead of navigating straight to checkout', (tester) async {
+    await tester.pumpWidget(_app(
+      [_fixed(gb: 1, days: 7)],
+      verdict: const EsimVerdict(
+          kind: EsimVerdictKind.notSupported,
+          deviceLabel: 'Old Phone',
+          reason: 'No eSIM hardware'),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Japan 1.0GB 7Days'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('buy-now-use-later-dialog')), findsOneWidget);
+    expect(find.byType(CheckoutReviewScreen), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('gate-dialog-primary')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CheckoutReviewScreen), findsOneWidget);
+  });
+
+  testWidgets(
+      'FR-953b: a supported device goes straight to checkout, never gated',
+      (tester) async {
+    await tester.pumpWidget(_app([_fixed(gb: 1, days: 7)]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Japan 1.0GB 7Days'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('buy-now-use-later-dialog')), findsNothing);
+    expect(find.byType(CheckoutReviewScreen), findsOneWidget);
   });
 
   testWidgets(
