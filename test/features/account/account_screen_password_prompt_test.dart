@@ -25,6 +25,10 @@ Widget _testApp(AuthState state) {
         path: '/set-password',
         builder: (context, state) => const Text('set-password-placeholder'),
       ),
+      GoRoute(
+        path: '/refer',
+        builder: (context, state) => const Text('refer-screen-placeholder'),
+      ),
     ],
   );
 
@@ -77,5 +81,15 @@ void main() {
     expect(find.byKey(const ValueKey('must-change-password-prompt')),
         findsNothing);
     expect(find.text('Set password'), findsNothing);
+  });
+
+  testWidgets('tapping Refer & earn navigates to FR-801', (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('refer-earn-link')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('refer-screen-placeholder'), findsOneWidget);
   });
 }

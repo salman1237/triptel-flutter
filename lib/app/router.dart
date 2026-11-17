@@ -11,6 +11,7 @@ import '../features/checkout/presentation/checkout_review_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
 import '../features/compatibility/presentation/supported_devices_screen.dart';
 import '../features/esims/presentation/esim_detail_screen.dart';
+import '../features/referrals/presentation/refer_earn_screen.dart';
 import '../features/esims/presentation/esim_receipt_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
@@ -112,6 +113,10 @@ final appRouter = GoRouter(
       path: '/wallet/withdraw/:id/receipt',
       builder: (context, state) =>
           WithdrawalReceiptScreen(withdrawalId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/refer',
+      builder: (context, state) => const ReferEarnScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

@@ -65,6 +65,13 @@ class AccountScreen extends ConsumerWidget {
                     ],
                     const SizedBox(height: 12),
                     PillButton(
+                      key: const ValueKey('refer-earn-link'),
+                      label: 'Refer & earn',
+                      variant: PillButtonVariant.secondary,
+                      onPressed: () => context.push('/refer'),
+                    ),
+                    const SizedBox(height: 12),
+                    PillButton(
                       label: 'Sign out',
                       variant: PillButtonVariant.secondary,
                       onPressed: () =>
