@@ -5,10 +5,16 @@ import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/auth_api.dart';
 import '../data/google_auth_service.dart';
 import '../data/models/auth_token.dart';
+import '../data/models/current_user.dart';
 import 'auth_state.dart';
 
 final authApiProvider =
     Provider<AuthApi>((ref) => AuthApiImpl(ref.watch(apiClientProvider)));
+
+/// FR-1002's Profile screen.
+final currentUserProvider = FutureProvider<CurrentUser>((ref) {
+  return ref.watch(authApiProvider).fetchCurrentUser();
+});
 
 final googleAuthServiceProvider =
     Provider<GoogleAuthService>((ref) => GoogleAuthServiceImpl());

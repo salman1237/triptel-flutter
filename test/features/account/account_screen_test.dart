@@ -100,6 +100,10 @@ Widget _testApp(
         builder: (context, state) =>
             Text('track-screen-placeholder-${state.pathParameters['token']}'),
       ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const Text('profile-screen-placeholder'),
+      ),
     ],
   );
 
@@ -207,6 +211,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Not verified'), findsOneWidget);
+  });
+
+  testWidgets('tapping Profile navigates to the real FR-1002 screen',
+      (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('account-profile-row')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('profile-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets(

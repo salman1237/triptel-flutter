@@ -101,6 +101,9 @@ class _FakeAuthApi implements AuthApi {
 
   @override
   Future<CurrentUser> fetchCurrentUser() => throw UnimplementedError();
+
+  @override
+  Future<void> updatePhone(String phone) => throw UnimplementedError();
 }
 
 Widget _testApp({AuthApi? authApi, CatalogApi? catalogApi}) {

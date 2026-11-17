@@ -101,6 +101,9 @@ class _FakeAuthApi implements AuthApi {
           status: 'ACTIVE',
         );
   }
+
+  @override
+  Future<void> updatePhone(String phone) => throw UnimplementedError();
 }
 
 void main() {

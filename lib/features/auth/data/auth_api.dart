@@ -40,6 +40,12 @@ abstract class AuthApi {
   /// token already in secure storage (FR-107). Does NOT return
   /// `must_change_password` — that must come from secure storage.
   Future<CurrentUser> fetchCurrentUser();
+
+  /// `PUT /auth/me/preferences` (API.md §2). FR-1002 only edits `phone`
+  /// here -- `preferred_currency` is a separate, already-client-local-only
+  /// preference (FR-005/006's own documented follow-up note) and isn't
+  /// touched by this call. `""` clears the phone server-side.
+  Future<void> updatePhone(String phone);
 }
 
 class AuthApiImpl implements AuthApi {
@@ -107,5 +113,10 @@ class AuthApiImpl implements AuthApi {
   Future<CurrentUser> fetchCurrentUser() async {
     final data = await _client.get('/auth/me');
     return CurrentUser.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> updatePhone(String phone) async {
+    await _client.put('/auth/me/preferences', data: {'phone': phone});
   }
 }

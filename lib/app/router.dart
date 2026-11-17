@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../features/account/presentation/account_screen.dart';
+import '../features/account/presentation/profile_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
@@ -118,6 +119,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/refer',
       builder: (context, state) => const ReferEarnScreen(),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/guides/esim-setup-guide',
