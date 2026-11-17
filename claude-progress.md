@@ -168,22 +168,19 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601 through FR-605, and FR-701 all done (see Done below).
-  Continuing forward in strict array order: next is **FR-702**
-  (withdrawal request -- config + blockers from `GET /withdrawals/
-  config`, amount with fee/net preview, account picker reusing
-  FR-701's `payoutAccountsProvider`, category, note -> `POST
-  /withdrawals`). `GET /withdrawals/config` returns `can_withdraw`/
-  `blockers`/`kyc_verified` -- show `blockers` verbatim, and if KYC is
-  a blocker offer "Verify now" (FR-1002, not built yet, so that link
-  will need a "coming soon" placeholder same as other forward
-  dependencies this session). Check `account_count` in the config
-  response against FR-701's own account list for consistency. No
-  valid discount code exists on beta (confirmed via curl) — keep
-  disclosing that limitation for any future discount-related work.
-  FR-201b stays blocked (needs FR-801). Revisit **FR-953b** once
-  FR-310/FR-404 (both now passing) and FR-301+ let its install-gating
-  dependency resolve.
+  FR-601 through FR-605, FR-701, and FR-702 all done (see Done below).
+  Session paused here at the user's explicit request ("stop after
+  committing this feature") -- continuing forward in strict array
+  order, next is **FR-703** (withdrawal history -- `GET /withdrawals`,
+  status chips, cancel while pending via `POST /withdrawals/{id}/
+  cancel`). The `Withdrawal` model built for FR-702 is deliberately
+  minimal (only reference_no/amount/fee_amount/net_amount/
+  account_line/status) -- FR-703 will need to extend it with
+  note/account/payout_amount/created_at/etc. No valid discount code
+  exists on beta (confirmed via curl) — keep disclosing that
+  limitation for any future discount-related work. FR-201b stays
+  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
+  now passing) and FR-301+ let its install-gating dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -199,6 +196,44 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-702 passing (withdrawal request with blockers and
+  fee preview). New `WithdrawalRequestScreen` is now the real
+  destination of the wallet overview's Withdraw button at
+  `/wallet/withdraw`; FR-701's `PayoutAccountsScreen` moved one level
+  deeper to `/wallet/withdraw/accounts` (matches Architecture.md's
+  route table more literally -- `/wallet/withdraw` is the request
+  flow, account management is reached from within it). New
+  `WithdrawalConfig`/`Withdrawal` models (confirmed field-for-field
+  against the real backend source directly) and pure
+  `computeWithdrawalFee`/`computeWithdrawalNet` functions mirroring
+  the backend's `compute_fee` exactly (PERCENT/FLAT, capped at the
+  amount) -- client preview only, the real fee is authoritative
+  server-side. Found a real doc-vs-implementation mismatch: API.md
+  documents `fee_type` as `PERCENT|FLAT` but the backend source
+  (`withdrawal_settings_svc.py`) actually stores/returns it lowercase
+  -- handled with a case-insensitive comparison. Blockers shown
+  verbatim; "Verify now" for KYC (FR-1002, "coming soon" placeholder)
+  and "Add a payout account" at zero accounts both gate correctly on
+  their own specific condition, not just "blockers exist".
+  **Caught a real bug via my own tests before review:** the account
+  picker read `payoutAccountsProvider` with `.whenData(...)` instead
+  of awaiting `.future`, which could silently no-op if the provider
+  hadn't resolved yet (nothing else on this screen watches it first)
+  -- the same `ref.read`-vs-`.future` class of bug this session has
+  hit before. Fixed and caught by a screen test that actually drove
+  the real async timing, not a trivial `find.text` check.
+  25 new tests; full suite 567 green; `flutter analyze`/`dart format`
+  clean; `bash harness.sh verify` green (apk builds). Real-device
+  evidence is honest about its limits: the real signed-in account is
+  itself blocked (no KYC, no payout account), so the blockers-view
+  screenshots are genuinely real; the open-form/fee-preview
+  screenshots (states the real account can't reach) were captured via
+  the established temporary local-`main.dart`-rig technique, disclosed,
+  reverted via `git checkout` and confirmed byte-identical before
+  rebuilding the real app. Reviewer: PASS, independently confirmed the
+  fee formula and the lowercase-`fee_type` discovery against the
+  backend source, re-ran the suite and harness verify itself. Commits:
+  `b7da380` (feature), `1a4db36` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New

@@ -394,3 +394,22 @@ writing a new screen, check whether its body plans to use `Expanded`/
 `Flexible` for a scrolling list alongside fixed content -- if so, set
 `scrollable: false` on `TriptelScaffold` from the start, same as
 `LedgerScreen`/`PayoutAccountsScreen`.
+
+## 2026-11-17 — general rule: never `ref.read(futureProvider).whenData(...)` on a provider nothing watches first
+Hit concretely in FR-702 (the account picker silently no-op'd because
+`payoutAccountsProvider` hadn't resolved yet when nothing else on that screen
+watched it) and suspected-but-inconclusive in FR-601 (currency providers).
+**Decision:** whenever a handler needs the resolved value of a
+`FutureProvider`/`AsyncNotifierProvider` on demand (inside a button's
+`onPressed`, not in `build()`), use `await ref.read(provider.future)`, never
+`ref.read(provider).valueOrNull` or `.whenData(...)` -- both silently treat
+"still loading" as "no value," which is indistinguishable from a real empty
+result to the user (a dead tap, not an error). `ref.watch` in `build()` is
+fine and unaffected; this only applies to one-shot reads inside callbacks.
+**Why recorded:** this is a recurring, easy-to-miss class of bug specific to
+Riverpod's `FutureProvider` API -- a future session should check every
+`ref.read(...)` inside a callback for this pattern instead of waiting to
+catch it by accident. **How to apply:** before writing a callback that reads
+a `FutureProvider`'s current value, ask whether anything else in the widget
+tree already `ref.watch`es it (guaranteeing it's resolved by the time the
+callback can run) -- if not, use `.future`.
