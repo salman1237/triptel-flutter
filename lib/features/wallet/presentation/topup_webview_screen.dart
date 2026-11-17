@@ -3,12 +3,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../application/topup_callback.dart';
 
-/// FR-603: hosts ShurjoPay's wallet top-up `checkout_url` in an in-app
-/// WebView (same "Gateway WebView" pattern as FR-307/FR-408's flows). The
-/// terminal redirect is a real web URL (API.md §5) -- intercepted before it
-/// actually loads, popping with `true` (failed/cancelled) / `false`
-/// (success) instead of letting the WebView navigate to the real web page.
-/// Any non-http(s) scheme (bKash/Nagad app links) is launched externally.
+/// FR-603/FR-605: hosts ShurjoPay's wallet top-up `checkout_url` in an
+/// in-app WebView (same "Gateway WebView" pattern as FR-307/FR-408's
+/// flows). The terminal redirect is a real web URL (API.md §5) --
+/// intercepted before it actually loads, popping with the parsed
+/// [WalletTopupResult] (success/failed/cancelled + reason) instead of
+/// letting the WebView navigate to the real web page. Any non-http(s)
+/// scheme (bKash/Nagad app links) is launched externally.
 class WalletTopupWebViewScreen extends StatefulWidget {
   const WalletTopupWebViewScreen({super.key, required this.checkoutUrl});
 
@@ -37,7 +38,7 @@ class _WalletTopupWebViewScreenState extends State<WalletTopupWebViewScreen> {
     if (uri == null) return NavigationDecision.navigate;
 
     if (isWalletTopupCallbackUrl(uri)) {
-      Navigator.of(context).pop(walletTopupCallbackFailed(uri));
+      Navigator.of(context).pop(parseWalletTopupCallback(uri));
       return NavigationDecision.prevent;
     }
     if (uri.scheme != 'http' && uri.scheme != 'https') {

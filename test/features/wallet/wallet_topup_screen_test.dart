@@ -8,6 +8,7 @@ import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
 import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
 import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
+import 'package:triptel/features/wallet/application/topup_callback.dart';
 import 'package:triptel/features/wallet/application/topup_launcher.dart';
 import 'package:triptel/features/wallet/application/wallet_providers.dart';
 import 'package:triptel/features/wallet/data/models/ledger_entry.dart';
@@ -63,7 +64,8 @@ class _FakeWalletsApi implements WalletsApi {
 Future<void> _pumpTopupScreen(
   WidgetTester tester,
   _FakeWalletsApi api, {
-  bool? launcherResult = false,
+  WalletTopupResult? launcherResult =
+      const WalletTopupResult(status: WalletTopupStatus.success),
 }) async {
   final router = GoRouter(routes: [
     GoRoute(
@@ -144,7 +146,9 @@ void main() {
       'ShurjoPay, and shows success', (tester) async {
     final api = _FakeWalletsApi(
         checkoutResult: const TopupCheckout(checkoutUrl: 'https://pay.test'));
-    await _pumpTopupScreen(tester, api, launcherResult: false);
+    await _pumpTopupScreen(tester, api,
+        launcherResult:
+            const WalletTopupResult(status: WalletTopupStatus.success));
 
     await tester.enterText(
         find.byKey(const ValueKey('wallet-topup-amount-field')), '25.50');
@@ -156,11 +160,29 @@ void main() {
     expect(find.text('Top-up successful.'), findsOneWidget);
   });
 
-  testWidgets('a failed/cancelled gateway result shows the failure message',
+  testWidgets('a failed gateway result shows the real failure reason',
       (tester) async {
     final api = _FakeWalletsApi(
         checkoutResult: const TopupCheckout(checkoutUrl: 'https://pay.test'));
-    await _pumpTopupScreen(tester, api, launcherResult: true);
+    await _pumpTopupScreen(tester, api,
+        launcherResult: const WalletTopupResult(
+            status: WalletTopupStatus.failed, reason: 'not_paid'));
+
+    await tester.enterText(
+        find.byKey(const ValueKey('wallet-topup-amount-field')), '25.50');
+    await tester.tap(find.byKey(const ValueKey('wallet-topup-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text("The payment wasn't completed."), findsOneWidget);
+  });
+
+  testWidgets('a failed result with no reason shows a generic failure message',
+      (tester) async {
+    final api = _FakeWalletsApi(
+        checkoutResult: const TopupCheckout(checkoutUrl: 'https://pay.test'));
+    await _pumpTopupScreen(tester, api,
+        launcherResult:
+            const WalletTopupResult(status: WalletTopupStatus.failed));
 
     await tester.enterText(
         find.byKey(const ValueKey('wallet-topup-amount-field')), '25.50');
@@ -168,6 +190,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Top-up failed.'), findsOneWidget);
+  });
+
+  testWidgets(
+      'a cancelled result (backed out on the gateway\'s own page) shows '
+      'its own distinct message, not "failed"', (tester) async {
+    final api = _FakeWalletsApi(
+        checkoutResult: const TopupCheckout(checkoutUrl: 'https://pay.test'));
+    await _pumpTopupScreen(tester, api,
+        launcherResult:
+            const WalletTopupResult(status: WalletTopupStatus.cancelled));
+
+    await tester.enterText(
+        find.byKey(const ValueKey('wallet-topup-amount-field')), '25.50');
+    await tester.tap(find.byKey(const ValueKey('wallet-topup-submit-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Top-up cancelled.'), findsOneWidget);
+    expect(find.text('Top-up failed.'), findsNothing);
   });
 
   testWidgets(

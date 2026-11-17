@@ -10,6 +10,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../bootstrap/application/bootstrap_providers.dart';
+import '../application/topup_callback.dart';
 import '../application/topup_launcher.dart';
 import '../application/wallet_providers.dart';
 import '../data/models/topup_checkout.dart';
@@ -19,6 +20,8 @@ import '../data/models/topup_checkout.dart';
 /// backend validates in EUR regardless of what currency the customer typed
 /// in -- API.md §5). Presets are fixed EUR values (5/10/20/50) converted to
 /// display/fill the field, since there's no backend-documented preset list.
+/// FR-605: the terminal result (success/failed/cancelled, with a reason for
+/// failures) comes from [WalletTopupResult], not a collapsed bool.
 class WalletTopupScreen extends ConsumerStatefulWidget {
   const WalletTopupScreen({super.key});
 
@@ -72,14 +75,19 @@ class _WalletTopupScreenState extends ConsumerState<WalletTopupScreen> {
     setState(() => _submitting = false);
 
     final launch = ref.read(walletTopupLauncherProvider);
-    final failed = await launch(context, checkout.checkoutUrl);
-    if (!mounted || failed == null) return;
+    final result = await launch(context, checkout.checkoutUrl);
+    if (!mounted || result == null) return;
 
     ref.invalidate(myWalletsProvider);
     ref.invalidate(ledgerProvider);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(failed ? 'Top-up failed.' : 'Top-up successful.')));
-    if (!failed) Navigator.of(context).pop();
+    final message = switch (result.status) {
+      WalletTopupStatus.success => 'Top-up successful.',
+      WalletTopupStatus.cancelled => 'Top-up cancelled.',
+      WalletTopupStatus.failed => walletTopupFailureMessage(result.reason),
+    };
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+    if (result.status == WalletTopupStatus.success) Navigator.of(context).pop();
   }
 
   @override
