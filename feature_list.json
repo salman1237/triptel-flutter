@@ -765,9 +765,13 @@
     {
       "id": "FR-902",
       "behavior": "New-to-eSIM sheet",
-      "verification": "flutter test test/features/guides && bash harness.sh shot FR-902",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/guides && flutter test test/features/esims/my_esims_screen_test.dart && bash harness.sh shot FR-902",
+      "state": "passing",
+      "evidence": {
+        "commit": "5e3dcf0",
+        "screens": ["artifacts/FR-902-empty-state.png", "artifacts/FR-902-sheet.png"],
+        "notes": "No documented web/Eskimo source for this exact sheet (checked frontend source and docs/design-reference/ -- the closest screenshot, 15-help-sheet.png, is FR-1104's separate AI-assistant sheet), so content was designed fresh from the one-line FR spec and built using the existing coverage_sheet.dart bottom-sheet pattern. Short explainer + 'View setup guide' (FR-901) and 'Check device compatibility' (FR-952) buttons, both popping the sheet before pushing the real route; a plain-text 'Contact Support' line (no general /support screen exists yet -- same disclosed-limitation convention established fixing FR-901 today, see DECISIONS.md). Entry point: a 'New to eSIM?' link in My eSIMs' empty state (shown only with zero eSIMs) -- the natural place for a first-time user. 5 new/changed tests; full suite 615 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: temporarily pointed the setup-guide button at a wrong route, confirmed a real test failure, restored. Real-device evidence via the established disclosed local-main.dart-rig technique (the real signed-in account already has eSIMs, so the empty-state entry point can't be reached live); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. Reviewer: PASS, independently confirmed pop-before-push navigation, that both hardcoded route strings match the real router's registered paths, that the Support line is genuinely inert (no tap handler), and that no scope crept beyond the 4 changed files."
+      }
     },
     {
       "id": "FR-1001",
