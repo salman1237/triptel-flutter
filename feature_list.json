@@ -754,9 +754,13 @@
     {
       "id": "FR-901",
       "behavior": "eSIM setup guide",
-      "verification": "flutter test test/features/guides && bash harness.sh shot FR-901",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/guides && flutter test test/features/esims/esim_detail_screen_test.dart && bash harness.sh shot FR-901",
+      "state": "passing",
+      "evidence": {
+        "commit": "09d63f1",
+        "screens": ["artifacts/FR-901-setup-guide.png", "artifacts/FR-901-setup-guide-troubleshooting.png"],
+        "notes": "New lib/features/guides/ (section K). Content ported line-by-line from the real web app's static guides/esim-setup-guide page (D:\\eSim\\frontend\\src\\app\\guides\\esim-setup-guide\\page.tsx) -- iOS/Android numbered steps, install-once warning, troubleshooting checklist, link to FR-952's supported-devices list. No backend endpoint (static copy, same both platforms). Replaces FR-404's previous external-browser placeholder on the eSIM detail screen's 'View setup guide' link (now navigates in-app); deleted the now-dead esim_install_links.dart/setupGuideUrl() and its test. Full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence is genuine: reached via real navigation (My eSIMs -> a real eSIM -> View setup guide) on the connected device, screens show the actual ported content live. Reviewer: FAIL then PASS -- first pass caught two real content omissions against the web source: the troubleshooting list dropped 'Still stuck? Contact Support with your order number.' and the install-once warning dropped '...and contact Support before removing it.' Both were silently deleted rather than disclosed, even though no general /support screen exists yet (FR-1101/1102 not_started, only FR-410's per-eSIM report-problem). Fixed by restoring both as plain text (no general support route to link to) with a comment explaining why it's not a tappable link; re-verified, re-captured both screenshots live showing the restored text. Commits: 18779e0 (feature), 09d63f1 (reviewer fix)."
+      }
     },
     {
       "id": "FR-902",
