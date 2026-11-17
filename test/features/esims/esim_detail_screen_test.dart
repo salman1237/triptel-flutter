@@ -264,6 +264,11 @@ GoRouter _testRouter() => GoRouter(routes: [
                   '${args.esimId}-${args.orderNo}-${args.planTitle}'));
         },
       ),
+      GoRoute(
+        path: '/guides/esim-setup-guide',
+        builder: (context, state) =>
+            const Scaffold(body: Text('setup-guide-placeholder')),
+      ),
     ]);
 
 void main() {
@@ -461,8 +466,9 @@ void main() {
       expect(find.byKey(const ValueKey('esim-copy-Matching ID')), findsNothing);
     });
 
-    testWidgets('tapping the setup guide link launches the web guide URL',
-        (tester) async {
+    testWidgets(
+        'tapping the setup guide link navigates to FR-901 in-app, no '
+        'external launch', (tester) async {
       final launched = <String>[];
       await tester.pumpWidget(
           _app(_FakeEsimStatusApi(_status()), launchedUrls: launched));
@@ -473,8 +479,8 @@ void main() {
       await tester.tap(guideLink);
       await tester.pumpAndSettle();
 
-      expect(launched, hasLength(1));
-      expect(launched.single, contains('guides/esim-setup-guide'));
+      expect(find.text('setup-guide-placeholder'), findsOneWidget);
+      expect(launched, isEmpty);
     });
 
     testWidgets('a failed install launch shows an error snack, never crashes',

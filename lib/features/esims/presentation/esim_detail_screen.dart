@@ -23,7 +23,6 @@ import '../../wallet/application/wallet_balance.dart';
 import '../../wallet/application/wallet_providers.dart';
 import '../../wallet/data/models/wallet.dart';
 import '../application/esim_history_shape.dart';
-import '../application/esim_install_links.dart';
 import '../application/esim_lifecycle_shape.dart';
 import '../application/esim_status_providers.dart';
 import '../application/esim_usage_shape.dart';
@@ -118,15 +117,7 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
     }
   }
 
-  Future<void> _openSetupGuide() async {
-    final launch = ref.read(urlLauncherProvider);
-    final opened = await launch(Uri.parse(setupGuideUrl()));
-    if (!mounted) return;
-    if (!opened) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't open the setup guide.")));
-    }
-  }
+  void _openSetupGuide() => context.push('/guides/esim-setup-guide');
 
   void _onReportProblem(EsimStatus status) {
     context.push('/my-esims/${widget.esimId}/report-problem',
