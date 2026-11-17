@@ -9,6 +9,10 @@ abstract class ReferralsApi {
   /// already has a referrer / invalid / self / after first completed
   /// purchase.
   Future<ReferralSummary> claim(String code);
+
+  /// `GET /referrals/validate?code=` (public). FR-803: live preview on
+  /// the register screen.
+  Future<ReferralValidation> validate(String code);
 }
 
 class ReferralsApiImpl implements ReferralsApi {
@@ -28,5 +32,12 @@ class ReferralsApiImpl implements ReferralsApi {
       'code': code,
     });
     return ReferralSummary.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<ReferralValidation> validate(String code) async {
+    final response =
+        await _client.get('/referrals/validate', query: {'code': code});
+    return ReferralValidation.fromJson(response as Map<String, dynamic>);
   }
 }

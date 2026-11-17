@@ -1,5 +1,29 @@
 import '../../../../core/money/money.dart';
 
+/// `GET /referrals/validate?code=` response (API.md §8, public). Used by
+/// FR-803's register-screen live preview, not FR-801/802's own summary.
+class ReferralValidation {
+  const ReferralValidation({
+    required this.valid,
+    this.referrerUsername,
+    this.joiningReward,
+  });
+
+  final bool valid;
+  final String? referrerUsername;
+  final Money? joiningReward;
+
+  factory ReferralValidation.fromJson(Map<String, dynamic> json) {
+    final valid = json['valid'] as bool;
+    if (!valid) return const ReferralValidation(valid: false);
+    return ReferralValidation(
+      valid: true,
+      referrerUsername: json['referrer_username'] as String,
+      joiningReward: Money.parseEur(json['joining_reward'] as String),
+    );
+  }
+}
+
 class ReferralEvent {
   const ReferralEvent({
     required this.referrer,

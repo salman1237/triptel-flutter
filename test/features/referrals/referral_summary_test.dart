@@ -70,4 +70,27 @@ void main() {
     expect(summary.events['JOINING']!.referrer.eurCents, 100);
     expect(summary.events['FIRST_PURCHASE']!.referrer.eurCents, 200);
   });
+
+  test(
+      'ReferralValidation.fromJson parses a valid GET /referrals/validate '
+      'response (API.md section 8)', () {
+    final validation = ReferralValidation.fromJson(const {
+      'valid': true,
+      'referrer_username': 'bob',
+      'joining_reward': '1.00',
+      'currency': 'EUR',
+    });
+
+    expect(validation.valid, isTrue);
+    expect(validation.referrerUsername, 'bob');
+    expect(validation.joiningReward!.eurCents, 100);
+  });
+
+  test('ReferralValidation.fromJson parses the real invalid response', () {
+    final validation = ReferralValidation.fromJson(const {'valid': false});
+
+    expect(validation.valid, isFalse);
+    expect(validation.referrerUsername, isNull);
+    expect(validation.joiningReward, isNull);
+  });
 }

@@ -37,6 +37,10 @@ class _FakeReferralsApi implements ReferralsApi {
     );
     return _summary;
   }
+
+  @override
+  Future<ReferralValidation> validate(String code) =>
+      throw UnimplementedError();
 }
 
 class _ThrowingReferralsApi implements ReferralsApi {
@@ -45,6 +49,10 @@ class _ThrowingReferralsApi implements ReferralsApi {
 
   @override
   Future<ReferralSummary> claim(String code) => throw UnimplementedError();
+
+  @override
+  Future<ReferralValidation> validate(String code) =>
+      throw UnimplementedError();
 }
 
 ReferralSummary _summary({

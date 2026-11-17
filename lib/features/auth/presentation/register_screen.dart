@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/deeplink/deep_link_providers.dart';
@@ -5,12 +7,16 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../referrals/application/referrals_providers.dart';
+import '../../referrals/data/models/referral_summary.dart';
 import '../application/auth_providers.dart';
 import '../application/post_auth_navigation.dart';
 import '../application/register_validation.dart';
 
-/// FR-101: email/username/password (+ optional phone/full name/referral
-/// code, pre-filled from a `?ref=` link via FR-007) → signed in.
+/// FR-101/FR-803: email/username/password (+ optional phone/full name/
+/// referral code, pre-filled from a `?ref=` link via FR-007, live-
+/// validated against `GET /referrals/validate` to show "Invited by
+/// @user, you get X" or a real invalid-code message) → signed in.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -30,8 +36,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _submitting = false;
   bool _prefilledReferral = false;
 
+  Timer? _validateDebounce;
+  ReferralValidation? _referralValidation;
+  bool _validatingReferral = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _referralController.addListener(_onReferralChanged);
+  }
+
   @override
   void dispose() {
+    _validateDebounce?.cancel();
+    _referralController.removeListener(_onReferralChanged);
     _emailController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -39,6 +57,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _fullNameController.dispose();
     _referralController.dispose();
     super.dispose();
+  }
+
+  void _onReferralChanged() {
+    final code = _referralController.text.trim();
+    _validateDebounce?.cancel();
+    if (code.isEmpty) {
+      setState(() {
+        _referralValidation = null;
+        _validatingReferral = false;
+      });
+      return;
+    }
+    setState(() => _validatingReferral = true);
+    _validateDebounce = Timer(const Duration(milliseconds: 400), () async {
+      final result = await ref.read(referralsApiProvider).validate(code);
+      if (!mounted || _referralController.text.trim() != code) return;
+      setState(() {
+        _referralValidation = result;
+        _validatingReferral = false;
+      });
+    });
   }
 
   Future<void> _submit() async {
@@ -143,6 +182,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             decoration:
                 const InputDecoration(labelText: 'Referral code (optional)'),
           ),
+          if (_validatingReferral) ...[
+            const SizedBox(height: 4),
+            Text('Checking code…',
+                key: const ValueKey('register-referral-checking'),
+                style: AppTypography.caption(color: AppColors.inkMuted)),
+          ] else if (_referralValidation != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              _referralValidation!.valid
+                  ? 'Invited by @${_referralValidation!.referrerUsername}, '
+                      'you get €${_referralValidation!.joiningReward!.eurValue.toStringAsFixed(2)}'
+                  : 'This referral code is not valid.',
+              key: const ValueKey('register-referral-result'),
+              style: AppTypography.caption(
+                color: _referralValidation!.valid
+                    ? AppColors.success
+                    : AppColors.danger,
+              ),
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 16),
             Text(_error!,

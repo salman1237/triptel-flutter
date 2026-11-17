@@ -17,6 +17,9 @@ import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
+import 'package:triptel/features/referrals/application/referrals_providers.dart';
+import 'package:triptel/features/referrals/data/models/referral_summary.dart';
+import 'package:triptel/features/referrals/data/referrals_api.dart';
 import 'secure_storage_test_mock.dart';
 
 class _FakeCatalogApi implements CatalogApi {
@@ -85,7 +88,23 @@ class _FakeAuthApi implements AuthApi {
   Future<CurrentUser> fetchCurrentUser() => throw UnimplementedError();
 }
 
-Widget _testApp({AuthApi? authApi, CatalogApi? catalogApi}) {
+class _FakeReferralsApi implements ReferralsApi {
+  _FakeReferralsApi({this.validResult});
+  final ReferralValidation? validResult;
+
+  @override
+  Future<ReferralValidation> validate(String code) async =>
+      validResult ?? const ReferralValidation(valid: false);
+
+  @override
+  Future<ReferralSummary> getMe() => throw UnimplementedError();
+
+  @override
+  Future<ReferralSummary> claim(String code) => throw UnimplementedError();
+}
+
+Widget _testApp(
+    {AuthApi? authApi, CatalogApi? catalogApi, ReferralsApi? referralsApi}) {
   final router = GoRouter(
     initialLocation: '/register',
     routes: [
@@ -109,6 +128,8 @@ Widget _testApp({AuthApi? authApi, CatalogApi? catalogApi}) {
     overrides: [
       if (authApi != null) authApiProvider.overrideWithValue(authApi),
       if (catalogApi != null) catalogApiProvider.overrideWithValue(catalogApi),
+      referralsApiProvider
+          .overrideWithValue(referralsApi ?? _FakeReferralsApi()),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -247,5 +268,60 @@ void main() {
 
     expect(find.text('TYPED'), findsOneWidget);
     expect(find.text('ABC123'), findsNothing);
+  });
+
+  testWidgets(
+      'FR-803: a valid code shows the real referrer username and reward',
+      (tester) async {
+    await tester.pumpWidget(_testApp(
+      referralsApi: _FakeReferralsApi(
+        validResult: const ReferralValidation(
+            valid: true, referrerUsername: 'bob', joiningReward: Money(100)),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('register-referral')), 'BOB123');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Invited by @bob, you get €1.00'), findsOneWidget);
+  });
+
+  testWidgets('FR-803: an invalid code shows a real invalid message',
+      (tester) async {
+    await tester.pumpWidget(_testApp(
+      referralsApi: _FakeReferralsApi(
+          validResult: const ReferralValidation(valid: false)),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('register-referral')), 'NOPE');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('This referral code is not valid.'), findsOneWidget);
+  });
+
+  testWidgets('FR-803: clearing the code removes the validation message',
+      (tester) async {
+    await tester.pumpWidget(_testApp(
+      referralsApi: _FakeReferralsApi(
+          validResult: const ReferralValidation(valid: false)),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+        find.byKey(const ValueKey('register-referral')), 'NOPE');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(find.text('This referral code is not valid.'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const ValueKey('register-referral')), '');
+    await tester.pump();
+
+    expect(find.text('This referral code is not valid.'), findsNothing);
   });
 }
