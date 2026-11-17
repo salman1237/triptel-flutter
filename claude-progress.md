@@ -168,14 +168,12 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601, FR-602, and FR-603 all done (see Done below). Continuing
-  forward in strict array order: next is **FR-604** (manual deposit --
-  choose a configured method from `/settings/public.payment_methods`,
-  shows account name/number/instructions/Bangla QR image, amount +
-  currency + transaction ID -> `POST /wallets/manual-deposit`,
-  "pending admin approval" result). `PublicSettings` doesn't yet model
-  `payment_methods` or `bangla_qr_image` -- will need adding, same
-  pattern as this session's `topup_min`/`topup_max` addition. No valid
+  FR-601, FR-602, FR-603, and FR-604 all done (see Done below).
+  Continuing forward in strict array order: next is **FR-605** (top-up
+  result states -- the terminal states of the gateway top-up flow
+  FR-603 already built; check whether FR-603's existing success/failed
+  snackbars already satisfy this FR or whether a dedicated result
+  screen/state is still expected before marking it passing). No valid
   discount code exists on beta (confirmed via curl) — keep disclosing
   that limitation for any future discount-related work. FR-201b stays
   blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
@@ -195,6 +193,47 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-604 passing (manual deposit to a configured method).
+  New ManualDepositScreen (`/wallet/manual-deposit`, reached via a
+  "Pay by bKash / bank transfer instead" link on FR-603's top-up
+  screen). Method selection reuses the pre-existing `PaymentMethodSheet`
+  widget against the real `/settings/public.payment_methods` (new
+  `PaymentMethod` model, new `PublicSettings.paymentMethods`/
+  `banglaQrImage` fields with safe fallbacks for old cached data).
+  New `resolveApiUrl()` helper (`lib/core/network/absolute_url.dart`)
+  turns the backend's server-relative upload paths (e.g.
+  `bangla_qr_image`) into real URLs using only `Env.apiBaseUrl`'s
+  scheme+host -- confirmed live via curl that the resolved URL
+  actually serves the real image. Amount fixed to BDT (every
+  configured method here is a Bangladesh domestic transfer method, so
+  a currency picker would have no real use -- judgement call) +
+  transaction ID -> `POST /wallets/manual-deposit` (new
+  `WalletsApi.submitManualDeposit`, new `ManualDeposit` model). No
+  endpoint lists past deposits (API.md §5) -- the result IS the
+  "pending admin approval" message.
+  Caught and fixed a UX issue myself before review: initially reused
+  the shared `ListRow` widget (always shows a chevron, implying
+  tappability) to display static account-detail fields; replaced with
+  a local, non-interactive info row instead of touching the shared
+  widget's other, genuinely tappable call sites.
+  **Reviewer caught a real evidence-accuracy gap (round 1 FAIL):** the
+  evidence notes claimed a screenshot showed the form filled in, but
+  neither referenced screenshot actually did -- both showed empty
+  fields. Fixed by capturing a genuine on-device screenshot of the
+  filled form (Amount 500, Transaction ID FR604TEST001, floating
+  labels confirming real typed text) and correcting the notes. Round 2
+  re-review: PASS.
+  21 new tests; full suite 521 tests green; `flutter analyze`/
+  `dart format` clean; `bash harness.sh verify` green (apk builds).
+  Real-device evidence: `artifacts/FR-604-manual-deposit-screen.png`,
+  `artifacts/FR-604-manual-deposit-method-selected.png` (real
+  configured "bKash Account" with its real account number and the
+  real branding image served at the resolved `bangla_qr_image` URL),
+  `artifacts/FR-604-manual-deposit-form-filled.png`. Did NOT tap
+  Submit: the auto-mode permission classifier blocked it as a real
+  financial submission against the live beta backend, same category
+  as FR-603's blocked card-data entry -- disclosed, not worked around.
+  Commits: `2e94fbb` (feature), `cdf91c5` (state).
 - 2026-11-17 — FR-603 passing (wallet top-up via ShurjoPay). New
   WalletTopupScreen (`/wallet/topup`, pushed from the wallet overview's
   now-real Top up button) with 4 fixed EUR presets (5/10/20/50)
