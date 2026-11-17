@@ -20,3 +20,12 @@ Money spendableBalance(List<Wallet> wallets) {
 /// the total; otherwise the app goes straight to ShurjoPay.
 bool walletCoversTotal(List<Wallet> wallets, Money total) =>
     spendableBalance(wallets) >= total;
+
+/// FR-601: one wallet type's balance, zero if the user has none of that
+/// type yet (the backend only returns wallets that exist).
+Money walletBalance(List<Wallet> wallets, String walletType) {
+  for (final wallet in wallets) {
+    if (wallet.walletType == walletType) return wallet.balance;
+  }
+  return const Money(0);
+}

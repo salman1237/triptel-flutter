@@ -43,4 +43,19 @@ void main() {
       expect(walletCoversTotal(const [], const Money(1)), isFalse);
     });
   });
+
+  group('walletBalance', () {
+    test('returns the matching wallet type\'s balance', () {
+      expect(walletBalance([_default, _reward, _commission], 'REWARD'),
+          const Money(100));
+    });
+
+    test('zero when the user has no wallet of that type yet', () {
+      expect(walletBalance([_default], 'COMMISSION'), const Money(0));
+    });
+
+    test('zero for an empty wallet list', () {
+      expect(walletBalance(const [], 'DEFAULT'), const Money(0));
+    });
+  });
 }

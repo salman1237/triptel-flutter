@@ -12,12 +12,20 @@ import 'package:triptel/features/esims/application/my_esims_providers.dart';
 import 'package:triptel/features/esims/data/models/my_esim.dart';
 import 'package:triptel/features/esims/data/my_esims_api.dart';
 import 'package:triptel/features/esims/presentation/my_esims_screen.dart';
+import 'package:triptel/features/wallet/application/wallet_providers.dart';
+import 'package:triptel/features/wallet/data/models/wallet.dart';
+import 'package:triptel/features/wallet/data/wallets_api.dart';
 import 'package:triptel/features/wallet/presentation/wallet_screen.dart';
 import 'package:triptel/main.dart';
 
 class _FakeMyEsimsApi implements MyEsimsApi {
   @override
   Future<List<MyEsim>> getMyEsims() async => const [];
+}
+
+class _FakeWalletsApi implements WalletsApi {
+  @override
+  Future<List<Wallet>> getMyWallets() async => const [];
 }
 
 Future<void> _pumpApp(WidgetTester tester) async {
@@ -38,6 +46,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
         ),
         popularCountriesProvider.overrideWith((ref) async => const []),
         myEsimsApiProvider.overrideWithValue(_FakeMyEsimsApi()),
+        walletsApiProvider.overrideWithValue(_FakeWalletsApi()),
       ],
       child: const TriptelApp(),
     ),

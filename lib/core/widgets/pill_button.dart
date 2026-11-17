@@ -24,7 +24,13 @@ class PillButton extends StatelessWidget {
   final Widget? leading;
 
   Widget _labelRow(Color color) {
-    final text = Text(label, style: AppTypography.label(color: color));
+    // FittedBox rather than letting Text wrap -- a narrow button (e.g.
+    // three side-by-side in a Row) shrinks a long label onto one line
+    // instead of breaking it mid-word.
+    final text = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(label, maxLines: 1, style: AppTypography.label(color: color)),
+    );
     if (leading == null) return text;
     return Row(
       mainAxisSize: MainAxisSize.min,
