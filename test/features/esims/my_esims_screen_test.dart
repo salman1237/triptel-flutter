@@ -106,6 +106,17 @@ void main() {
     expect(find.text('Home screen'), findsOneWidget);
   });
 
+  testWidgets('FR-902: empty state\'s "New to eSIM?" link opens the sheet',
+      (tester) async {
+    await tester.pumpWidget(_app(const <MyEsim>[]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('my-esims-new-to-esim-link')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('new-to-esim-sheet')), findsOneWidget);
+  });
+
   testWidgets('a load error shows ErrorState with a working retry',
       (tester) async {
     await tester.pumpWidget(_app(Exception('Network error')));

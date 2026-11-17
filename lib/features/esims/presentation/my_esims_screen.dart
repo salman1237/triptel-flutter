@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../guides/presentation/new_to_esim_sheet.dart';
 import '../application/esim_card_shape.dart';
 import '../application/my_esims_providers.dart';
 import '../data/models/my_esim.dart';
@@ -32,13 +33,24 @@ class MyEsimsScreen extends ConsumerWidget {
               children: [
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.6,
-                  child: EmptyState(
-                    icon: Icons.sim_card_outlined,
-                    message:
-                        "You haven't bought an eSIM yet -- explore destinations "
-                        'to get started.',
-                    ctaLabel: 'Explore destinations',
-                    onCtaPressed: () => context.go('/home'),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      EmptyState(
+                        icon: Icons.sim_card_outlined,
+                        message: "You haven't bought an eSIM yet -- explore "
+                            'destinations to get started.',
+                        ctaLabel: 'Explore destinations',
+                        onCtaPressed: () => context.go('/home'),
+                      ),
+                      PillButton(
+                        key: const ValueKey('my-esims-new-to-esim-link'),
+                        label: 'New to eSIM?',
+                        variant: PillButtonVariant.text,
+                        fullWidth: false,
+                        onPressed: () => showNewToEsimSheet(context),
+                      ),
+                    ],
                   ),
                 ),
               ],
