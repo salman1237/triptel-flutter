@@ -717,9 +717,13 @@
     {
       "id": "FR-803",
       "behavior": "Referral link pre-fill + validate on register",
-      "verification": "flutter test test/features/referrals",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/referrals test/features/auth/register_screen_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "d4fedab",
+        "screens": ["artifacts/FR-803-register-valid-code.png", "artifacts/FR-803-register-invited-by.png"],
+        "notes": "The register screen's referral-code field (already pre-filled from a ?ref= link via FR-007, untouched by this commit) now live-validates against the public GET /referrals/validate, 400ms debounced (same pattern as the catalog search sheet). Debounce race guarded: a slower in-flight response for a stale code is discarded if the field has since changed; clearing the field cancels the timer and the message immediately. New ReferralValidation model + ReferralsApi.validate(code). 5 new tests (3 register-screen, 2 model); full suite 606 green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence: artifacts/FR-803-register-valid-code.png is genuinely real -- validating this beta account's own real code 'ALICE12' against the live beta API returned valid:false, consistent with FR-801's separately-confirmed finding that this account's referral programme is is_enabled:false server-side (expected real behavior, not a bug). No real valid code is obtainable from this account, so artifacts/FR-803-register-invited-by.png (the 'Invited by @bob, you get X' success state) uses the established disclosed local-main.dart-rig technique (fake ReferralsApi.validate); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. Reviewer: PASS, independently confirmed the debounce/race-guard logic, that the pre-fill block is byte-identical to before this commit (no scope creep), and flagged that the verification command needed to include register_screen_test.dart (the file with the feature's primary tests) -- fixed here before marking passing."
+      }
     },
     {
       "id": "FR-953",
