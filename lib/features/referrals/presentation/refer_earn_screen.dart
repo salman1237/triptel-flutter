@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
@@ -20,9 +21,8 @@ const _eventLabels = {
 /// joined), how it works (per-event referrer/referred amounts -- API.md
 /// §8's `NEW_MERCHANT` event is filtered out in the model, a merchant-only
 /// feature out of scope for this customer app), referred people and
-/// rewards lists. FR-802 (claim a referrer) is a separate, not-yet-built
-/// feature -- no claim UI here even though `ReferralsApi.claim` already
-/// exists for it to use when built.
+/// rewards lists, and (FR-802) a claim-a-referrer form shown only while
+/// `can_claim` -- hidden once a referrer is already set.
 class ReferEarnScreen extends ConsumerWidget {
   const ReferEarnScreen({super.key});
 
@@ -55,13 +55,53 @@ class ReferEarnScreen extends ConsumerWidget {
   }
 }
 
-class _ReferEarnBody extends StatelessWidget {
+class _ReferEarnBody extends ConsumerStatefulWidget {
   const _ReferEarnBody({required this.summary});
 
   final ReferralSummary summary;
 
   @override
+  ConsumerState<_ReferEarnBody> createState() => _ReferEarnBodyState();
+}
+
+class _ReferEarnBodyState extends ConsumerState<_ReferEarnBody> {
+  final _claimController = TextEditingController();
+  bool _claiming = false;
+
+  @override
+  void dispose() {
+    _claimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _claim() async {
+    final code = _claimController.text.trim();
+    if (code.length < 3 || code.length > 16) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Enter a code between 3 and 16 characters.')));
+      return;
+    }
+
+    setState(() => _claiming = true);
+    try {
+      await ref.read(referralsApiProvider).claim(code);
+      if (!mounted) return;
+      _claimController.clear();
+      ref.invalidate(referralSummaryProvider);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Referrer claimed!')));
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _claiming = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final summary = widget.summary;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -127,6 +167,23 @@ class _ReferEarnBody extends StatelessWidget {
                 ),
             ],
           ),
+          if (summary.canClaim) ...[
+            const SizedBox(height: 24),
+            Text('Have a referral code?', style: AppTypography.title()),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('refer-claim-code-field'),
+              controller: _claimController,
+              decoration: const InputDecoration(labelText: 'Referrer\'s code'),
+            ),
+            const SizedBox(height: 8),
+            PillButton(
+              key: const ValueKey('refer-claim-button'),
+              label: 'Claim',
+              fullWidth: false,
+              onPressed: _claiming ? null : _claim,
+            ),
+          ],
           const SizedBox(height: 24),
           Text('Referred people (${summary.referred.length})',
               style: AppTypography.title()),
