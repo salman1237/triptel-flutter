@@ -674,8 +674,12 @@
       "id": "FR-703",
       "behavior": "Withdrawal history and cancel pending",
       "verification": "flutter test test/features/withdrawals",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "7715d0f",
+        "screens": ["artifacts/FR-703-history-list.png", "artifacts/FR-703-cancel-confirm-dialog.png"],
+        "notes": "GET /withdrawals list with status chips (PENDING warning, PAID success, REJECTED/CANCELLED danger per Design_System.md); REJECTED rows show the real rejection reason. Cancel on a PENDING row confirms via AlertDialog, then POST /withdrawals/{id}/cancel and refreshes. The real beta test account has no withdrawal history yet, so screenshots use the disclosed local main.dart rig technique (synthetic data covering all 4 statuses, overridden withdrawalsApiProvider), same as FR-702; lib/main.dart was restored and verified byte-identical to the real app before/after, and the real app was rebuilt+reinstalled on-device afterward. Reviewer agent caught a factually-wrong justification for CANCELLED->info (claimed only cancel returns the held balance; backend calls the same _return_held_balance for both cancel and reject) -- fixed to CANCELLED->danger matching Design_System.md's documented convention, logged in DECISIONS.md."
+      }
     },
     {
       "id": "FR-704",
