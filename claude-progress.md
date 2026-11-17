@@ -171,15 +171,18 @@ Session log. Read first at session start, update last at session end.
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
   referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
-  and all of **section L (FR-1001 through FR-1003, Account & KYC)**
-  all done (see Done below), plus a non-FR UI refresh pass (visual
-  polish only, see Done entry). Section L is complete. Continuing
-  forward in strict array order, next is **FR-1101** (Support ticket
-  list -- reference, subject, status chip, last activity), opening
-  **section M (Support)**. FR-201b stays blocked -- it needs real eSIM
-  usage data (FR-402/403, already passing) AND "the referral promo
-  context (FR-801)"; now that FR-801 exists, re-check FR-201b's
-  blocker text and consider unblocking it.
+  all of **section L (FR-1001 through FR-1003, Account & KYC)**, and
+  now **FR-1101** (Support ticket list, opening **section M**) all
+  done (see Done below), plus a non-FR UI refresh pass (visual polish
+  only, see Done entry). Continuing forward in strict array order,
+  next is **FR-1102** (New ticket -- category (no PARTNER), subject,
+  body, optional eSIM link, up to 5 attachments ≤ 5 MB each --
+  FR-410's existing "Report a problem" flow already creates a ticket
+  with no attachments/category picker/optional-link UI; FR-1102 is the
+  full standalone "new ticket" form with all of that). FR-201b stays
+  blocked -- it needs real eSIM usage data (FR-402/403, already
+  passing) AND "the referral promo context (FR-801)"; now that FR-801
+  exists, re-check FR-201b's blocker text and consider unblocking it.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -636,6 +639,36 @@ Session log. Read first at session start, update last at session end.
   comment (fixed in a same-day follow-up, `77bedac`) -- no functional
   issues. Commits: `39f842d` (feature), `77bedac` (doc fix), `3956176`
   (state).
+- 2026-11-17 — FR-1101 passing (support ticket list), opening
+  **section M (Support)**. New `SupportTicketListScreen` at `/support`
+  (`GET /support/tickets`): reference, subject, status chip, last
+  activity (`last_message_at`, falling back to `created_at` --
+  confirmed against the real backend model that `last_message_at`
+  genuinely drives queue ordering). `SupportTicket` extended with
+  `order_id`/`created_at`/`last_message_at`/`resolved_at`/`closed_at`
+  per the full documented shape (FR-410's existing create flow only
+  needed the narrower subset). New `ticketStatusChip` pure function.
+  `TriptelScaffold(scrollable: false)` since the screen hosts a
+  `ListView` directly. Account tab's "Help / Support tickets" row now
+  navigates here instead of a coming-soon snack; rows aren't tappable
+  yet (FR-1103's thread screen isn't built). 9 new/changed tests; full
+  suite 667 green; `flutter analyze`/`dart format` clean; `bash
+  harness.sh verify` green. Non-vacuousness proof: forced the last-
+  activity fallback to always use `created_at`, confirmed a real test
+  failure, reverted. Real-device evidence is genuine: live navigation
+  to the real signed-in account's Support screen shows its actual
+  real ticket (`TKT-261110-9A1CD`, created earlier this session via
+  FR-410) with its real "Answered" status and timestamp. **Reviewer:
+  FAIL then PASS** -- first pass caught that `CLOSED` and `OPEN`
+  shared the identical `info` tone (making opposite ends of the
+  ticket lifecycle look visually the same in a skimmed list) AND that
+  the code's own comment claimed a `DECISIONS.md` entry existed for
+  this judgment call when none did. Fixed `CLOSED` to `danger`
+  (matching the existing Cancelled/Expired/Failed terminal-state
+  convention) and added the missing `DECISIONS.md` entry; re-verified.
+  No screenshot re-capture needed -- the real evidence shows
+  `ANSWERED`, untouched by the fix. Commits: `dafb9a5` (feature),
+  `39c5dd3` (reviewer fix), `de7db48` (state).
 - 2026-11-17 — FR-701 passing (payout accounts CRUD, max 5), opening
   **section H (Withdrawals)** -- built from scratch, no pre-existing
   data layer (unlike wallet's FR-305/306 head start). New
