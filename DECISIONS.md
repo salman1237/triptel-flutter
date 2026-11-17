@@ -360,3 +360,21 @@ real gateway page" step to be verifiable on-device, but not "fill in and
 submit the gateway's own payment form," even in a sandbox. **Revisit if:**
 the user explicitly authorizes completing a real sandbox transaction for
 verification purposes.
+
+## 2026-11-17 — ShurjoPay's own sandbox cancel link sends a malformed redirect URL
+Found live on-device while verifying FR-605: tapping the ShurjoPay-hosted
+checkout page's own "Do you want to cancel this transaction? Click Here" link
+redirects with `?topup=cancelled?order_id=...` -- a second `?` instead of `&`
+joining the two query params. This is the gateway's own sandbox page, not
+anything our backend or app constructs. **Decision:** parse the `topup` query
+value defensively (`split('?').first`) rather than relying on it ever being a
+clean, well-formed value, in `lib/features/wallet/application/
+topup_callback.dart`. **Why recorded:** if this is sandbox-only and the
+production ShurjoPay gateway constructs well-formed URLs, the defensive
+parsing is harmless either way; if production has the same bug, every real
+cancellation would otherwise have been silently reported as "Top-up failed."
+instead of "Top-up cancelled." to real customers. **Revisit if:** a future
+session touches any other ShurjoPay-hosted redirect (checkout FR-307, eSIM
+top-up FR-408) -- check whether their own cancel/back-out links have the same
+malformed-query quirk, since neither currently defends against it the same
+way.

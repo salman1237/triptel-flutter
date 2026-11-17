@@ -168,16 +168,18 @@ Session log. Read first at session start, update last at session end.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
 - **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, FR-410, FR-501,
-  FR-601, FR-602, FR-603, and FR-604 all done (see Done below).
-  Continuing forward in strict array order: next is **FR-605** (top-up
-  result states -- the terminal states of the gateway top-up flow
-  FR-603 already built; check whether FR-603's existing success/failed
-  snackbars already satisfy this FR or whether a dedicated result
-  screen/state is still expected before marking it passing). No valid
-  discount code exists on beta (confirmed via curl) — keep disclosing
-  that limitation for any future discount-related work. FR-201b stays
-  blocked (needs FR-801). Revisit **FR-953b** once FR-310/FR-404 (both
-  now passing) and FR-301+ let its install-gating dependency resolve.
+  FR-601 through FR-605 all done (see Done below) -- **section G
+  (Wallet) is now fully complete.** Continuing forward in strict array
+  order: next is **FR-701** (section H, Withdrawals -- payout accounts
+  CRUD, bank/mobile, set default, delete, max 5). This is a new
+  section with no pre-existing data layer (unlike wallet's FR-305/306
+  head start) -- read docs/API.md's withdrawals section and
+  docs/Functional_Requirements.md's FR-701..704 before building. No
+  valid discount code exists on beta (confirmed via curl) — keep
+  disclosing that limitation for any future discount-related work.
+  FR-201b stays blocked (needs FR-801). Revisit **FR-953b** once
+  FR-310/FR-404 (both now passing) and FR-301+ let its install-gating
+  dependency resolve.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -193,6 +195,43 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — FR-605 passing (top-up result states), **closing out
+  section G (Wallet) entirely.** FR-603's gateway WebView previously
+  collapsed the terminal redirect to a bool (failed/cancelled vs.
+  success), losing the distinction this FR explicitly wants. New
+  `WalletTopupResult` (status: success/failed/cancelled, optional
+  reason) + `parseWalletTopupCallback(uri)` replace the old bool
+  function; `WalletTopupScreen` now shows three distinct messages
+  ("Top-up successful." pops back to the wallet overview; "Top-up
+  cancelled."/a human failure reason both stay on the screen so the
+  user can retry). New `walletTopupFailureReasons` map covers all 6
+  reason codes the backend's `payments.py _fail(...)` calls actually
+  send on the `/wallet` redirect path (confirmed by reading the
+  backend source directly: not_paid, unexpected_response,
+  unknown_order, malformed_order, unknown_user, no_wallet), with an
+  honest raw-code fallback for anything undocumented.
+  **Found a real third-party bug live on-device while verifying
+  this:** ShurjoPay's own sandbox "Do you want to cancel this
+  transaction? Click Here" link malforms its own redirect query
+  string -- joins params with a second `?` instead of `&`, so the raw
+  value comes through as `cancelled?order_id=...`, not a clean
+  `cancelled`. A naive equality check would have silently
+  misclassified every real cancellation as a generic failure.
+  Confirmed by temporarily adding a debug print of the intercepted
+  URI, triggering the real cancel link on the real device, and
+  reading the real value back via `adb logcat`; fixed by taking the
+  leading token before any `?`; removed the debug print before
+  committing. 14 new/changed tests including a regression test using
+  the exact malformed string observed live. Full suite 528 tests
+  green; `flutter analyze`/`dart format` clean; `bash harness.sh
+  verify` green (apk builds). Real-device evidence:
+  `artifacts/FR-605-cancelled-result.png` (the real "Top-up
+  cancelled." snackbar, captured after the fix -- the same real
+  action produced the wrong "Top-up failed." before it, confirmed
+  during diagnosis but not committed as evidence since it documents
+  the bug, not the passing feature). Reviewer: PASS, independently
+  reproduced the bug/fix and re-ran the full suite + harness verify
+  itself. Commits: `b2d90f2` (feature), `0ed94a2` (state).
 - 2026-11-17 — FR-604 passing (manual deposit to a configured method).
   New ManualDepositScreen (`/wallet/manual-deposit`, reached via a
   "Pay by bKash / bank transfer instead" link on FR-603's top-up
