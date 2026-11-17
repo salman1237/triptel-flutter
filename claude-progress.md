@@ -100,7 +100,13 @@ Session log. Read first at session start, update last at session end.
   receipt screen (`/my-esims/:id/print`) shows order no/ICCID/plan/QR,
   captured as a PNG via `RepaintBoundary` and shared the same way (no
   new PDF dependency). `price` omitted — neither endpoint this screen
-  touches carries one.
+  touches carries one. **FR-410** (report a problem) also now passing —
+  new `support/` data layer, `POST /support/tickets`, category fixed to
+  ESIM. The real `order_id` FK isn't available on this screen's data
+  path (only `esim_id`/`order_no` are) — embedded in the ticket body
+  text instead of guessing a value that would fail the FK constraint.
+  My eSIMs (section D cont'd/E) is now fully done through FR-410;
+  FR-501 (public tracking, section F) is next.
 - **Revisit now that checkout + My eSIMs exist:** FR-105b and FR-106 are
   now both **passing** (see Done below). FR-201b stays *partially*
   blocked (needs FR-801 referrals, still not_started). FR-202b stays
@@ -140,10 +146,15 @@ Session log. Read first at session start, update last at session end.
   `INSTALL_FAILED_UPDATE_INCOMPATIBLE`; `adb uninstall co.triptel.app` first.
   Also watch for the device going `unauthorized` after an adb server
   restart — needs a fresh "Allow USB debugging?" tap on the phone.
-- **Next step:** FR-105b, FR-106, FR-407, FR-408, and FR-409 all done
-  (see Done below). Continuing forward in strict array order: next is
-  **FR-410** ("Report a problem" → new support ticket prefilled with
-  category ESIM and `order_id`). No valid discount code exists on beta
+- **Next step:** FR-105b, FR-106, FR-407, FR-408, FR-409, and FR-410 all
+  done (see Done below). Continuing forward in strict array order: next
+  is **FR-501** (section F, public tracking by token without login --
+  `GET /esims/public/{token}`, read-only detail view, invalid token →
+  error + Support). Note: a `/track/:token` route and
+  `lib/features/tracking/presentation/tracking_screen.dart` already
+  exist in the router (pulled forward earlier for FR-007's deep-link
+  target) -- check what's actually built there before assuming this is
+  starting from scratch. No valid discount code exists on beta
   (confirmed via curl) — keep disclosing that limitation for any future
   discount-related work. FR-201b stays blocked (needs FR-801). Revisit
   **FR-953b** once FR-310/FR-404 (both now passing) and FR-301+ let its
@@ -163,6 +174,38 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-17 — Session 10 continued (FR-410, report a problem for an
+  eSIM):
+  - New `lib/features/support/` data layer: `SupportTicket` model (real
+    fixture captured via a live, read-only `GET /support/tickets` call
+    -- a pre-existing ticket from earlier session testing), `SupportApi
+    .createTicket()` (`POST /support/tickets`, multipart via dio's
+    `FormData`, no files).
+  - New `ReportProblemScreen` reachable from a "Report a problem" link
+    on the eSIM detail screen (placed always-visible, not gated by
+    lifecycle status -- Rules.md only disables install/top-up on a
+    terminal status, reporting a problem is neither). Subject prefilled
+    with the real order no, category fixed to `ESIM` (not a picker --
+    the general new-ticket flow with a real picker is FR-1102, not
+    built).
+  - Real backend constraint found and worked around: `order_id` is a
+    genuine FK to `orders.id` (confirmed in the backend source), but
+    neither `GET /esims/{id}/status` nor `GET /orders/my-esims` exposes
+    that UUID anywhere -- only `esim_id`/`order_no` are available on
+    this screen's data path. Sending `order_no` into that FK would
+    likely violate it. Omitted the structured field; embedded the plan
+    title/order_no/esim_id in the ticket body's own text instead, which
+    support staff can still read.
+  - 9 new tests; full suite (461 tests) green, `flutter analyze` clean,
+    `bash harness.sh verify` green. Non-vacuous: disabled the empty-body
+    client-side guard, got a real failure, restored.
+  - On-device evidence is genuine, real account, real beta data: real
+    plan title/order_no prefilled correctly on a real Japan 100MB eSIM;
+    a real tap on Submit with an empty body showing the real validation
+    message. Didn't submit a real ticket on-device -- the fake-API
+    tests already cover the real submit path's exact field values.
+  - Reviewer: PASS.
+  - Commits: `82e6cde` (feature code), `3f32eb3` (state → passing).
 - 2026-11-17 — Session 10 continued (FR-409, share tracking link +
   receipt):
   - Share icon on the eSIM detail AppBar (shown only when the real
