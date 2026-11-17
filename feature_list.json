@@ -798,9 +798,13 @@
     {
       "id": "FR-1003",
       "behavior": "KYC status and submission",
-      "verification": "flutter test test/features/kyc && bash harness.sh shot FR-1003",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/kyc && flutter test test/features/account && bash harness.sh shot FR-1003",
+      "state": "passing",
+      "evidence": {
+        "commit": "77bedac",
+        "screens": ["artifacts/FR-1003-kyc-screen.png", "artifacts/FR-1003-kyc-validation.png"],
+        "notes": "New KycScreen at /kyc, closing section L. Real status display (reusing FR-1001's kycStatusLabel), rejection_reason/submitted_at shown when present, NID field, required front photo + optional back photo (image_picker's first real use via a new kycImagePickerProvider seam, same pattern as urlLauncherProvider), Submit for review -> POST /kyc/submit multipart (document_back genuinely omitted from the form when not picked, not sent as null). APPROVED shows a plain success EmptyState with no form; PENDING/REJECTED/not-submitted all fall through to the form, matching the API's documented resubmission-resets-to-PENDING behavior. Post-submit, the screen does a real re-fetch via ref.invalidate(kycStatusProvider), never a locally faked status. 10 new/changed tests; full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: changed the APPROVED gate's string comparison to a non-matching value, confirmed 2 real test failures, reverted. Real-device evidence: live navigation to the real signed-in account's Identity verification row reaches the real form showing its genuine 'Not verified' status, and a real client-side validation snackbar ('Enter your NID number.') fires correctly -- deliberately did NOT submit a real NID/document photo, since that would be an irreversible real submission of personal ID data to the live beta backend with no way to undo it; the client-side validation and status-display paths are exercised and verified live, the actual POST /kyc/submit call itself is covered by the test suite's fakes instead. Reviewer: PASS, independently confirmed the multipart omission of document_back, the APPROVED-only gate logic against all four real status combinations, that the image-picker seam is never bypassed to a real platform channel in any test, and flagged one cosmetic stale doc comment (fixed in a follow-up commit, 77bedac) -- no functional issues."
+      }
     },
     {
       "id": "FR-1101",
