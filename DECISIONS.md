@@ -1,6 +1,27 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-18 — FR-201b: "active eSIM" for the Home card means `activatedAt` set and not expired, never `MyEsim.status`
+`GET /orders/my-esims`'s own `status` field (ALLOCATED|RELEASED|INSTALLED|
+ACTIVE|EXPIRED|SUSPENDED|REVOKED|CANCELLED) looks like the obvious signal
+for "does this user have an active eSIM," but this session already found
+(FR-402/403 work) that it's stale for eSIM Access-supplied eSIMs -- it can
+sit on `RELEASED` forever even once the eSIM is genuinely installed and in
+active use. Confirmed again live here: the real signed-in account has
+several genuinely in-use eSIMs (one independently confirmed via the real
+web portal as IN_USE, 617.10MB used), but a first version of this feature
+keyed off `status` and showed nothing. **Decision:** `activeEsimForHomeCard`
+uses `activatedAt != null && (expiresAt == null || expiresAt.isAfter(now))`
+instead -- the same field `esimValidityLabel` (FR-402's list card) already
+trusts over `status` for the identical reason. **Why recorded:** the
+`status` field is tempting to reach for again in any future feature that
+needs "is this eSIM active" (e.g. a future notifications feature, a
+renewal prompt) -- it will look correct in tests with synthetic fixtures
+and still be wrong against the real backend. **Revisit if:** the backend's
+eSIM Access telemetry/sync improves and `status` starts updating reliably
+(see the FR-402/403 telemetry-gap finding in `claude-progress.md` for the
+owner-side investigation this depends on).
+
 ## 2026-11-18 — FR-1102: new-ticket attachments are images only, no `file_picker` dependency
 `POST /support/tickets` (API.md section 12) accepts png/jpeg/webp/heic/pdf/txt
 attachments, but this app already depends on `image_picker` for photo capture

@@ -172,15 +172,19 @@ Session log. Read first at session start, update last at session end.
   withdrawals)**, all of **section I (FR-801 through FR-803,
   referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
   all of **section L (FR-1001 through FR-1003, Account & KYC)**,
-  **FR-1101** (Support ticket list), and now **FR-1102** (New ticket --
-  category/subject/body/optional eSIM link/up to 5 image attachments)
-  all done (see Done below), plus a non-FR UI refresh pass (visual
-  polish only, see Done entry). Continuing forward in strict array
-  order, next is **FR-1103** (Ticket thread reply/close, authenticated
-  attachments). FR-201b stays
-  blocked -- it needs real eSIM usage data (FR-402/403, already
-  passing) AND "the referral promo context (FR-801)"; now that FR-801
-  exists, re-check FR-201b's blocker text and consider unblocking it.
+  **FR-1101** (Support ticket list), **FR-1102** (New ticket), and
+  **FR-1103** (Ticket thread reply/close, authenticated attachments) all
+  done (see Done below), plus a non-FR UI refresh pass (visual polish
+  only, see Done entry). The user also ran a backend session this
+  session that shipped `GET /catalog/featured` for FR-202b's "Global"
+  card (documented in `docs/API.md` section 3, commit `2cb8ff8`),
+  unblocking it; FR-201b's own blockers (FR-402/403) had also already
+  shipped, so its `blocked_reason` was stale. Both moved to
+  `not_started`, and **FR-201b** (Home usage summary card) is now also
+  **done** -- real signed-in account, real eSIM, real usage data on
+  Home. Continuing forward in strict array order, next is **FR-202b**
+  (Featured "Global" package card at the top of the explore sheet, now
+  unblocked by `GET /catalog/featured`).
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -196,6 +200,65 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-18 — FR-201b passing (Home usage summary card for signed-in
+  users with an active eSIM), closing the day's earlier unblock of both
+  FR-201b and FR-202b (the user ran a backend session that shipped `GET
+  /catalog/featured`, documented in this repo's own `docs/API.md` commit
+  `2cb8ff8`; FR-201b's own blockers, FR-402/403, had separately already
+  shipped). New `HomeUsageCard` replaces Home's hero (search pill + "Buy
+  data") with a real usage ring/remaining-data/validity-countdown/"Buy
+  more data" card, reusing FR-403's own pure functions so the two
+  screens can never disagree. New `activeEsimForHomeCard` selection
+  function; fails soft to the plain hero at every step (signed out, no
+  qualifying eSIM, loading, error). 10 new/changed tests; full suite 709
+  green; flutter analyze/dart format clean; bash harness.sh verify
+  green. Non-vacuousness proof: forced the selector to always return
+  null, confirmed real test failures, restored. **Real bug caught on
+  real-device testing (not by the reviewer):** the first version keyed
+  the "active" pick off `MyEsim.status` ('ACTIVE'/'INSTALLED') -- which
+  this session had already found elsewhere to be stale/never-updating
+  for eSIM Access profiles (the FR-402/403 telemetry-gap finding). The
+  real signed-in account has several genuinely in-use eSIMs (user
+  confirmed one -- Saudi Arabia 1GB 7Days -- independently via the real
+  web portal: IN_USE, 617.10MB used, 1.40GB left), but Home kept showing
+  the plain hero. Fixed to key off `activatedAt`/`expiresAt` instead,
+  the same signal `esimValidityLabel` already trusts over `status` for
+  the identical reason. Re-verified live: Home now shows the real card
+  (1.40GB, 12 days left), tapping it opens the real detail screen
+  (status now reads IN_USE -- telemetry caught up). Reviewer: PASS
+  outright, independently reproduced the non-vacuousness proof and
+  confirmed the precedent/wiring/backward-compatibility claims.
+- 2026-11-18 — FR-1103 passing (ticket thread: reply, close, authenticated
+  attachments), closing **section M**. New `TicketThreadScreen` at
+  `/support/:id` (`GET /support/tickets/{id}` -- ticket + full `messages`
+  thread): message bubbles (You/Support), a reply box with up to 5 image
+  attachments (`POST .../messages`), Close ticket (`POST .../close`), a
+  resolved banner, a closed notice replacing the reply box once CLOSED.
+  Attachments download with the real auth header via a new
+  `ApiClient.getBytes()`, then hand off to the OS share sheet via a new
+  `supportAttachmentOpenerProvider` (same precedent as FR-409's
+  `receiptSharerProvider`). `SupportTicket` gained an optional `messages`
+  field. Ticket list rows now navigate here instead of being dead ends.
+  Real response shapes (detail/reply/close) were confirmed against the
+  live beta backend via temporary debug logging, removed before commit; a
+  real captured fixture is saved at
+  `test/fixtures/support_ticket_detail.json`. 4 new/changed test files, 42
+  tests in `test/features/support`; full suite 684 green; flutter
+  analyze/dart format clean; bash harness.sh verify green. Non-vacuousness
+  proof: forced `isClosed` to always be false, confirmed a real failure,
+  restored. **Reviewer FAIL then PASS:** first pass caught a real bug --
+  `attachment.url` is already absolute from the API root (`/api/v1/
+  support/attachments/<id>`), but was passed straight into
+  `ApiClient.getBytes()` on a Dio instance whose `baseUrl` already is
+  `.../api/v1`, producing a doubled `/api/v1` segment that would 404 for
+  real. Fixed via the existing `resolveApiUrl()` helper (same pattern as
+  other server-relative asset paths); `support_api_test.dart` now asserts
+  on the real resolved request URI, not the raw unresolved path, so this
+  class of bug is caught going forward. Confirmed live on-device: attached
+  a real photo (from the device's real gallery) to a real ticket reply,
+  tapped it, and the OS share sheet opened with a correct preview of the
+  downloaded image -- no 404, against the real beta backend. Re-review
+  independently reproduced the original bug and confirmed the fix.
 - 2026-11-18 — FR-1102 passing (new ticket with category and attachments).
   New `NewTicketScreen` at `/support/new`: real category dropdown (`GET
   /support/categories`, `PARTNER` hidden client-side, tested directly
