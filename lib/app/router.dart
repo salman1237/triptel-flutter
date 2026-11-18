@@ -17,6 +17,8 @@ import '../features/esims/presentation/esim_receipt_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/guides/presentation/esim_setup_guide_screen.dart';
 import '../features/kyc/presentation/kyc_screen.dart';
+import '../features/legal/presentation/legal_document_screen.dart';
+import '../features/legal/presentation/legal_documents_screen.dart';
 import '../features/support/presentation/new_ticket_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
 import '../features/support/presentation/support_ticket_list_screen.dart';
@@ -148,6 +150,15 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/guides/esim-setup-guide',
       builder: (context, state) => const EsimSetupGuideScreen(),
+    ),
+    GoRoute(
+      path: '/legal',
+      builder: (context, state) => const LegalDocumentsScreen(),
+    ),
+    GoRoute(
+      path: '/legal/:slug',
+      builder: (context, state) =>
+          LegalDocumentScreen(slug: state.pathParameters['slug']!),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>

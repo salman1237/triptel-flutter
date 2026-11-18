@@ -26,8 +26,7 @@ import '../application/track_input.dart';
 /// Support/About), Sign out. Profile -> FR-1002's real screen, Identity
 /// verification -> FR-1003's real screen, Help/Support tickets ->
 /// FR-1101's real screen, Contact us -> FR-1104's WhatsApp/phone/email
-/// shortcuts sheet. Legal docs -> FR-1201, still not built, shows a
-/// "coming soon" snack rather than a dead link.
+/// shortcuts sheet, Legal documents -> FR-1201's real list/reader.
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
@@ -110,11 +109,6 @@ class _AuthedBody extends ConsumerWidget {
 
   final AuthToken token;
   final VoidCallback onTrack;
-
-  void _comingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('$feature is coming soon.')));
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -259,9 +253,10 @@ class _AuthedBody extends ConsumerWidget {
           ListGroup(
             children: [
               ListRow(
+                key: const ValueKey('account-legal-row'),
                 icon: Icons.description_outlined,
                 title: 'Legal documents',
-                onTap: () => _comingSoon(context, 'Legal documents'),
+                onTap: () => context.push('/legal'),
               ),
               Padding(
                 padding:

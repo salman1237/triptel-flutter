@@ -124,6 +124,10 @@ Widget _testApp(
         path: '/support',
         builder: (context, state) => const Text('support-screen-placeholder'),
       ),
+      GoRoute(
+        path: '/legal',
+        builder: (context, state) => const Text('legal-screen-placeholder'),
+      ),
     ],
   );
 
@@ -389,17 +393,17 @@ void main() {
     expect(find.text('1.2.3 (45)'), findsOneWidget);
   });
 
-  testWidgets('tapping Legal documents shows a coming-soon snack',
+  testWidgets('tapping Legal documents navigates to the real FR-1201 screen',
       (tester) async {
     await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
     await tester.pumpAndSettle();
 
-    final row = find.text('Legal documents');
+    final row = find.byKey(const ValueKey('account-legal-row'));
     await tester.ensureVisible(row);
     await tester.tap(row);
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('coming soon'), findsOneWidget);
+    expect(find.text('legal-screen-placeholder'), findsOneWidget);
   });
 
   testWidgets('tapping Sign out logs out', (tester) async {

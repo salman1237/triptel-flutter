@@ -1,6 +1,24 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-18 — FR-1201: hand-written "markdown-lite" parser, no markdown dependency
+`GET /settings/legal/{slug}`'s `body` is documented as "admin-edited
+markdown-lite" (API.md section 1) -- not full CommonMark. Fetched the real
+beta Privacy Policy and Terms & Conditions bodies and found they only ever
+use `## Heading`, `- bullet` lines, `**bold**` spans, and blank-line-
+separated paragraphs -- no links, images, tables, nested lists, numbered
+lists, or other heading levels. **Decision:** wrote a small, dependency-free
+line-based parser (`lib/features/legal/application/markdown_lite.dart`)
+covering exactly that subset, instead of adding a full markdown package
+(e.g. `flutter_markdown`) that would support syntax this content never
+uses. **Why recorded:** a future session adding a 7th legal document (or
+any other markdown-lite body) might reach for a markdown package by
+reflex -- check the real document bodies first; if they still only use
+this subset, extend the existing parser instead of adding a dependency.
+**Revisit if:** a real document body is found using syntax outside this
+subset (a link, a numbered list, etc.) -- then either extend the parser
+for that one syntax element or reconsider a real markdown package.
+
 ## 2026-11-18 — Mobile real-time chat FRs added as `blocked`, not `not_started`
 **What I did:** appended FR-C901–C904 (real-time support chat) to
 `feature_list.json` with `state: "blocked"` and an explicit `blocked_reason`
