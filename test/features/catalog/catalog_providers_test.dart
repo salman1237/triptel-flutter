@@ -5,11 +5,13 @@ import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
+import 'package:triptel/features/catalog/data/models/featured_package.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 
 class _FakeCatalogApi implements CatalogApi {
-  _FakeCatalogApi({this.error});
+  _FakeCatalogApi({this.error, this.featured = const []});
   final Object? error;
+  final List<FeaturedPackage> featured;
   String? lastSearch;
   bool? lastPopularOnly;
   String? lastSlug;
@@ -27,6 +29,12 @@ class _FakeCatalogApi implements CatalogApi {
       Country(
           id: 107, iso2: 'JP', nameEn: 'Japan', isActive: true, slug: 'japan'),
     ];
+  }
+
+  @override
+  Future<List<FeaturedPackage>> getFeaturedPackages() async {
+    if (error != null) throw error!;
+    return featured;
   }
 
   @override
@@ -102,6 +110,46 @@ void main() {
 
     expect(fake.lastSlug, 'japan');
     expect(destination.country.nameEn, 'Japan');
+  });
+
+  test('featuredPackagesProvider returns the real featured list', () async {
+    final package = FeaturedPackage(
+      productId: 'd291e871-d86b-47bb-b372-e8bef1eb8ed7',
+      title: 'Global139 10GB 30Days',
+      retailPrice: Money.parseEur('111.7200'),
+      dataAmountGb: 10,
+      validityDays: 30,
+      isUnlimited: false,
+      countryCount: 127,
+      countryIso2: 'GL-139',
+      countryName: 'Global139',
+      countrySlug: 'global139',
+      flagUrl: null,
+    );
+    final fake = _FakeCatalogApi(featured: [package]);
+    final container = ProviderContainer(
+      overrides: [catalogApiProvider.overrideWithValue(fake)],
+    );
+    addTearDown(container.dispose);
+
+    final result = await container.read(featuredPackagesProvider.future);
+
+    expect(result, hasLength(1));
+    expect(result.first.countrySlug, 'global139');
+  });
+
+  test(
+      'featuredPackagesProvider propagates an empty list as empty, not an '
+      'error (API.md: nothing highlighted is normal)', () async {
+    final fake = _FakeCatalogApi();
+    final container = ProviderContainer(
+      overrides: [catalogApiProvider.overrideWithValue(fake)],
+    );
+    addTearDown(container.dispose);
+
+    final result = await container.read(featuredPackagesProvider.future);
+
+    expect(result, isEmpty);
   });
 
   test('CatalogApi.getProduct passes the product id through', () async {

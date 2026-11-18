@@ -2,18 +2,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/money/currency_format.dart';
+import '../../../core/money/currency_providers.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../application/catalog_providers.dart';
 import '../application/country_grouping.dart';
+import '../application/plan_shape.dart';
 import '../data/models/country.dart';
+import '../data/models/featured_package.dart';
 import 'coverage_sheet.dart';
 
-/// FR-202: full-height destination search sheet. The featured "Global"
-/// package card needs product-level data (price, country count framing)
-/// this screen's plain country list doesn't have -- deferred as FR-202b.
-/// Tapping any row (regional or not) opens FR-204's plans screen -- a
+/// FR-202: full-height destination search sheet. FR-202b's featured
+/// "Global" card sits at the top (above the Country/Regional tabs, hidden
+/// while searching) -- `GET /catalog/featured`, an admin-picked storefront
+/// highlight with real product-level price/country-count data. Tapping any
+/// row (regional or not) opens FR-204's plans screen -- a
 /// regional package is a real, purchasable product the same way a single
 /// country is (confirmed live: `GET /catalog/destinations/{regional-slug}`
 /// returns real products). FR-203's "'N countries' link" is its own
@@ -82,9 +87,15 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
     showCoverageSheet(context, iso2: country.iso2, name: country.nameEn);
   }
 
+  void _onFeaturedTap(FeaturedPackage package) {
+    Navigator.of(context).maybePop();
+    context.push('/explore/${package.countrySlug}');
+  }
+
   @override
   Widget build(BuildContext context) {
     final allAsync = ref.watch(allCountriesProvider);
+    final featuredAsync = ref.watch(featuredPackagesProvider);
     final mediaQuery = MediaQuery.of(context);
 
     return Padding(
@@ -113,6 +124,7 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
               child: switch (allAsync) {
                 AsyncData(:final value) => _Body(
                     all: value,
+                    featured: featuredAsync.valueOrNull ?? const [],
                     query: _query,
                     searching: _searching,
                     searchResults: _searchResults,
@@ -121,6 +133,7 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
                         setState(() => _regionalTab = v),
                     onCountryTap: _onCountryTap,
                     onViewCoverage: _onViewCoverage,
+                    onFeaturedTap: _onFeaturedTap,
                   ),
                 AsyncError() => Padding(
                     padding: const EdgeInsets.all(32),
@@ -145,6 +158,7 @@ class _ExploreSheetState extends ConsumerState<ExploreSheet> {
 class _Body extends StatelessWidget {
   const _Body({
     required this.all,
+    required this.featured,
     required this.query,
     required this.searching,
     required this.searchResults,
@@ -152,9 +166,11 @@ class _Body extends StatelessWidget {
     required this.onRegionalTabChanged,
     required this.onCountryTap,
     required this.onViewCoverage,
+    required this.onFeaturedTap,
   });
 
   final List<Country> all;
+  final List<FeaturedPackage> featured;
   final String query;
   final bool searching;
   final List<Country>? searchResults;
@@ -162,6 +178,7 @@ class _Body extends StatelessWidget {
   final ValueChanged<bool> onRegionalTabChanged;
   final ValueChanged<Country> onCountryTap;
   final ValueChanged<Country> onViewCoverage;
+  final ValueChanged<FeaturedPackage> onFeaturedTap;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +224,16 @@ class _Body extends StatelessWidget {
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
       children: [
+        if (featured.isNotEmpty) ...[
+          for (final package in featured)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _FeaturedPackageCard(
+                package: package,
+                onTap: () => onFeaturedTap(package),
+              ),
+            ),
+        ],
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SegmentedPill(
@@ -312,6 +339,67 @@ class _RegionalRow extends ConsumerWidget {
               ),
             ),
             const Icon(Icons.chevron_right, color: AppColors.inkMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// FR-202b: the explore sheet's top "Global" card, real product-level
+/// price/country-count from `GET /catalog/featured`.
+class _FeaturedPackageCard extends ConsumerWidget {
+  const _FeaturedPackageCard({required this.package, required this.onTap});
+
+  final FeaturedPackage package;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rateAsync = ref.watch(selectedCurrencyRateProvider);
+    final currencyAsync = ref.watch(currencyPreferenceProvider);
+    final priceText = switch ((rateAsync, currencyAsync)) {
+      (AsyncData(value: final rate), AsyncData(value: final code)) =>
+        formatMoney(package.retailPrice, currencyCode: code, rateToBase: rate),
+      _ => '',
+    };
+    final coverage = featuredPackageCoverageLabel(package);
+
+    return InkWell(
+      key: const ValueKey('explore-featured-package'),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: AppColors.lilac200),
+        ),
+        child: Row(
+          children: [
+            FlagAvatar(flagUrl: package.flagUrl, size: 44),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(package.title, style: AppTypography.label()),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      featuredPackageDataLabel(package),
+                      '${package.validityDays} days',
+                      if (coverage != null) coverage,
+                    ].join(' · '),
+                    style: AppTypography.caption(color: AppColors.inkMuted),
+                  ),
+                ],
+              ),
+            ),
+            if (priceText.isNotEmpty)
+              Text(priceText,
+                  style: AppTypography.label(color: AppColors.primary)),
           ],
         ),
       ),

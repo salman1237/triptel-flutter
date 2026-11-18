@@ -1,7 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/money/money.dart';
 import 'package:triptel/features/catalog/application/plan_shape.dart';
+import 'package:triptel/features/catalog/data/models/featured_package.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
+
+FeaturedPackage _featured({
+  double gb = 10,
+  int days = 30,
+  bool isUnlimited = false,
+  int? countryCount = 127,
+}) =>
+    FeaturedPackage(
+      productId: 'p',
+      title: 'Global139 10GB 30Days',
+      retailPrice: const Money(11172),
+      dataAmountGb: gb,
+      validityDays: days,
+      isUnlimited: isUnlimited,
+      countryCount: countryCount,
+      countryIso2: 'GL-139',
+      countryName: 'Global139',
+      countrySlug: 'global139',
+      flagUrl: null,
+    );
 
 Product _fixed({double gb = 1, int days = 7}) => Product(
       id: 'f',
@@ -134,6 +155,35 @@ void main() {
       final days = planValidityDays(
           [_unlimited(days: 10), _unlimited(days: 3), _unlimited(days: 3)]);
       expect(days, [3, 10]);
+    });
+  });
+
+  group('featuredPackageDataLabel', () {
+    test('unlimited shows "Unlimited"', () {
+      expect(
+          featuredPackageDataLabel(_featured(isUnlimited: true)), 'Unlimited');
+    });
+
+    test('fixed shows GB for >= 1 GB', () {
+      expect(featuredPackageDataLabel(_featured(gb: 10)), '10 GB');
+    });
+
+    test('fixed shows MB for < 1 GB', () {
+      expect(featuredPackageDataLabel(_featured(gb: 0.1)), '100 MB');
+    });
+  });
+
+  group('featuredPackageCoverageLabel', () {
+    test('a real country count shows "N countries"', () {
+      expect(featuredPackageCoverageLabel(_featured(countryCount: 127)),
+          '127 countries');
+    });
+
+    test(
+        'a null country count (no coverage list at all) omits the line '
+        'instead of showing "0 countries"', () {
+      expect(
+          featuredPackageCoverageLabel(_featured(countryCount: null)), isNull);
     });
   });
 }

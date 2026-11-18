@@ -18,6 +18,7 @@ import 'package:triptel/features/catalog/application/catalog_providers.dart';
 import 'package:triptel/features/catalog/data/catalog_api.dart';
 import 'package:triptel/features/catalog/data/models/country.dart';
 import 'package:triptel/features/catalog/data/models/destination.dart';
+import 'package:triptel/features/catalog/data/models/featured_package.dart';
 import 'package:triptel/features/catalog/data/models/product.dart';
 import 'package:triptel/features/checkout/presentation/checkout_review_screen.dart';
 import 'secure_storage_test_mock.dart';
@@ -38,6 +39,10 @@ class _FakeCatalogApi implements CatalogApi {
 
   @override
   Future<Destination> getDestination(String slug) => throw UnimplementedError();
+
+  @override
+  Future<List<FeaturedPackage>> getFeaturedPackages() =>
+      throw UnimplementedError();
 
   @override
   Future<Product> getProduct(String productId) async {

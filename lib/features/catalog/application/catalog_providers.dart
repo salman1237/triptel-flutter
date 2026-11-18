@@ -3,6 +3,7 @@ import '../../bootstrap/application/bootstrap_providers.dart';
 import '../data/catalog_api.dart';
 import '../data/models/country.dart';
 import '../data/models/destination.dart';
+import '../data/models/featured_package.dart';
 
 final catalogApiProvider =
     Provider<CatalogApi>((ref) => CatalogApiImpl(ref.watch(apiClientProvider)));
@@ -18,6 +19,12 @@ final popularCountriesProvider = FutureProvider<List<Country>>((ref) {
 /// re-fetching.
 final allCountriesProvider = FutureProvider<List<Country>>((ref) {
   return ref.watch(catalogApiProvider).getCountries();
+});
+
+/// FR-202b: the explore sheet's top "Global" card, cached for the app
+/// session like the other catalog lists.
+final featuredPackagesProvider = FutureProvider<List<FeaturedPackage>>((ref) {
+  return ref.watch(catalogApiProvider).getFeaturedPackages();
 });
 
 /// FR-203: a regional package's coverage list, keyed by iso2.

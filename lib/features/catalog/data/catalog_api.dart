@@ -1,11 +1,17 @@
 import '../../../core/network/api_client.dart';
 import 'models/country.dart';
 import 'models/destination.dart';
+import 'models/featured_package.dart';
 import 'models/product.dart';
 
 abstract class CatalogApi {
   Future<List<Country>> getCountries(
       {String? search, bool popularOnly = false});
+
+  /// FR-202b: the explore sheet's top "Global" card (public). Usually 0 or
+  /// 1 item -- an empty list is normal (nothing currently highlighted),
+  /// never an error.
+  Future<List<FeaturedPackage>> getFeaturedPackages();
 
   /// FR-203: the covered country names for a regional package, read off its
   /// products' `coverage_countries` (API.md §3 -- identical across a
@@ -38,6 +44,14 @@ class CatalogApiImpl implements CatalogApi {
     });
     return (response as List)
         .map((json) => Country.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<List<FeaturedPackage>> getFeaturedPackages() async {
+    final response = await _client.get('/catalog/featured');
+    return (response as List)
+        .map((json) => FeaturedPackage.fromJson(json as Map<String, dynamic>))
         .toList();
   }
 

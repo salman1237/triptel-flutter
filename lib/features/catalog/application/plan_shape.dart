@@ -1,4 +1,21 @@
+import '../data/models/featured_package.dart';
 import '../data/models/product.dart';
+
+/// FR-202b: a featured package's data label -- `GET /catalog/featured`
+/// never carries `supplier_period_num`, so Day Pass isn't a representable
+/// shape here (unlike [planDataLabel]'s full `Product`-based detection);
+/// only Unlimited vs. the plain fixed-size label apply.
+String featuredPackageDataLabel(FeaturedPackage package) =>
+    package.isUnlimited ? 'Unlimited' : _fixedDataLabel(package.dataAmountGb);
+
+/// FR-202b: "N countries", or nothing when the product has no coverage
+/// list at all (API.md §3: `country_count` is null for a plain VivaPe
+/// "Global" row -- never show "0 countries" in that case).
+String? featuredPackageCoverageLabel(FeaturedPackage package) {
+  final count = package.countryCount;
+  if (count == null) return null;
+  return '$count countries';
+}
 
 /// FR-204's plan-shape detection, kept pure/testable (Architecture.md,
 /// API.md §3's detection table):
