@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import '../../../core/network/absolute_url.dart';
 import '../../../core/network/api_client.dart';
 import 'models/support_attachment.dart';
 import 'models/support_category.dart';
@@ -116,7 +117,11 @@ class SupportApiImpl implements SupportApi {
 
   @override
   Future<Uint8List> downloadAttachment(SupportAttachment attachment) =>
-      _client.getBytes(attachment.url);
+      // `attachment.url` is already absolute from the API root (`/api/v1/
+      // support/attachments/<id>`, API.md section 12) -- resolve it with
+      // `resolveApiUrl` like every other server-relative asset path, not
+      // the `/api/v1`-inclusive API base URL, or the path doubles up.
+      _client.getBytes(resolveApiUrl(attachment.url));
 
   @override
   Future<List<SupportCategory>> getCategories() async {

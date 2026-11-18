@@ -302,7 +302,7 @@ void main() {
               name: 'screenshot.png',
               contentType: 'image/png',
               sizeBytes: 100,
-              url: '/support/attachments/att-1',
+              url: '/api/v1/support/attachments/att-1',
             ),
           ],
         ),

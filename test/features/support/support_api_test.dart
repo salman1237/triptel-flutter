@@ -28,7 +28,7 @@ class _FakeAdapter implements HttpClientAdapter {
 class _FakeBytesAdapter implements HttpClientAdapter {
   _FakeBytesAdapter(this._bytes);
   final Uint8List _bytes;
-  String? seenPath;
+  Uri? seenUri;
 
   @override
   void close({bool force = false}) {}
@@ -36,7 +36,11 @@ class _FakeBytesAdapter implements HttpClientAdapter {
   @override
   Future<ResponseBody> fetch(RequestOptions options,
       Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
-    seenPath = options.path;
+    // `options.path` is the raw, unresolved argument passed to `dio.get()`
+    // -- `options.uri` is the real request URL after Dio merges it with
+    // `baseUrl`, which is what actually matters here (FR-1103's reviewer
+    // caught a bug where the raw path alone hid a double `/api/v1` prefix).
+    seenUri = options.uri;
     return ResponseBody.fromBytes(_bytes, 200, headers: {
       Headers.contentTypeHeader: ['image/png'],
     });
@@ -78,10 +82,14 @@ void main() {
       name: 'photo.jpg',
       contentType: 'image/jpeg',
       sizeBytes: 4,
-      url: '/support/attachments/att-1',
+      // The real documented shape (API.md section 12): already absolute
+      // from the API root, including `/api/v1` -- not relative to the
+      // `/api/v1`-inclusive API base URL.
+      url: '/api/v1/support/attachments/att-1',
     ));
 
     expect(result, bytes);
-    expect(adapter.seenPath, '/support/attachments/att-1');
+    expect(adapter.seenUri.toString(),
+        'https://beta.triptel.co/api/v1/support/attachments/att-1');
   });
 }
