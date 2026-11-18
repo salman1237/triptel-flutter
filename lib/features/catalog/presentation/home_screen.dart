@@ -5,9 +5,15 @@ import '../../../core/money/currency_pill_switcher.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../auth/application/auth_providers.dart';
+import '../../auth/application/auth_state.dart';
 import '../../compatibility/presentation/compatibility_promo_card.dart';
+import '../../esims/application/esim_status_providers.dart';
+import '../../esims/application/my_esims_providers.dart';
 import '../application/catalog_providers.dart';
+import '../application/home_usage_card_shape.dart';
 import 'explore_sheet.dart';
+import 'home_usage_card.dart';
 
 /// FR-201 Home: dark hero (search entry + quick actions), promo cards,
 /// popular destinations. The search pill and "Buy data" both open FR-202's
@@ -17,54 +23,25 @@ import 'explore_sheet.dart';
 /// today just land on the same Wallet tab (FR-408's real top-up flow
 /// doesn't exist yet) -- both would be redundant duplicate buttons rather
 /// than real shortcuts. Revisit once FR-408 gives "Top up" something
-/// distinct to do. Signed-in users' usage-summary-instead-of-hero variant
-/// needs FR-402/403 (not built) -> deferred as FR-201b.
+/// distinct to do. FR-201b: a signed-in user with a real ACTIVE/INSTALLED
+/// eSIM (`activeEsimForHomeCard`) sees FR-403's own usage data in
+/// `HomeUsageCard` instead of this hero -- fails soft back to the plain
+/// hero while that data is loading or on any error, since this is a
+/// nice-to-have, never a reason to block the Home tab.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final popularAsync = ref.watch(popularCountriesProvider);
+    final authState = ref.watch(authNotifierProvider).value;
 
     return TriptelScaffold(
       key: const ValueKey('home-tab'),
       scrollable: true,
-      hero: HeroHeader(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Travel smart.\nStay connected.',
-              style: AppTypography.title(color: AppColors.surface),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    key: const ValueKey('home-search-entry'),
-                    onTap: () => showExploreSheet(context),
-                    child: const AbsorbPointer(
-                      child: SearchPill(hintText: 'Find your destination'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _QuickAction(
-                  icon: Icons.add_circle_outline,
-                  label: 'Buy data',
-                  onTap: () => showExploreSheet(context),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      hero: authState is AuthAuthenticated
+          ? const _SignedInHero()
+          : const _DefaultHero(),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
@@ -110,6 +87,79 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DefaultHero extends StatelessWidget {
+  const _DefaultHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return HeroHeader(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Travel smart.\nStay connected.',
+            style: AppTypography.title(color: AppColors.surface),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  key: const ValueKey('home-search-entry'),
+                  onTap: () => showExploreSheet(context),
+                  child: const AbsorbPointer(
+                    child: SearchPill(hintText: 'Find your destination'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _QuickAction(
+                icon: Icons.add_circle_outline,
+                label: 'Buy data',
+                onTap: () => showExploreSheet(context),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// FR-201b: resolves the signed-in user's real eSIMs, then their real
+/// usage, before deciding what to show -- any loading/error state along
+/// the way falls back to [_DefaultHero] rather than blocking Home on data
+/// this card treats as a bonus, not a requirement.
+class _SignedInHero extends ConsumerWidget {
+  const _SignedInHero();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final esimsAsync = ref.watch(myEsimsProvider);
+    final esims = esimsAsync.valueOrNull;
+    if (esims == null) return const _DefaultHero();
+
+    final activeEsim = activeEsimForHomeCard(esims);
+    if (activeEsim == null) return const _DefaultHero();
+
+    final statusAsync = ref.watch(esimStatusProvider(activeEsim.id));
+    final status = statusAsync.valueOrNull;
+    if (status == null) return const _DefaultHero();
+
+    return HomeUsageCard(
+      esim: activeEsim,
+      status: status,
+      onViewEsim: () => context.push('/my-esims/${activeEsim.id}'),
+      onBuyMore: () => showExploreSheet(context),
     );
   }
 }

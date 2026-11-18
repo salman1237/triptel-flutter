@@ -10,11 +10,17 @@ class UsageRing extends StatelessWidget {
       {super.key,
       required this.fraction,
       required this.centerText,
-      this.size = 120});
+      this.size = 120,
+      this.textColor});
 
   final double? fraction;
   final String centerText;
   final double size;
+
+  /// Overrides the center label's color -- needed when the ring sits on a
+  /// dark background (e.g. FR-201b's Home hero card), where the default
+  /// ink color wouldn't be readable.
+  final Color? textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +35,8 @@ class UsageRing extends StatelessWidget {
             painter: _RingPainter(fraction: fraction?.clamp(0, 1)),
           ),
           Text(centerText,
-              textAlign: TextAlign.center, style: AppTypography.label()),
+              textAlign: TextAlign.center,
+              style: AppTypography.label(color: textColor)),
         ],
       ),
     );
