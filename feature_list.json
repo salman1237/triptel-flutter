@@ -821,8 +821,18 @@
       "id": "FR-1102",
       "behavior": "New ticket with category and attachments",
       "verification": "flutter test test/features/support && bash harness.sh shot FR-1102",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "3890881",
+        "screens": [
+          "artifacts/fr1102-ticket-list.png",
+          "artifacts/fr1102-new-ticket.png",
+          "artifacts/fr1102-categories.png",
+          "artifacts/fr1102-confirmation.png",
+          "artifacts/fr1102-verify-after.png"
+        ],
+        "notes": "New NewTicketScreen at /support/new (real GET /support/categories, PARTNER hidden client-side -- SupportApiImpl.getCategories() tested directly via a hand-written Dio HttpClientAdapter mock, a new pattern for this codebase since the filtering lives in the impl, not reachable from a provider-boundary fake): category dropdown, subject/body with client-side validation, an optional 'Link an eSIM' picker (embeds order/eSIM info as body text, same no-real-order_id reasoning as FR-410 -- GET /orders/my-esims still has no order UUID), up to 5 image attachments via image_picker (SupportApi.createTicket() extended with filePaths, multipart 'files' only sent when non-empty; pdf/txt from API.md are a disclosed gap, no file_picker dependency added -- see DECISIONS.md). SupportTicketListScreen got a '+' AppBar action and an EmptyState CTA, both navigating here. 6 new/changed test files (new_ticket_screen_test.dart's 9 tests, support_api_test.dart, support_category_test.dart, plus fake/import fixes in report_problem_screen_test.dart and support_ticket_list_screen_test.dart); widget tests needed a grown test surface (tester.binding.setSurfaceSize) since the full form with 5 attachments doesn't fit the default small viewport even with ensureVisible. Full suite 680 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (debug APK built). Non-vacuousness proof: broke the PARTNER filter (changed the excluded value to one that never matches), confirmed support_api_test.dart's real failure, restored. On-device evidence is genuine: real signed-in account, real beta backend -- navigated Account -> Help/Support tickets -> '+', the real category dropdown showed the real 5 non-PARTNER categories from the live API, filled a real subject/body and submitted twice (TKT-261118-81436, then TKT-261118-E5EB0), both created for real against beta and shown in the real ticket list. Caught and fixed during this device pass (not by the reviewer): the first submit's new ticket didn't appear in the list without relaunching the app -- new_ticket_screen.dart was missing the ref.invalidate(supportTicketsProvider) call that withdrawal_request_screen.dart already established as the pattern for 'refresh the list after a successful create'; fixed, rebuilt, and reverified on-device with the second submit (commit 3890881)."
+      }
     },
     {
       "id": "FR-1103",
