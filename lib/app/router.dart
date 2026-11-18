@@ -17,6 +17,7 @@ import '../features/esims/presentation/esim_receipt_screen.dart';
 import '../features/esims/presentation/my_esims_screen.dart';
 import '../features/guides/presentation/esim_setup_guide_screen.dart';
 import '../features/kyc/presentation/kyc_screen.dart';
+import '../features/support/presentation/new_ticket_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
 import '../features/support/presentation/support_ticket_list_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
@@ -133,6 +134,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/support',
       builder: (context, state) => const SupportTicketListScreen(),
+    ),
+    GoRoute(
+      path: '/support/new',
+      builder: (context, state) => const NewTicketScreen(),
     ),
     GoRoute(
       path: '/guides/esim-setup-guide',

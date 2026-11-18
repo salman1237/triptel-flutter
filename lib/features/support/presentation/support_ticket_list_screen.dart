@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -12,7 +13,8 @@ import '../data/models/support_ticket.dart';
 /// FR-1101: support ticket list. `GET /support/tickets`, newest activity
 /// first (already sorted server-side) -- reference, subject, status chip,
 /// last activity. Rows aren't tappable yet (FR-1103's thread screen isn't
-/// built).
+/// built). The "+" action and empty-state CTA open FR-1102's new-ticket
+/// form.
 class SupportTicketListScreen extends ConsumerWidget {
   const SupportTicketListScreen({super.key});
 
@@ -22,14 +24,25 @@ class SupportTicketListScreen extends ConsumerWidget {
 
     return TriptelScaffold(
       key: const ValueKey('support-ticket-list-screen'),
-      appBar: AppBar(title: const Text('Support')),
+      appBar: AppBar(
+        title: const Text('Support'),
+        actions: [
+          IconButton(
+            key: const ValueKey('support-new-ticket-button'),
+            icon: const Icon(Icons.add),
+            onPressed: () => context.push('/support/new'),
+          ),
+        ],
+      ),
       scrollable: false,
       body: switch (ticketsAsync) {
         AsyncData(:final value) => value.isEmpty
-            ? const Center(
+            ? Center(
                 child: EmptyState(
                   icon: Icons.support_agent_outlined,
                   message: "You haven't contacted support yet.",
+                  ctaLabel: 'New ticket',
+                  onCtaPressed: () => context.push('/support/new'),
                 ),
               )
             : ListView.separated(

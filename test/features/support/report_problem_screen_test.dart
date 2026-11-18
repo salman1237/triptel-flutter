@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/features/support/application/support_providers.dart';
+import 'package:triptel/features/support/data/models/support_category.dart';
 import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
 import 'package:triptel/features/support/presentation/report_problem_screen.dart';
@@ -25,6 +26,7 @@ class _FakeSupportApi implements SupportApi {
     required String subject,
     required String body,
     required String category,
+    List<String> filePaths = const [],
   }) async {
     lastSubject = subject;
     lastBody = body;
@@ -43,6 +45,9 @@ class _FakeSupportApi implements SupportApi {
 
   @override
   Future<List<SupportTicket>> getTickets() => throw UnimplementedError();
+
+  @override
+  Future<List<SupportCategory>> getCategories() => throw UnimplementedError();
 }
 
 Widget _app(SupportApi api) => ProviderScope(

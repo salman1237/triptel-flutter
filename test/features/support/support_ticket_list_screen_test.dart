@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/support/application/support_providers.dart';
+import 'package:triptel/features/support/data/models/support_category.dart';
 import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
 import 'package:triptel/features/support/presentation/support_ticket_list_screen.dart';
@@ -23,8 +25,12 @@ class _FakeSupportApi implements SupportApi {
     required String subject,
     required String body,
     required String category,
+    List<String> filePaths = const [],
   }) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<SupportCategory>> getCategories() => throw UnimplementedError();
 }
 
 SupportTicket _ticket({
@@ -48,6 +54,26 @@ Widget _app(Object result) => ProviderScope(
       ],
       child: const MaterialApp(home: SupportTicketListScreen()),
     );
+
+Widget _routedApp(Object result) {
+  final router = GoRouter(initialLocation: '/support', routes: [
+    GoRoute(
+      path: '/support',
+      builder: (context, state) => const SupportTicketListScreen(),
+    ),
+    GoRoute(
+      path: '/support/new',
+      builder: (context, state) =>
+          const Scaffold(body: Text('new-ticket-screen-placeholder')),
+    ),
+  ]);
+  return ProviderScope(
+    overrides: [
+      supportApiProvider.overrideWithValue(_FakeSupportApi(result)),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
 
 void main() {
   testWidgets('no tickets yet shows EmptyState, not a crash', (tester) async {
@@ -115,5 +141,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ErrorState), findsOneWidget);
+  });
+
+  testWidgets(
+      'tapping the "+" action navigates to the real FR-1102 new-ticket '
+      'screen', (tester) async {
+    await tester.pumpWidget(_routedApp([_ticket()]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('support-new-ticket-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('new-ticket-screen-placeholder'), findsOneWidget);
+  });
+
+  testWidgets(
+      'empty state\'s "New ticket" CTA navigates to the real FR-1102 '
+      'screen', (tester) async {
+    await tester.pumpWidget(_routedApp(const <SupportTicket>[]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('New ticket'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('new-ticket-screen-placeholder'), findsOneWidget);
   });
 }

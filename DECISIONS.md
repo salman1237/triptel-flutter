@@ -1,6 +1,19 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-18 — FR-1102: new-ticket attachments are images only, no `file_picker` dependency
+`POST /support/tickets` (API.md section 12) accepts png/jpeg/webp/heic/pdf/txt
+attachments, but this app already depends on `image_picker` for photo capture
+elsewhere (KYC docs) and adding `file_picker` just for pdf/txt support on one
+screen wasn't worth a new dependency for a beta-stage feature. **Decision:**
+`support_image_picker.dart` only offers photo attachments (mirrors
+`kyc_image_picker.dart`'s shape); the pdf/txt gap is disclosed in a code
+comment on `NewTicketScreen`, not silently dropped. **Why recorded:** this is
+a scope cut a future session could easily "fix" by reaching for a new
+dependency without checking whether it was already decided against.
+**Revisit if:** users actually need to attach pdf/txt logs/receipts to
+support tickets in practice -- then add `file_picker` and extend the picker.
+
 ## 2026-11-17 — FR-1101: support ticket status chip tones (OPEN/ANSWERED/RESOLVED/CLOSED)
 The backend's `TicketStatus` enum (`D:\eSim\backend\app\models\support.py`)
 isn't covered by `Design_System.md`'s existing status-chip convention
