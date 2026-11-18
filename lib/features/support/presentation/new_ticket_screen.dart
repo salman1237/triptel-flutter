@@ -101,6 +101,7 @@ class _NewTicketScreenState extends ConsumerState<NewTicketScreen> {
             filePaths: _attachmentPaths,
           );
       if (!mounted) return;
+      ref.invalidate(supportTicketsProvider);
       setState(() => _confirmedReference = ticket.reference);
     } on ApiException catch (e) {
       if (!mounted) return;
