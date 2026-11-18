@@ -4,7 +4,8 @@
     "WIP = 1: exactly one item may be 'active'.",
     "States: not_started -> active -> passing | blocked (blocked needs 'blocked_reason'; the loop then moves on).",
     "Only a passing verification command (proven to fail when the feature is reverted) moves an item to passing; evidence = {commit, screens, notes}.",
-    "Order = build order. Foundation first, then auth, then handset compatibility (checkout and install depend on it)."
+    "Order = build order. Foundation first, then auth, then handset compatibility (checkout and install depend on it).",
+    "2026-11-18: FR-C9xx (real-time support chat) are intentionally blocked, not not_started - the autonomous loop stops when it runs out of not_started/active items rather than waiting on these. Unblock only once D:\\eSim/claude-progress.md confirms the web chat backend is live on beta."
   ],
   "features": [
     {
@@ -14,7 +15,9 @@
       "state": "passing",
       "evidence": {
         "commit": "a4f79a5",
-        "screens": ["artifacts/FR-001.png"],
+        "screens": [
+          "artifacts/FR-001.png"
+        ],
         "notes": "5 theme tests pass (proven non-vacuous by breaking AppColors.primary and seeing tokens_test.dart + shared_components_test.dart fail, then restoring). bash harness.sh verify green (analyze, format, full test suite, debug APK build). Device screenshot on 10EF1302BJ000R5 shows hero header, search pill, segmented control, country row, balance card, list group, info box, plan option tile, sticky total bar in Triptel purple/white. Reviewed by reviewer agent: PASS."
       }
     },
@@ -25,7 +28,10 @@
       "state": "passing",
       "evidence": {
         "commit": "f07ad28",
-        "screens": ["artifacts/FR-002.png", "artifacts/FR-002-loaded.png"],
+        "screens": [
+          "artifacts/FR-002.png",
+          "artifacts/FR-002-loaded.png"
+        ],
         "notes": "6 bootstrap tests pass. Proven non-vacuous: disabled cache.save() in loadBootstrap, got 2 real runtime failures (fallback test threw, fresh-fetch cache assertion failed null), restored, green again. bash harness.sh verify green. On-device (10EF1302BJ000R5) real network round-trip against beta.triptel.co: FR-002.png caught the splash mid-load, FR-002-loaded.png 5s later shows the live /settings/public response (maintenance_mode=false) passed the gate through to content. Reviewed by reviewer agent: PASS."
       }
     },
@@ -47,7 +53,10 @@
       "state": "passing",
       "evidence": {
         "commit": "ea15221",
-        "screens": ["artifacts/FR-004-home.png", "artifacts/FR-004-wallet.png"],
+        "screens": [
+          "artifacts/FR-004-home.png",
+          "artifacts/FR-004-wallet.png"
+        ],
         "notes": "shell_test.dart passes (4 tabs render, tapping each navigates to the right screen type). Proven non-vacuous: pointed /wallet at AccountScreen, got a real 'Found 0 widgets with type WalletScreen' failure, restored, green again. bash harness.sh verify green (13 tests total). On-device: FR-004-home.png shows the shell with Home active after a real bootstrap round-trip; a real adb tap on the Wallet tab produced FR-004-wallet.png with Wallet now highlighted and its placeholder content, proving live tab-switching. Reviewed by reviewer agent: PASS."
       }
     },
@@ -58,7 +67,12 @@
       "state": "passing",
       "evidence": {
         "commit": "b427c21",
-        "screens": ["artifacts/FR-005-home.png", "artifacts/FR-005-sheet.png", "artifacts/FR-005-sheet2.png", "artifacts/FR-005-selected.png"],
+        "screens": [
+          "artifacts/FR-005-home.png",
+          "artifacts/FR-005-sheet.png",
+          "artifacts/FR-005-sheet2.png",
+          "artifacts/FR-005-selected.png"
+        ],
         "notes": "20 tests pass (Money cents arithmetic, formatMoney symbol/decimals, resolveInitialCurrency/resolveRate incl. manual-override-wins, persistence across a fresh ProviderContainer, pill switcher widget flow). Proven non-vacuous: forced JPY to 2 decimals, got a real '¥1500.00' vs '¥1500' failure, restored, green again. bash harness.sh verify green (33 tests). On-device end-to-end against live beta: EUR pill on Home -> tapped it -> sheet showed real /settings/rates currencies -> tapped BDT -> pill updated to 'BDT ৳', confirming the full real flow. Reviewed by reviewer agent: PASS, with one advisory (see FR-005b) not blocking this feature."
       }
     },
@@ -80,7 +94,11 @@
       "state": "passing",
       "evidence": {
         "commit": "4b2e47e",
-        "screens": ["artifacts/FR-006-account2.png", "artifacts/FR-006-sheet.png", "artifacts/FR-006-rtl.png"],
+        "screens": [
+          "artifacts/FR-006-account2.png",
+          "artifacts/FR-006-sheet.png",
+          "artifacts/FR-006-rtl.png"
+        ],
         "notes": "17 tests pass (resolveInitialLanguage incl. English-unavailable fallback, isRtlLanguage, translate, translations loader fetch/cache/fallback mirroring loadBootstrap, provider persistence, pill switcher widget flow incl. Directionality flip). Proven non-vacuous: broke resolveInitialLanguage's fallback, got real failures, restored, green again. bash harness.sh verify green (50 tests). On-device end-to-end against live beta: EN pill on Account -> tapped -> sheet showed real /settings/languages (English/Bengali/Arabic/Spanish/French/German) -> tapped Arabic -> whole app mirrored to RTL (pill moved to top-left, bottom tab order reversed, chevron and text flipped) -- a real full-app RTL mirror driven by live data. Reviewed by reviewer agent: PASS, with one advisory (see FR-006b) not blocking this feature. Verification path corrected from a stale test/features/bootstrap placeholder to test/core/i18n (logged in DECISIONS.md)."
       }
     },
@@ -102,7 +120,10 @@
       "state": "passing",
       "evidence": {
         "commit": "e882e0e",
-        "screens": ["artifacts/FR-007-launch.png", "artifacts/FR-007-tracking.png"],
+        "screens": [
+          "artifacts/FR-007-launch.png",
+          "artifacts/FR-007-tracking.png"
+        ],
         "notes": "19 tests pass (parseDeepLink host/path matching incl. untrusted-host rejection, extractReferralCode, handleDeepLink dispatch, referral persistence, real-app routing widget test). Proven non-vacuous: forced the tracking-host check to false, got real failures, restored, green again. bash harness.sh verify green (69 tests). Found and fixed a real infra gap: AndroidManifest.xml had no https intent-filter at all (only triptel://), so track links could never reach the app on a real device; added one scoped to host+pathPrefix=/track, no autoVerify (no backend .well-known yet). On-device: rebuilt, reinstalled, sent real adb am start VIEW intents for both triptel://payment-callback and https://triptel.co/track/TOKDEVICE1 to the running app -- both delivered successfully; FR-007-tracking.png shows the real TrackingScreen with the token. Reviewed by reviewer agent: PASS (trimmed an undocumented www.triptel.co host per its note before this commit)."
       }
     },
@@ -113,7 +134,11 @@
       "state": "passing",
       "evidence": {
         "commit": "95cf287",
-        "screens": ["artifacts/FR-101-register-form.png", "artifacts/FR-101-result.png", "artifacts/FR-101-signed-in.png"],
+        "screens": [
+          "artifacts/FR-101-register-form.png",
+          "artifacts/FR-101-result.png",
+          "artifacts/FR-101-signed-in.png"
+        ],
         "notes": "19 tests pass (password/email/username validation, AuthNotifier register/logout incl. ApiException surfacing, register screen happy path + client/backend errors + referral pre-fill incl. not overwriting a user-typed value). Proven non-vacuous for both password validation and referral pre-fill (broke each, got real failures, restored, green again). bash harness.sh verify green (97 tests). On-device real end-to-end registration against live beta: created a real new account (triptel_test_<timestamp>), app navigated to Home, Account tab then showed 'Signed in as triptel_test_<timestamp>' with a working Sign out button. Reviewed by reviewer agent: PASS; added the referral-prefill test it flagged as a gap before this commit."
       }
     },
@@ -124,7 +149,11 @@
       "state": "passing",
       "evidence": {
         "commit": "24ca106",
-        "screens": ["artifacts/FR-102-login-form.png", "artifacts/FR-102-after-submit.png", "artifacts/FR-102-signed-in.png"],
+        "screens": [
+          "artifacts/FR-102-login-form.png",
+          "artifacts/FR-102-after-submit.png",
+          "artifacts/FR-102-signed-in.png"
+        ],
         "notes": "26 auth tests pass total (7 new: login happy path, empty-field client error, real 401/403 inline, secondary link, plus must_change_password persistence end-to-end). Proven non-vacuous: forced SecureStore to always write must_change_password=false, got a real failure, restored, green again. bash harness.sh verify green (99 tests). On-device: real login against live beta with a pre-existing real account the user provided (not written to any repo file) -- submitted, navigated to Home, Account tab showed 'Signed in as salman2033' with working Sign out, a genuinely different proof path from FR-101's fresh-registration evidence. Reviewed by reviewer agent: PASS."
       }
     },
@@ -135,7 +164,14 @@
       "state": "passing",
       "evidence": {
         "commit": "743d13f",
-        "screens": ["artifacts/FR-103-google-logo.png", "artifacts/FR-103-google-signed-in-account.png", "artifacts/FR-103-signed-in-google.png", "artifacts/FR-103-login-google.png", "artifacts/FR-103-after-cancel.png", "artifacts/FR-103-result-check.png"],
+        "screens": [
+          "artifacts/FR-103-google-logo.png",
+          "artifacts/FR-103-google-signed-in-account.png",
+          "artifacts/FR-103-signed-in-google.png",
+          "artifacts/FR-103-login-google.png",
+          "artifacts/FR-103-after-cancel.png",
+          "artifacts/FR-103-result-check.png"
+        ],
         "notes": "User registered the Android OAuth client for co.triptel.app in Google Cloud Console (SHA-1 D9:9B:92:70:99:D3:64:68:A6:F2:62:BB:56:81:98:EB:C6:14:E6:B9), unblocking the native flow -- no code change needed, only the missing external registration. Retested end-to-end on device 10EF1302BJ000R5: Continue with Google -> account picker -> 'Allow Google to sign you in to Triptel' consent screen (this step is itself proof the OAuth client is now correctly registered -- it previously failed immediately with 'cancelled by the user', see FR-103-after-cancel.png/FR-103-result-check.png from the earlier blocked attempt) -> Agree and share -> POST /auth/google succeeded -> Account tab shows 'Signed in as mdimranhosenbd96' with a working Sign out button. Also added a hand-drawn GoogleLogo (Google's real 4-colour G path data, no new dependency) on the button per user request. 19+ tests pass incl. GoogleLogo. bash harness.sh verify green. Screenshots containing the real account's name/email/photo were viewed then deleted immediately, never committed -- only PII-free screenshots remain. Reviewed by reviewer agent: PASS."
       }
     },
@@ -146,7 +182,11 @@
       "state": "passing",
       "evidence": {
         "commit": "4b4e6d9",
-        "screens": ["artifacts/FR-104-form.png", "artifacts/FR-104-filled.png", "artifacts/FR-104-result.png"],
+        "screens": [
+          "artifacts/FR-104-form.png",
+          "artifacts/FR-104-filled.png",
+          "artifacts/FR-104-result.png"
+        ],
         "notes": "36 auth tests pass (4 new: client-side email validation, generic success shown, same success for an unknown email (no-enumeration), real backend error stays on form). Proven non-vacuous: disabled the success state transition, got real failures, restored, green again. bash harness.sh verify green (107 tests). On-device: real POST /auth/forgot-password against live beta with the FR-101 test account -- generic success message shown with the required 'opens on the web, not in this app' disclaimer. Reviewed by reviewer agent: PASS (confirmed no-enumeration property genuinely holds -- no branching on the response anywhere in the screen)."
       }
     },
@@ -157,7 +197,9 @@
       "state": "passing",
       "evidence": {
         "commit": "10cf47c",
-        "screens": ["artifacts/FR-105-account-no-prompt.png"],
+        "screens": [
+          "artifacts/FR-105-account-no-prompt.png"
+        ],
         "notes": "47 auth+account tests pass (postAuthRoute, changePassword clears the flag without a new session, failure leaves the flag untouched, Set Password screen success/error/skip-to-My-eSIMs, Account prompt shown/hidden). Proven non-vacuous twice (postAuthRoute switch, changePassword's state update). bash harness.sh verify green (118 tests). On-device: logged in with the real salman2033 account (must_change_password=false) -- correctly went straight to Home with no prompt, demonstrating the negative case against the live backend. The positive case (must_change_password=true -> redirected to Set Password) has no real beta account available to trigger it, so it's verified only via widget tests with fakes -- disclosed, not a workaround. The 403 'set your own password' interception half is deliberately left unwired: no require_password_changed-gated endpoint exists yet in this app (checkout/wallet are future FRs); ApiException.mustChangePassword already exists for whichever FR calls the first gated endpoint. Reviewed by reviewer agent: PASS."
       }
     },
@@ -193,7 +235,9 @@
       "state": "passing",
       "evidence": {
         "commit": "b3bfba5",
-        "screens": ["artifacts/FR-107-restored-session.png"],
+        "screens": [
+          "artifacts/FR-107-restored-session.png"
+        ],
         "notes": "48 auth tests pass (session restore success reconstructs the token correctly incl. must_change_password from storage not the REST response, 401 clears the token and signs out, a non-401 failure leaves the token untouched). Proven non-vacuous: disabled the 401 branch, got a real failure, restored, green again. bash harness.sh verify green (121 tests). On-device: a real JWT already in secure storage from earlier salman2033 testing -- after a full reinstall + force-stop + cold launch of the freshly built APK, the Account tab immediately showed 'Signed in as salman2033' with no re-entered credentials, proving a real GET /auth/me round-trip against live beta restored the session. Reviewed by reviewer agent: PASS."
       }
     },
@@ -204,7 +248,10 @@
       "state": "passing",
       "evidence": {
         "commit": "2412543",
-        "screens": ["artifacts/FR-108-signed-out.png", "artifacts/FR-108-relaunch-still-signed-out.png"],
+        "screens": [
+          "artifacts/FR-108-signed-out.png",
+          "artifacts/FR-108-relaunch-still-signed-out.png"
+        ],
         "notes": "AuthNotifier.logout() existed since FR-101; this round gave it dedicated coverage now that FR-107 makes it meaningful. 2 new tests pass: SecureStore is actually cleared (token + must_change_password), and a fresh ProviderContainer over the same storage (simulating relaunch) restores to signed-out. No other account-scoped cache exists in the app (currency/language prefs are correctly device-level, not account-level, and untouched). 123 tests total pass. Proven non-vacuous: disabled the clear() call, got 2 real failures, restored, green again. bash harness.sh verify green. On-device: signed in -> tapped Sign out -> immediately reverted to Create account/Sign in -> real adb force-stop + cold relaunch -> still signed out, proving the token was genuinely gone from persistent storage (FR-107's own restore logic, verified on the same device, would have found it otherwise). Reviewed by reviewer agent: PASS."
       }
     },
@@ -240,7 +287,9 @@
       "state": "passing",
       "evidence": {
         "commit": "6ad0832",
-        "screens": ["artifacts/fr-951/01-on-device-compatibility-result.png"],
+        "screens": [
+          "artifacts/fr-951/01-on-device-compatibility-result.png"
+        ],
         "notes": "CompatibilityResultScreen (lib/features/compatibility/presentation/) watches FR-950's esimVerdictProvider; tint/icon/headline per verdict kind (success/warning/danger for supported/unknown/notSupported -- unknown never collapses into notSupported, Rules.md), device chip (StatusChip), explanation, carrier-lock InfoBox with original Triptel copy (not copied from Eskimo's reference text). New /compatibility route added; no live entry point yet (home promo/account/checkout gate land with FR-953), same build-ahead-of-trigger pattern as FR-003/FR-109. 23 tests pass (5 new), non-vacuous (broke the notSupported headline string, got a real failure, restored). flutter analyze clean; bash harness.sh verify green (154 tests, debug APK built). Screenshot is a genuine on-device capture, not a widget-test render: temporarily set router.dart's initialLocation to /compatibility, rebuilt+installed on a connected OPPO CPH2015 (no eUICC hardware), screenshotted via adb, then reverted initialLocation to /home, rebuilt+reinstalled, and confirmed /home loads normally again (git diff of router.dart shows only the permanent /compatibility route addition, no trace of the temporary change). The screenshot correctly shows the real verdict for that device (device chip 'OPPO CPH2015', red header, 'Your device does not support eSIM', 'This device has no eSIM hardware.'). Reviewed by reviewer agent: PASS."
       }
     },
@@ -266,7 +315,11 @@
       "state": "passing",
       "evidence": {
         "commit": "16c0a30",
-        "screens": ["artifacts/fr-201/01-home.png", "artifacts/fr-201/02-coming-soon-snackbar.png", "artifacts/fr-201/03-my-esims-nav.png"],
+        "screens": [
+          "artifacts/fr-201/01-home.png",
+          "artifacts/fr-201/02-coming-soon-snackbar.png",
+          "artifacts/fr-201/03-my-esims-nav.png"
+        ],
         "notes": "New lib/features/catalog/{data,application,presentation}/ built from scratch: Country model (GET /catalog/countries row, API.md section 3), CatalogApiImpl.getCountries({search, popularOnly}) via the shared ApiClient, popularCountriesProvider (popular_only=true, cached for the session). HomeScreen rebuilt: HeroHeader (search pill + a single 'Buy data' quick action -- see below), CurrencyPillSwitcher, FR-953's CompatibilityPromoCard (reused, not duplicated), 'Popular destinations' list via CountryRow (shared, pre-existing) fed by real live data, with loading/error/empty states. Destination search (FR-202) and destination plans (FR-204) don't exist yet, so the search pill and destination rows show a 'X is coming soon' snack instead of routing to a nonexistent path (same reasoning as FR-105b). Referral promo and the signed-in 'usage summary instead of hero' variant need FR-801/FR-402/403 (not built) -- deferred as FR-201b. test/fixtures/catalog_popular_countries.json is a real captured beta response (11 countries) backing Country.fromJson's test. 10 new tests (country, provider, screen); full suite (178 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine (OPPO device, live beta data): 01 shows the hero with real flag images loaded from flagcdn.com for Bangladesh/China/Japan/Malaysia; 02 shows the 'Destination search is coming soon' snackbar; 03 shows real navigation to the My eSIMs tab (bottom nav highlighted). lib/app/app_shell.dart gained a ValueKey per tab button -- a minimal, necessary fix for a label collision this feature caused (test/app/shell_test.dart's `find.text('My eSIMs')` became ambiguous once the hero also had a 'My eSIMs' label at the time); shell_test.dart updated to use the new keys. Reviewed by reviewer agent: PASS. USER FOLLOW-UP (same session): the user flagged 'My eSIMs' (identical label, same destination as the bottom tab) and 'Top up' (different label, same /wallet destination as the Wallet tab until FR-408 exists) as redundant quick actions; both removed, leaving only 'Buy data'. Tests updated to assert both are absent (non-vacuous: would fail if re-added). Re-reviewed with FR-953's Account-card removal together: PASS."
       }
     },
@@ -292,7 +345,12 @@
       "state": "passing",
       "evidence": {
         "commit": "0dec26b",
-        "screens": ["artifacts/fr-202/01-explore-sheet-country.png", "artifacts/fr-202/02-explore-sheet-regional.png", "artifacts/fr-202/03-search-results.png", "artifacts/fr-202/04-home-after.png"],
+        "screens": [
+          "artifacts/fr-202/01-explore-sheet-country.png",
+          "artifacts/fr-202/02-explore-sheet-regional.png",
+          "artifacts/fr-202/03-search-results.png",
+          "artifacts/fr-202/04-home-after.png"
+        ],
         "notes": "ExploreSheet (lib/features/catalog/presentation/) -- full-height modal via showModalBottomSheet. countryTabEntries/regionalTabEntries (country_grouping.dart, pure/tested) split by Country.isRegional per API.md section 3; groupByFirstLetter does case-insensitive A-Z sectioning. Popular chips reuse FlagAvatar; Country/Regional toggle reuses SegmentedPill (wrapped in a horizontally-scrollable container, same precaution as FR-952 after that session's real overflow bug). Search is debounced (400ms Timer, cancelled on each keystroke) calling the real GET /catalog/countries?search= via the existing CatalogApi -- not a cached provider, since each keystroke is a fresh query. Home's search pill and 'Buy data' now open this sheet instead of showing 'coming soon', since it's now safe to route there (FR-105b-style reasoning: don't route to what doesn't exist, do route once it does); destination-row taps (in the sheet and in Home's own popular list) still show 'coming soon' since FR-204 doesn't exist yet. Featured 'Global' package card (Design_System.md's Explore row) deferred as FR-202b -- CountryResponse has no is_featured-equivalent field (that only exists on ProductResponse per API.md), so there's no API-driven way to pick one yet. 9 new tests (21 total in test/features/catalog); non-vacuous (inverted countryTabEntries' isRegional predicate, got a real failure, restored). Full suite (189 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, reached via a real in-app tap (no temporary router hack needed, unlike FR-951/952): 01 shows the sheet with Country tab selected, real popular chips (Bangladesh/China/Japan), and a real A-Z list (Afghanistan, Aland Islands, Albania...) with live flag images; 02 shows the Regional tab with real package names (Africa, Asia (12 areas), AUKUS(3 countries)) and globe icons; 03 shows a live debounced search for 'japan' returning real results including regional packages containing Japan -- confirming it genuinely hits the live API, not canned data; 04 confirms Home renders normally underneath after closing the sheet. Reviewed by reviewer agent: PASS."
       }
     },
@@ -318,7 +376,11 @@
       "state": "passing",
       "evidence": {
         "commit": "e5c8519",
-        "screens": ["artifacts/fr-203/01-regional-list.png", "artifacts/fr-203/02-coverage-sheet.png", "artifacts/fr-203/03-country-still-coming-soon.png"],
+        "screens": [
+          "artifacts/fr-203/01-regional-list.png",
+          "artifacts/fr-203/02-coverage-sheet.png",
+          "artifacts/fr-203/03-country-still-coming-soon.png"
+        ],
         "notes": "Each Regional-tab row (_RegionalRow, lib/features/catalog/presentation/explore_sheet.dart) now shows a real 'N countries' subtitle via coverageCountriesProvider -- not parsed from the catalog's own inconsistently-formatted display names ('(N countries)', '(N areas)', 'Name-N', or no count at all), but derived from the actual live coverage_countries length (GET /catalog/countries/{iso2}/products, same data the coverage sheet itself shows, so the two numbers always agree). Tapping a regional row opens CoverageSheet (new), showing the real covered-country list. Country-tab rows are unaffected (still plain CountryRow, still 'coming soon' on tap -- FR-204 doesn't exist yet). 9 new tests; non-vacuous (broke the subtitle's AsyncData guard, got a real failure showing 0 widgets with the expected count text, restored). Full suite (196 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, live beta data: 01 shows real per-row subtitles (Africa/29 countries, Africa (21 areas)/21 countries, Asia (20 areas)/19 countries -- the area-count-vs-coverage-count mismatch there is expected and correct, since the catalog's own area count and the live coverage list length are two different real numbers, not a bug); 02 shows AUKUS(3 countries)'s coverage sheet (3 countries: Australia/United Kingdom/United States) matching its row's own subtitle; 03 confirms the Country tab is unaffected. Reviewed by reviewer agent: first pass FAIL (FR-203's own text calls for a per-row 'N countries' link, which was missing -- the initial build only opened the coverage sheet on tap without a row-level subtitle) -- fixed by adding the real per-row subtitle, re-reviewed: PASS. REAL BUG FOUND AND FIXED 2026-11-17 (user reported 'why can't I see regional packages in buy data'): the whole row's only tap target opened the coverage sheet, meaning a regional package could never actually be bought -- FR-204 (destination plans) was reachable for every normal country but not for any of the 42 real regional packages, even though GET /catalog/destinations/{regional-slug} fully supports them (confirmed live via curl -- e.g. aukus-3-countries returns real products). Fixed: the row itself now navigates to /explore/{slug} (same as a normal country row); the 'N countries' subtitle text is now its own separate, visually distinct (primary-coloured) tap target that opens the coverage sheet instead, matching FR-203's literal wording ('N countries' *link* -> coverage sheet, not the whole row). 2 tests updated/added (row navigates to plans; subtitle opens coverage, proven non-vacuous both ways by swapping which callback the subtitle's onTap used and getting a real failure). Full suite (443 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-203-regional-package-now-buyable.png, FR-203-regional-tab-subtitle-link.png): tapping AUKUS(3 countries) now opens its real plans screen with a real purchasable 1GB/30days package at a real converted price, and the Regional tab's subtitles now render in primary colour signalling they're a distinct tap target. Fix commit: 05b014f."
       }
     },
@@ -329,7 +391,11 @@
       "state": "passing",
       "evidence": {
         "commit": "1c8a25c",
-        "screens": ["artifacts/fr-204/01-plans-screen-fixed.png", "artifacts/fr-204/02-plan-selected.png", "artifacts/fr-204/03-unlimited-tab.png"],
+        "screens": [
+          "artifacts/fr-204/01-plans-screen-fixed.png",
+          "artifacts/fr-204/02-plan-selected.png",
+          "artifacts/fr-204/03-unlimited-tab.png"
+        ],
         "notes": "DestinationPlansScreen (/explore/<slug>): curved header (flag/name/currency pill, same gradient as HeroHeader), plan-type toggle (SegmentedPill, only shown when 2+ shapes exist among the destination's products), PlanWheelPicker over the shape's primary dimension (data size for Fixed, validity days for Day Pass/Unlimited), a radio list of PlanOptionTile rows for products matching the wheel value (sorted price ascending), 'Recommended' suffix for is_featured, sticky Continue bar disabled until a plan is selected. Checkout (FR-301+) doesn't exist, so Continue shows 'coming soon' rather than routing to a nonexistent path. Plan-shape detection (planShape, plan_shape.dart) and the day-pass per-day math (dataAmountGb/validityDays, since the API's dataAmountGb on a day pass is the TOTAL over all days) follow API.md section 3's table exactly; Money.parseEur/formatMoney handle EUR-only pricing, never reading product.currency (beta mislabels these 'USD'). Non-regional taps in FR-202's explore sheet and Home's popular-destinations list now navigate here instead of 'coming soon'. test/fixtures/catalog_japan_destination.json is a real captured beta response (75 products, confirmed to include all 3 plan shapes). 24 new tests; non-vacuous twice (broke planShape's isUnlimited check, got multiple real failures, restored; separately for the coverage-label fix below). Full suite (217 tests) passes; flutter analyze clean; bash harness.sh verify green. On-device evidence is genuine, reached via a real in-app tap from Home's popular destinations (OPPO device, live beta data): 01 shows Japan's curved header, all 3 plan-type tabs (confirming Japan genuinely has Fixed/Day Pass/Unlimited products), the data-size wheel, and a matching plan row; 02 shows the same row radio-selected with the CTA now reading 'Continue'; 03 shows the Unlimited tab with two real matching plans at the same validity (confirming the multiple-matches-per-wheel-value case). Reviewed by reviewer agent: first pass FAIL (the row's 'coverage' fact, explicitly required by both FR-204's text and Design_System.md, was missing entirely -- the single caption slot only showed data-label+validity) -- fixed by adding planCoverageLabel() (every product here is non-regional per API.md section 3, so coverage is always '1 country' in practice, with a defensive fallback to the real coverage_countries length), re-reviewed: PASS."
       }
     },
@@ -340,7 +406,9 @@
       "state": "passing",
       "evidence": {
         "commit": "153ca7e",
-        "screens": ["artifacts/FR-205.png"],
+        "screens": [
+          "artifacts/FR-205.png"
+        ],
         "notes": "Modal sheet opened from a new 'Plan details' button on each plan row (destination_plans_screen.dart). Shows full disambiguating title, 3 plan facts (data type/starts-on-install/hotspot), and a Coverage section. On-device evidence (artifacts/FR-205.png) shows the real single-country path ('Japan · 1 country'), reached via genuine navigation (Home -> Japan -> Plan details). The regional-coverage branch (real country list for coverage_countries) is unit-tested but not reachable live: GET /catalog/destinations/{slug} only ever returns non-regional products per docs/API.md §3, same disclosed limitation as FR-201b/FR-202b. Reviewer: PASS."
       }
     },
@@ -351,7 +419,9 @@
       "state": "passing",
       "evidence": {
         "commit": "87f1ea6",
-        "screens": ["artifacts/FR-206.png"],
+        "screens": [
+          "artifacts/FR-206.png"
+        ],
         "notes": "New share IconButton in DestinationPlansScreen's header, calling SharePlus.instance.share with the pure destinationShareUrl(slug) ('https://triptel.co/explore/<slug>'). On-device evidence (artifacts/FR-206.png) shows the real Android native share sheet opened via genuine navigation (Home -> Japan -> share icon), displaying the exact URL 'https://triptel.co/explore/japan'. Widget test fakes SharePlatform (plugin_platform_interface's documented MockPlatformInterfaceMixin pattern) to assert the real ShareParams captured from a real tap. Reviewer: PASS."
       }
     },
@@ -362,7 +432,9 @@
       "state": "passing",
       "evidence": {
         "commit": "25cf240",
-        "screens": ["artifacts/FR-301.png"],
+        "screens": [
+          "artifacts/FR-301.png"
+        ],
         "notes": "New lib/features/checkout/ (first feature in checkout section D). runPreCheckoutCompatibilityGate gates DestinationPlansScreen's Continue on FR-950's cached esimVerdictProvider: supported proceeds straight through; notSupported shows the 'Buy Now, Use Later!' dialog (icon/title/subtitle/body, Continue/View Supported Devices/Cancel per Design_System.md); unknown shows a softer 'We couldn't confirm eSIM support' note (Rules.md: unknown != not supported) with no secondary button. Never hard-blocks: a verdict-check error also proceeds directly. View Supported Devices reuses the existing /compatibility/devices route (FR-952), no new route invented. 10 new tests (3 pure + 7 widget, real GoRouter/real taps); non-vacuous (broke notSupported's branch to proceed, got real failures, restored). Full suite (241 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-301.png) is genuine: reached via real navigation (Home -> Japan -> select plan -> Continue) on a device with no eSIM hardware -- the real dialog fired matching the design reference; a second screenshot (not committed, kept local in .harness/) confirms tapping the dialog's own Continue reaches the pre-existing 'Checkout is coming soon' snack, proving the never-blocks property end-to-end. Reviewer: PASS, independently re-ran the mutation test and all verification commands."
       }
     },
@@ -373,7 +445,9 @@
       "state": "passing",
       "evidence": {
         "commit": "4eac8f6",
-        "screens": ["artifacts/FR-302.png"],
+        "screens": [
+          "artifacts/FR-302.png"
+        ],
         "notes": "New CheckoutReviewScreen (/checkout/review): plan header (title+subtitle, reusing FR-204/205's composition), voucher ListRow (chevron) opening a code-entry sheet (Apply shows 'coming soon' -- FR-303/304 discount validation doesn't exist), a display-only 'Use reward credit' Switch (value:false, onChanged:null, per Design_System.md's note the backend decides), a breakdown card (Subtotal/conditional discount row/Total via new pure CheckoutBreakdown), and a StickyTotalBar with 'Continue to payment' (also 'coming soon' -- FR-305+ doesn't exist). Omits Design_System.md's 'info pill' (Eskimo's cashback-% banner -- no such concept in docs/API.md, confirmed via grep) and the Eskimo-branded 'Guarantee' wax-seal badge (Eskimo-specific trust branding, not a generic pattern) rather than fabricating either. Wired as the real destination for DestinationPlansScreen's (FR-204) 'Continue', after FR-301's compatibility gate -- real go_router navigation (/checkout/review with a CheckoutReviewArgs extra), not a test-only override. 7 new tests (2 pure + 5 widget); non-vacuous (broke CheckoutBreakdown.total to ignore discount, got a real failure, restored). Full suite (255 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-302.png) is genuine end-to-end: Home -> Malaysia -> select plan -> Continue -> FR-301's dialog -> its Continue -> lands here showing real BDT-converted prices; a second (uncommitted) screenshot confirms the voucher sheet opens live. Reviewer: PASS, independently re-ran the mutation test and the full verification suite, compared the screenshot against the design reference."
       }
     },
@@ -384,7 +458,9 @@
       "state": "passing",
       "evidence": {
         "commit": "5e22fe3",
-        "screens": ["artifacts/FR-303.png"],
+        "screens": [
+          "artifacts/FR-303.png"
+        ],
         "notes": "Wires FR-302's voucher sheet to the real public POST /discounts/check (no auth required, always 200 -- valid:false is a normal response, not an exception). New DiscountCheckResult keeps 'value' as the API's raw string (unit depends on discount_type: percent number for PERCENT, EUR amount otherwise); pure estimateDiscount() implements API.md section 4's exact formula (PERCENT: percent*price/100 capped by max_discount_amount then by price; else: parse as EUR capped by price). CheckoutReviewScreen now holds discount state: valid code -> 'Voucher applied' + updates the breakdown/sticky bar; scoped valid code -> InfoBox 'Exact savings confirmed when you sign in.'; invalid code -> reason shown inline via the field's errorText, sheet stays open; thrown ApiException -> message shown inline, never crashes. 8 new tests (2 model-parsing against a real captured beta invalid-code fixture + a fixture built from API.md's own documented example since no valid code exists on beta today, disclosed not fabricated; 6 estimateDiscount unit tests) plus rewritten widget tests with a fake DiscountsApi covering valid/scoped/invalid/exception paths. Non-vacuous: disabled the max_discount_amount cap, got a real failure, restored. Full suite green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-303.png) is a genuine live round-trip to the real beta backend: typed 'WELCOME' in the real voucher sheet (Home -> Malaysia -> plan -> FR-301 gate -> checkout review), got 'That discount code isn't valid.' -- the exact text the live API returns, confirmed via curl. No valid code exists on beta to demonstrate the applied-discount path live; disclosed, not overclaimed. Reviewer: PASS, independently re-ran the mutation test and the full verify suite."
       }
     },
@@ -395,7 +471,9 @@
       "state": "passing",
       "evidence": {
         "commit": "603b3ef",
-        "screens": ["artifacts/FR-304.png"],
+        "screens": [
+          "artifacts/FR-304.png"
+        ],
         "notes": "Adds DiscountsApi.preview() (POST /discounts/preview, auth) wired into checkout review's 'Continue to payment': when a discount is applied and the user is signed in, re-confirms it authoritatively (codes can expire between FR-303's guest estimate and now) before proceeding -- invalid clears the discount and shows the reason via SnackBar, keeping the user on review (never proceeds); a thrown ApiException (e.g. 404 Product not found) shows its message the same way; valid falls through to the still-nonexistent 'coming soon' (FR-305+). A guest skips the check entirely (no sign-in-and-resume flow yet, FR-106, deferred) -- disclosed limitation, not a silent gap. Found and fixed a real bug while building this: ref.read(authNotifierProvider).valueOrNull returned null/AsyncLoading on first access since nothing else in the screen watches that provider; switched to awaiting authNotifierProvider.future, which properly awaits AsyncNotifier.build(). 9 new tests (2 model-parsing against a real captured beta invalid-preview fixture + a fixture from API.md's documented example since no valid code exists on beta, same disclosed pattern as FR-303 + 5 FR-304-specific widget tests covering no-discount-skip/guest-skip/valid-proceeds/invalid-blocks/404-blocks, plus 2 pre-existing FR-303 tests retained). Non-vacuous: broke the invalid-preview branch, got a real failure, restored. Full suite (266 tests) green, flutter analyze clean, bash harness.sh verify green. On-device evidence (artifacts/FR-304.png): signed in on a real device with a real beta account, reached checkout live (Home -> Japan -> plan -> FR-301 gate -> review), opened the real voucher sheet and got FR-303's live 'That discount code isn't valid.' -- no valid discount code exists on beta (confirmed via curl), so the live UI can never reach the branch that actually calls /discounts/preview; this is disclosed, not overclaimed. The signed-in authoritative-check logic itself (valid/invalid/404) is fully covered by widget tests using the two real/disclosed fixtures. Reviewer: PASS -- also disclosed and recovered from its own accidental 'git checkout' that discarded uncommitted changes mid-review; independently verified post-recovery via flutter analyze/format/full test suite/harness verify, and I separately diffed every file against what I'd written before committing."
       }
     },
@@ -406,7 +484,9 @@
       "state": "passing",
       "evidence": {
         "commit": "e8a07bb",
-        "screens": ["artifacts/FR-305.png"],
+        "screens": [
+          "artifacts/FR-305.png"
+        ],
         "notes": "New lib/features/wallet/: Wallet model (GET /wallets/my-wallets, auth), pure spendableBalance (DEFAULT+REWARD, COMMISSION excluded per API.md section 5's 'spendable at checkout' sentence) and walletCoversTotal (>=). Wired into checkout review's 'Continue to payment' after FR-304's discount re-check: covers -> shows the pre-existing shared PaymentMethodSheet widget with real 'Balance X . After: Y' text and ShurjoPay as the other option; doesn't cover (or guest, or wallet-fetch failure) -> skips the sheet entirely, straight to ShurjoPay. Neither FR-306 (wallet checkout) nor FR-307 (ShurjoPay checkout) exist yet, so every path still ends in 'coming soon', but which path is genuinely balance-driven. 9 new wallet tests + 5 new FR-305 widget tests (49 total across test/features/checkout+wallet); non-vacuous (broke walletCoversTotal to always true, got 9 real failures, restored). Full suite (280 tests) green, flutter analyze clean, bash harness.sh verify green (re-run fresh after fixing a UTF-8 encoding corruption the reviewer's own mutation-testing shell command introduced into wallet_balance.dart's doc comment -- caught before committing, file rewritten clean, re-verified). On-device evidence (artifacts/FR-305.png) is genuine and better than expected: using the real signed-in account (real nonzero balance), the real GET /wallets/my-wallets call returned 'Balance EUR533.70 . After: EUR532.80' for a EUR0.90 total -- live evidence of the wallet-covers-total sheet-shown branch, not just the skip branch; a follow-up tap on Wallet reached the real 'Payment is coming soon' snack. Reviewer: PASS."
       }
     },
@@ -417,7 +497,10 @@
       "state": "passing",
       "evidence": {
         "commit": "cf7ee1b",
-        "screens": ["artifacts/FR-306.png", "artifacts/FR-306-step1-sheet.png"],
+        "screens": [
+          "artifacts/FR-306.png",
+          "artifacts/FR-306-step1-sheet.png"
+        ],
         "notes": "OrdersApi.checkout/getOrder (POST /orders/checkout -- wallet only, never the merchant-only is_buy_for_user/beneficiary_*/auto_create_user fields -- then GET /orders/{id}), a pure orderPollSchedule (2s steps for ~12s then 5s steps to ~170s per API.md section 6) and pollOrderUntilDone (stops on COMPLETED/FAILED, otherwise returns the last-seen order -- never synthesizes a failure for PROCESSING/PENDING/PAID, per Rules.md). Wired into FR-305's payment sheet: selecting Wallet now places a real order and shows a definitive final message (ready / failed+refunded / still setting up) or the real server error message (insufficient balance, frozen wallet, 404). Found and fixed two real bugs while testing live: (1) a queued intermediate 'Placing your order...' SnackBar delayed the final status message by its own ~4s display duration since ScaffoldMessenger shows snackbars one at a time -- removed, the existing _placingOrder button state already communicates progress; (2) an unguarded await on authNotifierProvider.future could rethrow uncaught if the session refresh hit a transient network/secure-storage error, silently aborting the whole 'Continue to payment' action with zero feedback -- fixed via a new _resolveAuthState() that falls back to AuthUnauthenticated on any error (every downstream branch already handles a guest safely), covered by a dedicated regression test. 9 new tests (poll schedule, poll orchestration, model parsing) + a new FR-306 widget-test group (5 tests: completed/failed/still-processing/checkout-error/ShurjoPay-untouched) + the auth-fallback regression test; one now-stale FR-305 assertion updated since FR-306 supersedes its 'coming soon' placeholder. Non-vacuous: broke the poll's terminal-status check (real failures, restored) and the auth try/catch (reproduced the exact silent-failure, restored). Full suite (295 tests) green, flutter analyze clean, bash harness.sh verify green. Verification deliberately excludes an automated integration_test that would call the real money-moving endpoint on every run (logged in DECISIONS.md) -- a repeating uncontrolled spend, unlike FR-950's side-effect-free platform-channel check. On-device evidence is a GENUINE completed real purchase, explicitly approved by the user via AskUserQuestion earlier this session: signed in as the real account, real wallet-covers-total sheet (balance EUR533.70), tapped Wallet, real order placed and provisioned -- final snackbar read 'Order ORD-20261114-4DB40D: your eSIM is ready!', independently cross-checked via a fresh GET /orders/my-esims showing that exact order_no with status RELEASED. No real ICCID/LPA/QR data is committed anywhere -- the model-parsing fixture uses synthetic placeholders for every sensitive field (verified independently, not just by the reviewer). Reviewer: PASS, including a dedicated critical check for leaked eSIM secrets (none found) and independent reproduction of the poll-schedule mutation test."
       }
     },
@@ -428,7 +511,10 @@
       "state": "passing",
       "evidence": {
         "commit": "80d8e73",
-        "screens": ["artifacts/FR-307.png", "artifacts/FR-307-step1-sheet.png"],
+        "screens": [
+          "artifacts/FR-307.png",
+          "artifacts/FR-307-step1-sheet.png"
+        ],
         "notes": "New OrdersApi.initiateShurjoPay (POST /payments/shurjopay/order-initiate -- product_id, payment_method: SHURJOPAY, discount_code, mobile: true per API.md section 9) returning a new ShurjoPayCheckout model (tolerant of both checkout_url/checkoutUrl casing). New ShurjoPayWebViewScreen wraps webview_flutter's WebViewController, whose NavigationDelegate intercepts the documented triptel://payment-callback redirect (new isShurjoPayCallbackUrl/parseShurjoPayCallback, scoped to scheme+host only so it never matches the unrelated https://triptel.co/... wallet/eSIM top-up redirects) and pops the parsed callback; any other non-http(s) scheme (bank/wallet apps) is externally launched via url_launcher instead of loaded in-WebView. New injectable shurjoPayLauncherProvider (Provider<ShurjoPayLauncher> typedef) is the testability seam -- defaults to a real Navigator.push, overridable in tests so the real platform-view WebView never needs to render under flutter test. Wired into checkout review's guest/wallet-doesn't-cover/ShurjoPay-selected paths via a new _checkoutWithShurjoPay: on a null callback (user backed out) it returns silently without polling or any misleading snackbar; on any non-null callback it always re-polls the real order via FR-306's existing pollOrderUntilDone regardless of callback.failed, per API.md's documented 'redirect is a hint, not proof' rule -- a dedicated regression test asserts this explicitly (failed=true callback still reaches the real completed-order result). The old _showComingSoon placeholder is fully removed; ~8 previously-stale 'Payment is coming soon' test assertions across main()/FR-304/FR-305 groups were rewritten to assert real order results, since that text no longer renders anywhere. 10 new tests (8 in a new FR-307 group + 1 hint-not-proof regression + 1 model-parsing test) on top of the existing suite; full checkout test file now 64 tests, full project suite 303 tests, all green; flutter analyze clean; bash harness.sh verify green (debug APK build succeeds). Non-vacuous: temporarily added a callback.failed short-circuit before the poll call, got a real failure in the new hint-not-proof regression test, restored, re-verified green. On-device evidence: real order-initiate call against beta for a EUR0.90 Japan plan, explicit choice of ShurjoPay over the wallet (which had sufficient balance) to exercise this path specifically, real WebView rendering the actual ShurjoPay sandbox gateway page with a genuine order id (NOKBETA6af7d2ba3f635) and blank card-entry fields -- backed out via the WebView's own close button without submitting any payment details or tapping the sandbox's SUCCESS/FAILED simulation buttons (one such tap was in fact blocked by Claude Code's own auto-mode safety classifier as a possible financial action, correctly treated as a valid boundary rather than worked around); checkout review screen is left clean afterward with no polling having occurred, confirmed on-screen. No secrets, real card data, or real-money completion anywhere in this feature's evidence or tests. Reviewer: PASS (including an independent run of the full checkout test suite and harness verify, and an explicit check that the app never auto-submits payment details or calls any simulate-success endpoint); reviewer additionally recommended the hint-not-proof regression test as a coverage gap, which was added before committing."
       }
     },
@@ -439,7 +525,9 @@
       "state": "passing",
       "evidence": {
         "commit": "17e0647",
-        "screens": ["artifacts/FR-308.png"],
+        "screens": [
+          "artifacts/FR-308.png"
+        ],
         "notes": "New OrderStatusScreen pushed after a real order exists (wallet or ShurjoPay checkout), showing the three-step list from Functional_Requirements.md verbatim: 'Payment confirmed -> Reserving your eSIM -> Preparing QR'. Since API.md section 6 only exposes order-level status (PENDING|PAID|PROCESSING|COMPLETED|FAILED), not sub-progress within PROCESSING, the step shown is driven by elapsed wall-clock time (provisioningStepForElapsed: <3s/<10s/else) layered as a cosmetic progress indicator over FR-306's real pollOrderUntilDone, which runs completely unchanged underneath it (confirmed by reading order_poll.dart -- no diff). New pure ProvisioningStep enum + provisioningStepForElapsed function, new pure ProvisioningProgressView widget (checkmark/spinner/outlined-circle per step, theme tokens only), new injectable orderStatusLauncherProvider (same DI seam pattern as FR-307's shurjoPayLauncherProvider) whose real implementation pushes OrderStatusScreen and resolves a Completer<Order> with the poll's final order or its error -- guarded against double-completion, confirmed no path pops without resolving the completer first. Wired into both _checkoutWithWallet and _checkoutWithShurjoPay in place of the direct pollOrderUntilDone call; _showOrderResult and all error handling are byte-for-byte unchanged from FR-306/307 (still just a SnackBar) -- confirmed no FR-309 (still-preparing timeout message), FR-310 (QR/success screen) or FR-311 (failure message) UI was built ahead of schedule. 10 new tests (3 pure threshold tests, 3 progress-view icon-state tests, 3 OrderStatusScreen widget tests covering initial render/elapsed-driven step advancement via real poll-schedule-timed tester.pump cycles/error-completion-never-silent) + the shared checkout test helper's one-line default override (pass-through to the exact prior behavior, so none of the ~70 pre-existing FR-301..307 tests needed changes). Full checkout suite now 73 tests, full project suite green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily short-circuited provisioningStepForElapsed to always return paymentConfirmed, got 2 real test failures, restored. On-device evidence required a second small real purchase (~EUR0.90 Japan plan), explicitly approved by the user via AskUserQuestion specifically for this feature (distinct from FR-306's earlier approval) -- the real purchase completed provisioning too fast on this device/connection to screenshot the step-list mid-poll (first attempt's screenshots only caught the pre-existing checkout screen before/after, caught by the reviewer's first pass and correctly failed). Recaptured correctly via a temporary, never-committed local-only rig: lib/main.dart was briefly rewritten to bypass the router and push OrderStatusScreen directly against an offline fake OrdersApi (no network calls, no money moved, deliberately held at PROCESSING for a few calls), screenshotted on the real device showing the actual 'Setting up your eSIM' / 'Payment confirmed' (spinning) / 'Reserving your eSIM' (pending) / 'Preparing QR' (pending) screen, then lib/main.dart was reverted via git checkout and confirmed byte-identical to HEAD before rebuilding and reinstalling the real app and re-running bash harness.sh verify green. Reviewer: FAIL on first pass (screenshot evidence showed the wrong screen -- the pre-existing checkout review/payment-sheet/SnackBar, not the new feature's UI; every other check passed), corrected, re-reviewed: PASS (confirmed the new screenshot actually matches the code's rendering at elapsed=0, confirmed lib/main.dart has zero drift from HEAD, confirmed no permanent trace of the temporary rig anywhere in the repo or docs, re-ran the full test suite and analyze clean)."
       }
     },
@@ -450,7 +538,9 @@
       "state": "passing",
       "evidence": {
         "commit": "fadff38",
-        "screens": ["artifacts/FR-309.png"],
+        "screens": [
+          "artifacts/FR-309.png"
+        ],
         "notes": "Pure text-message change to the existing 'neither COMPLETED nor FAILED' branch of _showOrderResult (checkout_review_screen.dart), from a generic placeholder to Functional_Requirements.md's exact wording: \"We're still setting up your eSIM -- it will appear in My eSIMs and arrive by email.\" Still reached only when both order.isCompleted and order.isFailed are false (genuinely PENDING/PAID/PROCESSING, or the poll schedule exhausting without a terminal status) -- never treated as an error (Rules.md, API.md section 6). The COMPLETED and FAILED branches (FR-310/311, not built yet) are byte-identical to the FR-306/307/308 version -- confirmed no QR/install/refund UI was built ahead of schedule. One existing test updated to assert the exact new text (stricter than its old substring check) instead of the old wording; grepped lib/test and confirmed no trace of the old wording survives anywhere. Full checkout suite still 73 tests (pure text change, no new tests needed), full suite green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily replaced the new string with a placeholder, got a real test failure, restored. On-device evidence avoided both another real purchase and the real ~170s poll-exhaustion wait: used the same temporary, never-committed local rig established for FR-308 (lib/main.dart briefly mounting CheckoutReviewScreen directly with fake/offline providers -- fake WalletsApi/OrdersApi, no network calls, no money moved -- whose orderStatusLauncherProvider override immediately resolves with a still-PROCESSING order) to capture the real SnackBar text rendered by the real Flutter engine on the real device, then reverted via git checkout and confirmed byte-identical to HEAD before rebuilding/reinstalling the real app and re-running bash harness.sh verify green. Reviewer: PASS (confirmed message wording matches the FR exactly modulo the codebase's existing '--'-for-em-dash house style, confirmed branch logic/scope discipline, confirmed the screenshot shows the real text, confirmed main.dart has zero drift from HEAD)."
       }
     },
@@ -461,7 +551,10 @@
       "state": "passing",
       "evidence": {
         "commit": "953260f",
-        "screens": ["artifacts/FR-310.png", "artifacts/FR-310-copy.png"],
+        "screens": [
+          "artifacts/FR-310.png",
+          "artifacts/FR-310-copy.png"
+        ],
         "notes": "A completed order now pushes a real PurchaseSuccessScreen (lib/features/checkout/presentation/purchase_success_screen.dart) instead of a SnackBar: the already-built EsimQr (FR-401) rendered from esim_profile.qrCodeData (falling back to lpaString per API.md section 'Install links' note 'QR = qr_code_data (or lpa_string)'), a '1-tap install' button double-gated on both a valid LPA: string (new pure buildInstallUrl, application/install_link.dart, matching API.md's documented esimsetup.apple.com/esimsetup.android.com carddata-query-param table exactly) AND FR-950's already-passing esimVerdictProvider reporting EsimVerdictKind.supported -- reused at its intended call site, per that provider's own doc comment ('reused by ... install buttons'). 'Copy activation code' copies esim_profile.lpaString via Clipboard.setData; 'Go to My eSIMs' navigates via context.go('/my-esims'). The 1-tap install itself is a plain URL launch (no native platform channel needed) via a new injectable urlLauncherProvider (same DI seam pattern as FR-307/308's launchers) so the button is fully testable without the real url_launcher platform channel. FAILED (FR-311) and still-preparing (FR-309) branches of _showOrderResult are byte-identical to before -- confirmed via diff, no regression to those already-passing features. 12 new tests (3 install_link threshold/shape tests, 8 purchase_success_screen widget tests covering QR+order display, install-button shown/tapped when supported, install-button hidden with the correct existing-wording note for notSupported/unknown, real on-device-style clipboard copy via a mocked platform channel, real go_router navigation to /my-esims, defensive null-esim_profile handling, and a failed-launch error snack, plus 1 new full-flow integration test proving a real wallet checkout with a populated esim_profile lands on the real screen) + the shared test helper's new esimVerdictProvider/urlLauncherProvider default overrides (supported/always-succeeds) so none of the prior ~73 FR-301..309 tests needed behavioral changes. Full checkout suite now 85 tests, full project suite (330 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily hardcoded the install-URL host to always build the iOS variant (2 real test failures, restored) and temporarily dropped the EsimVerdictKind.supported half of the install button's && gate (2 more real failures, restored). On-device evidence used a SYNTHETIC order/esim_profile (fake ICCID, a `.invalid`-domain LPA string) via the same temporary, never-committed local-rig technique as FR-308/309/401 -- chosen deliberately over a third real purchase, since this screen's rendering depends only on the Order object's contents (confirmed by reading its constructor/body -- no coupling to how the order was obtained), and a real purchase here would only risk a real ICCID/LPA/QR secret ending up in a screenshot in this public repo for zero additional test signal. The real device (no eUICC, per earlier session notes) correctly showed the 'not eSIM-compatible' gating via the REAL native FR-950 channel (not mocked) -- hiding the install button and showing the existing softer-note wording; a second screenshot shows a genuine on-device clipboard copy (both the OS's own 'Copied' toast and the app's own SnackBar). lib/main.dart confirmed byte-identical to HEAD both before and after capture. Reviewer: PASS (confirmed API.md conformance, the install button's double-gate via direct code read, zero regression to FR-309/311's untouched branches, the judgment call to copy only the LPA string -- not the fuller SM-DP+/matching-ID breakdown correctly deferred to not-yet-built FR-404 -- as reasonable and in-scope, and that the synthetic-data screenshot choice was the right call given the screen's actual data dependency)."
       }
     },
@@ -483,7 +576,9 @@
       "state": "passing",
       "evidence": {
         "commit": "cc2c150",
-        "screens": ["artifacts/FR-401.png"],
+        "screens": [
+          "artifacts/FR-401.png"
+        ],
         "notes": "Pulled forward out of strict array order: FR-310 (purchase success, next in order) depends on this component, same precedent as the wallet data layer built ahead of FR-601. lib/core/widgets/esim_qr.dart already existed from earlier scaffolding (unused, untested) and needed zero source changes -- it already satisfied FR-401 exactly: errorCorrectionLevel QrErrorCorrectLevel.H, logoFraction = 0.22 (22% per Rules.md/Design_System.md), the logo sits in a BoxShape.circle AppColors.surface (theme token, not raw colour) disc, and the logo parameter is a generic Widget? so a real app-mark image can be injected later by whichever feature uses it (FR-310) without touching this component. 5 new tests: EC level H asserted directly off the real QrImageView instance; logo-present renders the white circular disc (and logo-absent renders no disc at all); logoFraction == 0.22 exactly; and a 'damage test decodes' check done geometrically rather than via pixel decode (no QR-decode dependency in this project, honestly disclosed in the test file's doc comment) -- the disc's area as a fraction of the whole QR is computed at three representative sizes (160/220/320) and asserted well under 15%, comfortably inside error correction level H's commonly-cited ~30% damage-recovery tolerance (actual figure at the default size 220: ~5.16%). flutter test test/features/esims (5/5) and flutter analyze lib test both green. Non-vacuous: temporarily changed errorCorrectionLevel to L (test 1 failed for real) and logoFraction to 0.5 (tests 4 and 5 both failed for real), both restored. On-device evidence: a real on-device screenshot of the standalone widget (white QR, visible white circular disc with a logo mark centered -- Flutter's own logo used as an honestly-disclosed placeholder stand-in, since the real app-mark asset/fetch isn't wired up and is out of scope for this narrow component-only feature), captured via the same temporary never-committed local-rig technique established for FR-308/309 (lib/main.dart briefly rendering EsimQr standalone, no network, no providers, no money), reverted via git checkout and confirmed zero drift from HEAD. Reviewer: PASS (confirmed the component itself has zero diff -- only tests were added for pre-existing code -- confirmed the geometric damage-margin reasoning is sound and honestly disclosed as a judgment call rather than a literal decode test, confirmed scope discipline against FR-310's not-yet-built success screen)."
       }
     },
@@ -494,7 +589,10 @@
       "state": "passing",
       "evidence": {
         "commit": "2c52bb6",
-        "screens": ["artifacts/FR-402.png", "artifacts/FR-402-not-installed-fix.png"],
+        "screens": [
+          "artifacts/FR-402.png",
+          "artifacts/FR-402-not-installed-fix.png"
+        ],
         "notes": "Replaces the placeholder My eSIMs tab with real cards from GET /orders/my-esims (new MyEsim model, MyEsimsApi, myEsimsProvider FutureProvider). Each card shows plan title, a status chip mapped via new pure esimStatusChip() to Design_System.md's exact documented tone rule (Active/Installed success, Not installed=RELEASED sky/info, Preparing=ALLOCATED warning, Suspended/Revoked/Cancelled/Expired danger, unknown falls back to a warning chip with the raw status string -- never crashes or hides the card), a data/validity line (esimDataLabel/esimValidityLabel: 'Validity starts on install' until activated_at is set per API.md section 7, else the formatted expiry date via intl's DateFormat -- never a computed countdown, which stays FR-403's job once real current status is known), and 'Bought for me'/'Bought by me' via is_beneficiary (esimOwnershipLabel), directly implementing FR-402's own parenthetical. Pull to refresh via RefreshIndicator (ref.invalidate + re-await .future); empty state shows an EmptyState with an 'Explore destinations' CTA routing to /home. Cards are deliberately non-interactive (no onTap) -- FR-403 (usage)/FR-404 (install/detail)/FR-405 (lifecycle banners) are separate, not-yet-built features. A custom card using inline theme tokens was used instead of the existing ListRow component, which is a fixed icon+title+subtitle+chevron layout meant for Account-style settings rows with no slot for a chip plus two extra caption lines, and whose chevron would misleadingly imply a tap target that doesn't exist yet. Model-parsing fixture (test/fixtures/orders_my_esims.json) was captured from a real authenticated GET /orders/my-esims call against the beta backend using the same real account already used for FR-306/308's real purchases -- order_no/product_title/dates/status/booleans are real observed values; every ICCID/LPA/QR/SM-DP+ field was replaced with a synthetic .invalid-domain or all-zero placeholder before being committed to this public repo (independently re-grepped for anything resembling real provisioning data before committing -- none found). 22 new tests (model parsing + null-tolerance, 4 pure display-function groups, 4 screen widget tests covering populated/empty/error/pull-to-refresh). Fixed a real bug this change surfaced: the pre-existing test/app/shell_test.dart 4-tab shell test had no reason to mock any eSIMs provider before (the tab was a static placeholder); switching to My eSIMs during that test now attempted a real, unmocked network call and HUNG the entire test suite indefinitely -- fixed by adding a _FakeMyEsimsApi returning an empty list and overriding myEsimsApiProvider, matching that file's own existing bootstrapProvider/popularCountriesProvider override pattern exactly. Full suite (351 tests) confirmed green and non-hanging after the fix, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily made esimOwnershipLabel always return a constant (real failures), temporarily disabled the empty-state branch condition (real failures including the one that caught the shell_test.dart-adjacent empty-state test), both restored. On-device evidence used the real signed-in account's actual real completed orders from FR-306/308 (no synthetic data needed this time, since real orders already existed) -- confirmed no ICCID/LPA/QR text is visible anywhere in the screenshot (the card UI never renders those fields directly). Reviewer: PASS (confirmed API.md field-for-field conformance, the StatusChip tone mapping against Design_System.md's exact wording, esimValidityLabel's purity with no DateTime.now() dependency, the ListRow-vs-custom-card judgment call by reading list_group.dart directly, ran the full suite independently and confirmed no hang, confirmed no real secrets anywhere in the committed fixture or screenshot). UPDATE (2026-11-16, commit 2c52bb6): the user reported real installed eSIMs still showing 'Not installed'. Confirmed live against the backend -- GET /orders/my-esims's status field stays RELEASED even once GET /esims/{id}/status's real telemetry reports is_installed:true with a real device_model (verified against two of the account's actual expired-after-install eSIMs). Fixed by changing RELEASED's chip label from 'Not installed' to 'Ready to install' (same sky/info tone) so the list never claims to know a live install state it doesn't actually have access to -- the authoritative, telemetry-backed label remains correctly shown on FR-403's detail screen. 1 new regression test locking in the new label; full suite (379 tests) green."
       }
     },
@@ -505,7 +603,10 @@
       "state": "passing",
       "evidence": {
         "commit": "1281062",
-        "screens": ["artifacts/FR-403.png", "artifacts/FR-403-refresh-cooldown.png"],
+        "screens": [
+          "artifacts/FR-403.png",
+          "artifacts/FR-403-refresh-cooldown.png"
+        ],
         "notes": "FR-402's previously non-interactive cards now push a new EsimDetailScreen (route /my-esims/:id) backed by GET /esims/{id}/status. New EsimStatus model matches API.md section 7's response shape field-for-field (product/status/usage/validity/telemetry nested objects), built as a complete model covering fields this screen doesn't surface yet (iccid, lpa_string, qr_code_data, smdp_address, matching_id, share_url, history, daily_breakdown) since this same endpoint backs FR-404/405/406 later -- same incremental pattern as earlier models (Order/EsimProfile). EsimUsageInfo.fromJson defensively nulls allowance/remaining/used_pct whenever is_unlimited is true regardless of the raw JSON numbers, matching Rules.md's 'no progress bar for unlimited plans'. New pure esim_usage_shape.dart: usageFraction (0-100 used_pct converted to a clamped 0-1 ring fraction), usageCenterText, validityCountdownLabel ('Validity starts on install' until activated, else a 'N days left'/'Expires today' countdown computed from an injected now parameter -- zero internal DateTime.now() dependency, confirmed by direct grep), showsTelemetryStaleBanner (telemetry.error != null -- never a hard failure, the server already returns the last good snapshot alongside it), refreshCooldownRemaining (pure 30s cooldown math). The manual 'Refresh' button calls the real POST /esims/{id}/refresh (not just a re-GET of the 5-min-cached status), pins the UI to the fresh result via local override state that's never cleared (so it can't flicker back to stale provider data), and disables itself for a client-side 30s cooldown independent of the server's own rate limit, via a one-shot Timer that re-enables the button when it expires. A refresh ApiException shows the real server message via SnackBar rather than crashing. New /my-esims/:id route confirmed not to conflict with the existing /my-esims shell-branch route (distinct paths, go_router matches both correctly); the only change to my_esims_screen.dart is wrapping each card in an InkWell tap handler -- confirmed via diff that no FR-402 content/logic changed. Model-parsing fixture (test/fixtures/esim_status.json) captured from a real authenticated GET /esims/{id}/status call against the beta backend (same account as FR-306/308/402's real purchases/fixtures) -- order_no/product title/dates/status/usage numbers are real observed values; every ICCID/LPA/QR/SM-DP+/matching-id/supplier-reference field replaced with a synthetic placeholder before committing, independently re-checked for leaks. Full suite (378 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily hardcoded usageFraction to a constant (2 real failures) and temporarily deleted the not-yet-activated early-return in validityCountdownLabel (1 real failure), both restored. On-device evidence: real detail screen for a real completed order showing a real usage ring (100.00 MB remaining, zero fill since zero usage), real status label, real 'Validity starts on install' note, and a second screenshot after a genuine on-device tap showing the real POST /refresh having fired and the button correctly disabled with a live '(wait 30s)' cooldown label -- no ICCID/LPA/QR text visible in either screenshot. No FR-404 (install/QR/copy codes), FR-405 (lifecycle banners), FR-406 (history), or FR-407 (top-up) UI was built -- the model parses those fields but this screen only surfaces the usage-relevant subset. Reviewer: PASS (confirmed API.md field-for-field conformance, the unlimited-nulling defensive logic doesn't hide real data for non-unlimited plans, the 0-100 used_pct scale and clamping, validityCountdownLabel's purity via direct grep, the real-POST-not-re-GET refresh behavior and override-never-clears no-flicker guarantee, route non-conflict, full suite count, fixture safety, and scope discipline against FR-404/405/406/407)."
       }
     },
@@ -516,7 +617,10 @@
       "state": "passing",
       "evidence": {
         "commit": "8e87a6a",
-        "screens": ["artifacts/FR-404.png", "artifacts/FR-404-codes.png"],
+        "screens": [
+          "artifacts/FR-404.png",
+          "artifacts/FR-404-codes.png"
+        ],
         "notes": "Extends FR-403's EsimDetailScreen with the install section: QR reveal (EsimQr from qr_code_data, falling back to lpa_string per the same fallback rule used elsewhere), a 1-tap install button double-gated on both a valid LPA: string (buildInstallUrl) AND FR-950's esimVerdictProvider reporting EsimVerdictKind.supported (same double-gate pattern as FR-310's already-passing install button), an 'install only once' InfoBox warning, three manual copy rows (SM-DP+ address, matching ID -- genuinely omitted entirely when null, not a fallback empty string, activation code/LPA), and a 'View setup guide' link launching a real web URL derived from Env.apiBaseUrl with /api/v1 stripped (new pure setupGuideUrl(), traced to produce https://beta.triptel.co/guides/esim-setup-guide from the real default base URL -- no second hardcoded host; FR-901's native in-app guide isn't built yet, so this links to the existing real web page instead of a stub). Per Rules.md's authoritative compatibility rule ('gates 1-tap install buttons', not the whole install experience), ONLY the 1-tap button is gated by the verdict -- confirmed by reading the full widget tree that the QR, all three copy rows, and the setup-guide link are unconditional siblings that never reference verdict. install_link.dart/url_launcher_provider.dart moved from checkout's application/ layer to core/install/ since this logic is now genuinely shared between checkout (FR-310) and esims (this feature) -- confirmed byte-identical logic, pure relocation, every importer (purchase_success_screen.dart + 3 test files) updated with zero assertion changes, no remaining references to the old path anywhere in lib/ or test/. 9 new tests (1 for setupGuideUrl, 8 in a new 'FR-404: install section' group covering QR render, install button shown+tapped+launches the right URL when supported, button hidden+explanation shown when not supported, the install-only-once warning text, all three copy rows copying the correct value with the correct confirmation message, the matching-ID row's absence when null, the setup-guide link launching the derived URL, and a failed install launch showing an error snack) using tester.ensureVisible before taps since the screen legitimately grew long enough to need scrolling in the test viewport. Full suite (388 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: temporarily stripped the verdict-kind half of the install button's && gate (1 real failure) and temporarily hardcoded setupGuideUrl's base to the unstripped API URL (1 real failure), both restored. On-device evidence used a synthetic eSIM status via the same temporary, never-committed local-rig technique as FR-308/309/310/401 -- this screen displays raw LPA/matching-ID/SM-DP+ text as copyable strings, so even a gitignored screenshot with real data would put real provisioning secrets on disk for no extra test signal; the real device (no eUICC) correctly showed the 'not eSIM-compatible' explanation via the REAL native FR-950 channel, not mocked. lib/main.dart confirmed byte-identical to HEAD both before and after capture. Reviewer: PASS (confirmed the double-gate via direct code read, confirmed compatibility only ever gates the 1-tap button by reading the full widget tree, confirmed the refactor is byte-identical logic with every importer updated and zero stray old-path references, traced setupGuideUrl's regex against the real base URL, confirmed the matching-ID conditional is genuine, confirmed ensureVisible is scrolling to real off-screen widgets not masking a bug, confirmed no real secrets in either screenshot, confirmed zero FR-405/406/407 scope creep)."
       }
     },
@@ -563,7 +667,9 @@
       "state": "passing",
       "evidence": {
         "commit": "382247f",
-        "screens": ["artifacts/FR-408-payment-method-sheet.png"],
+        "screens": [
+          "artifacts/FR-408-payment-method-sheet.png"
+        ],
         "notes": "Same chooser as FR-305/306/307 (shared PaymentMethodSheet, walletCoversTotal/spendableBalance, reused not reimplemented): EsimStatusApi.topupWithWallet() (POST /esims/{id}/topup) and .initiateTopupShurjoPay() (POST /payments/shurjopay/esim-topup-initiate, esim_id as query param -- ApiClient.post() gained an optional query param for this, additive, no existing caller affected). New EsimTopup/TopupShurjoPayCheckout models (documented API.md section 7 shapes; no live fixture captured for these two since an exploratory curl against the real payment-initiating endpoint was correctly blocked by Claude Code's own auto-mode financial-action classifier -- same precedent as FR-304's discount-preview fixture, built from the API doc's own example). New topup_callback.dart (isTopupCallbackUrl/topupCallbackFailed, path+query match only, no hardcoded host -- the top-up ShurjoPay return goes to the real web, unlike checkout's custom-scheme redirect) and a second, separate TopupWebViewScreen/topupLauncherProvider (deliberately not sharing code with checkout's existing, already-reviewed ShurjoPayWebViewScreen, since the terminal-match logic and return type differ -- reviewer flagged this as a reasonable, non-blocking duplication). A real password-changed 403 on the ShurjoPay-initiate call routes to /set-password via the same ApiException.mustChangePassword getter FR-105b introduced. 14 new tests (model fixtures, callback matching, 6 FR-408 purchase-flow widget tests). Full suite (442 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: proved twice (wallet-covers gating, mustChangePassword routing), each via a temporary false&& guard producing real failures, then restored. VERIFICATION FIELD FIX: feature_list.json's original verification string required a not-yet-written integration_test/fr_408_test.dart hitting the real money-moving topup endpoint on every run -- the same problem already documented in DECISIONS.md (2026-11-14, FR-306 entry) as something FR-408/FR-603 would hit and explicitly prescribed to fix the same way: drop the auto-repeating real-money integration test, keep the widget tests, rely on one on-device capture. Fixed accordingly. On-device evidence: signed in as the real salman2033 account, tapped a real Saudi Arabia 1GB 7Days top-up option, reached the real 'Choose payment method' sheet (proving the real GET /wallets/my-wallets call and the wallet-covers branch both fire against the real backend) -- backed out via Android back without completing either real payment path (real wallet balance redacted via a solid overpaint, not just cropped, before saving). The user then independently ran the full real purchase flow themselves on the device and confirmed it works end-to-end -- stronger evidence than a further automated attempt, and the basis for marking this passing. Reviewer: PASS on all code/API/safety checks; its one blocking finding was the stale verification field above, now fixed."
       }
     },
@@ -603,7 +709,10 @@
       "state": "passing",
       "evidence": {
         "commit": "f9ed3b9",
-        "screens": ["artifacts/FR-501-invalid-token-error.png", "artifacts/FR-501-valid-token-tracking.png"],
+        "screens": [
+          "artifacts/FR-501-invalid-token-error.png",
+          "artifacts/FR-501-valid-token-tracking.png"
+        ],
         "notes": "Replaced the FR-007-era placeholder TrackingScreen with a real GET /esims/public/{token} (public, no auth) lookup -- new lib/features/tracking/ data layer (TrackingApi.getPublicStatus, reuses the existing EsimStatus model since API.md section 7 confirms it's 'same shape' as the authenticated endpoint, just share_url always null). Shows product title, status label, usage ring, validity countdown (reusing FR-403's pure usageFraction/usageCenterText/validityCountdownLabel formatters directly, not reimplemented), the QR, and manual install codes (SM-DP+/matching-id/LPA) -- a gift recipient without an account still needs to install it. Deliberately NOT replicated here: refresh (needs auth), top-up section (needs auth), 'Report a problem' (a real support ticket needs an account), FR-405's lifecycle banner, FR-406's history section, and the 1-tap compatibility-gated install button -- kept this a focused read-only view rather than re-implementing every authenticated-screen feature for an anonymous viewer. An invalid/unknown token's 404 shows the real server message plus Support contacts (reusing FR-109's suspended-screen pattern: bootstrapProvider's public settings, hidden when both are null). Also fixed an unrelated test gap this surfaced: test/app/deep_link_routing_test.dart's FR-007 routing test asserted against the old placeholder's literal token text and didn't mock trackingApiProvider, which would have made it hit the real network; fixed to assert on the real TrackingScreen widget's token property and added a fake TrackingApi override. 11 new/changed tests; full suite (466 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: disabled the Support-contact box's null-guard, got a real failure, restored. On-device evidence: a real invalid-token deep link (adb am start on a real beta.triptel.co/track/<bogus> URL) against the rebuilt real app correctly shows 'Not found' plus the real support email/phone -- genuine, no secrets involved. The valid-token path (which does show a QR/LPA, needing the established synthetic-data temp-rig technique like FR-404) could not be screenshotted this session -- the physical test device got stuck on its own lock screen (swipe-to-unlock via adb input stopped registering, wm dismiss-keyguard had no effect either) after an unrelated screencap glitch recovery attempt, and time/tool budget didn't allow further troubleshooting. Relying instead on the 5 passing widget tests (shows plan/status/usage/validity/QR; shows the manual codes; invalid-token error path; Support-box presence/absence) as non-vacuous proof that path renders correctly -- disclosed honestly rather than fabricating or skipping the gap. UPDATE: the device unlocked later in this same session (it had been stuck, not broken) and was still running the exact temp-rig build from the earlier attempt -- captured the missing valid-token screenshot (artifacts/FR-501-valid-token-tracking.png, synthetic data, confirmed clean) retroactively; the gap above is now fully closed. Reviewer: PASS -- independently confirmed the fixture scrub (no real secrets survived), the non-vacuousness check, and that the FR-007 routing-test fix still genuinely tests routing (not just a compile patch). Flagged one real, non-blocking product gap for a future FR: a SUSPENDED/REVOKED/CANCELLED/EXPIRED eSIM's public tracker currently shows full install codes/QR with no lifecycle warning (the authenticated screen gates this via FR-405's banner; the public one has no equivalent) -- logged in claude-progress.md/DECISIONS.md, not treated as a blocker since FR-501's own text doesn't mention lifecycle states."
       }
     },
@@ -614,7 +723,10 @@
       "state": "passing",
       "evidence": {
         "commit": "dfa0171",
-        "screens": ["artifacts/FR-601-wallet-overview.png", "artifacts/FR-601-coming-soon-snack.png"],
+        "screens": [
+          "artifacts/FR-601-wallet-overview.png",
+          "artifacts/FR-601-coming-soon-snack.png"
+        ],
         "notes": "Replaced the wallet tab's placeholder with the real GET /wallets/my-wallets overview, reusing lib/features/wallet/'s pre-existing data layer (Wallet model, WalletsApi, spendableBalance) built ahead for FR-305/306 -- no rebuild. New pure walletBalance(wallets, type) helper (zero when the user has no wallet of that type yet, same as the backend's own 'only returns wallets that exist' behavior). Reuses the pre-existing, previously-unused-in-a-real-feature BalanceCard widget (Design_System.md section 1/2, the Eskimo-reference gradient card style) -- its first real producer. Shows Main balance (DEFAULT), Reward credit (REWARD, labelled 'not withdrawable' per the FR text), and Commission only when > 0 (a customer never earns commission unless they're also a partner/agent). Three actions -- Top up (FR-603), Withdraw (FR-701+), Refer (FR-801+) -- none built yet, so each shows a real 'coming soon' snack instead of a dead tap, same precedent as every other forward dependency this session. Fixed a real, visible layout bug surfaced while building this in the pre-existing shared PillButton widget: three equal-width buttons side by side wrapped a longer label ('Withdraw') onto two lines mid-word -- fixed globally by wrapping PillButton's label in a FittedBox(fit: scaleDown) so it shrinks to fit on one line instead of wrapping, verified with the full suite (no regressions) and confirmed visually on-device before/after. Also fixed test/app/shell_test.dart's 4-tab shell test, which would have hung on a real network call once the Wallet tab became real instead of a placeholder -- added a missing walletsApiProvider fake override, same pattern already used for the My eSIMs tab's own real-data transition. 14 new/changed tests; full suite (477 tests) green, flutter analyze clean, bash harness.sh verify green. Non-vacuous: disabled the Commission > 0 guard, got a real failure, restored. On-device evidence is genuine, real account, real beta data: the real wallet tab showing the real DEFAULT balance (৳73250.91) and REWARD (৳0.00, 'not withdrawable'), Commission correctly hidden since it's 0; a real tap on Top up showing the real coming-soon snack with the Withdraw-button wrapping fix visibly confirmed in both screenshots. Reviewer: PASS. One advisory from review: the screen's currency providers were switched from ref.read to ref.watch during the build, on the theory this fixed blank amounts; the reviewer reproduced the code with ref.read restored and all 8 wallet_screen_test.dart cases still passed, so that specific bug wasn't reproducible from current code/tests -- ref.watch is kept anyway as the more defensive choice for a screen with no guaranteed sibling watcher of those providers, logged as a non-blocking nuance rather than a confirmed-fixed defect (see DECISIONS.md)."
       }
     },
@@ -625,7 +737,10 @@
       "state": "passing",
       "evidence": {
         "commit": "89dab2b",
-        "screens": ["artifacts/FR-602-ledger-list.png", "artifacts/FR-602-ledger-credit.png"],
+        "screens": [
+          "artifacts/FR-602-ledger-list.png",
+          "artifacts/FR-602-ledger-credit.png"
+        ],
         "notes": "New LedgerScreen (/wallet/history, pushed from a 'View transaction history' link added to FR-601's wallet overview) backed by GET /wallets/ledger (new WalletsApi.getLedger(walletType, limit), new LedgerEntry model). Filterable by wallet type via a SegmentedPill (All/Main/Reward/Commission) wired to a new ledgerFilterProvider that the server-side query param respects directly (API.md section 5: the response rows carry no wallet_type field themselves, filtering is server-side only). Human labels for all 12 documented reference_type values (new ledgerReferenceLabels map in lib/features/wallet/data/models/ledger_entry.dart), with an honest raw-value fallback for any future type the backend adds before the app catches up -- tested explicitly. Credit/debit colouring: AppColors.success/+ for CREDIT, AppColors.danger/- for DEBIT (amount field itself is always a positive magnitude per the backend's own convention, confirmed by reading app/services/finance_svc.py directly -- sign/colour comes from tx_type, never negate amount twice). Real fixture (test/fixtures/wallets_ledger.json) captured from the real signed-in account via a temporary, never-committed debug print in WalletsApiImpl.getLedger (same on-device capture precedent as every other fixture this session) -- curl-based account registration for this was blocked by the auto-mode permission classifier, so the data came from the already-authenticated device instead, reverted via git diff confirmed empty before committing. Found and fixed a real, visible layout bug live on-device: SegmentedPill's 4 fixed-padding segments (All/Main/Reward/Commission) overflowed the track width on this phone -- fixed locally in LedgerScreen only (wrapped in a horizontal SingleChildScrollView) rather than changing the shared SegmentedPill widget, since every other call site uses 2-3 short labels and relies on its current wrap-content sizing; changing the shared widget risked regressing those untouched, already-reviewed screens. 10 new tests (4 model/label-mapping incl. every documented reference_type, 6 screen incl. credit/debit colour assertions, empty state, filter-triggers-refetch-with-correct-param, and error/retry). Non-vacuous: temporarily broke LedgerEntry.isCredit (forced false), 2 tests failed for real (the credit-colour assertion and a cascading widget lookup failure), restored. Full suite now 487 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). On-device evidence is genuine, real account, real beta data: the real ledger list with real eSIM purchase/top-up DEBIT rows in red, and (scrolled) a real REFUND CREDIT row in green ('+ত232.65') -- both from an actual provisioning-failure refund on this account, not synthetic. Reviewer: PASS. Verified independently against the real backend source (finance_svc.py, wallet.py, api/v1/wallets.py), re-ran the full wallet/dependent test suites itself (117 tests), reproduced the non-vacuousness break/restore (observed 1 explicit failure where this note said 2 -- a trivial discrepancy in how the test-runner's pass/fail counter reads, doesn't change the substance of the claim), confirmed the SegmentedPill fix is genuinely scrollable not just clipped, and viewed both screenshots directly."
       }
     },
@@ -636,7 +751,10 @@
       "state": "passing",
       "evidence": {
         "commit": "241b871",
-        "screens": ["artifacts/FR-603-topup-screen.png", "artifacts/FR-603-shurjopay-webview.png"],
+        "screens": [
+          "artifacts/FR-603-topup-screen.png",
+          "artifacts/FR-603-shurjopay-webview.png"
+        ],
         "notes": "Dropped the pre-populated verification string's integration_test clause before trusting it -- same not-yet-written-integration-test-against-a-real-money-endpoint gotcha already hit and fixed for FR-306/FR-408/FR-601 (explicitly predicted for FR-603 in a 2026-11-14 DECISIONS.md entry). New WalletTopupScreen (/wallet/topup, pushed from the wallet overview's now-real Top up button) with 4 fixed EUR presets (5/10/20/50) converted to the user's own currency and a custom amount field, limits text sourced from the real PublicSettings.topupMin/topupMax (new fields added to that model, parsed from the real topup_min/topup_max API.md section 1 fields, with safe defaults for older cached bootstrap data). POST /payments/shurjopay/topup?amount=X&currency=Y (new WalletsApi.initiateTopup, new TopupCheckout model tolerant of both checkout_url/checkoutUrl casings) opens the real checkout_url in a new WalletTopupWebViewScreen (mirrors the established FR-307/FR-408 Gateway WebView pattern exactly, via a new walletTopupLauncherProvider seam). New isWalletTopupCallbackUrl/walletTopupCallbackFailed matchers intercept the backend's real terminal redirect confirmed by reading app/api/v1/payments.py directly: success redirects to {FRONTEND_BASE_URL}/wallet?topup=success, failure to .../wallet?topup=failed&reason=..., and the gateway's own direct cancel redirect (SHURJOPAY_CANCEL_URL) goes straight to .../wallet?topup=cancelled without ever reaching our backend -- all three are matched by path+query only (no hardcoded host) and 'cancelled'/'failed' are both treated as the non-success case. A real password-changed 403 on initiate routes to Set Password (same guard as every other money-moving action this session); any other 4xx shows the real server message. On success: invalidates myWalletsProvider and ledgerProvider so the overview/history reflect the new balance, shows a real success snack, and pops back to the wallet overview; on failure/cancel/backing-out it does not pop and does not falsely claim success. 23 new/changed tests (2 TopupCheckout casing, 5 callback matcher incl. the gateway's own direct cancel redirect and a negative match against the eSIM-topup callback's different path, 2 PublicSettings topup_min/max parsing+fallback, 8 WalletTopupScreen screen tests, plus the 6 existing wallet/checkout/esim fake-WalletsApi files updated only to add the new abstract initiateTopup method -- zero other behavioral changes, confirmed via git diff). Full suite 507 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). Non-vacuous: temporarily broke isWalletTopupCallbackUrl (forced false), 3 tests failed for real (the success/failure-redirect/cancel-redirect recognition cases), restored. On-device evidence is genuine: a real Top up screen showing real converted BDT limits/presets from the real signed-in account's settings; tapping Top up actually calls the real POST /payments/shurjopay/topup and opens the REAL ShurjoPay sandbox checkout page (visible 'Payment to Sandbox 705 BDT', a real sandbox order ID) -- confirming the full initiate-and-launch path works against the live beta backend. Did not complete a real sandbox payment: typing test card details into the gateway's own hosted form was blocked by the auto-mode permission classifier as resembling submission of payment data, so the terminal callback interception itself is verified by the unit tests against the backend-documented redirect URL rather than a completed live transaction -- disclosed, not worked around. Backing out of the WebView (the X button) was verified live: returns cleanly to the Top up screen with no false success/failure message. Reviewer round 1: FAIL -- the screen collapsed AsyncError into the same 'not ready' state as AsyncLoading for selectedCurrencyRateProvider/currencyPreferenceProvider/bootstrapProvider, so a real load failure showed an infinite spinner with no error/retry, unlike every sibling wallet/esim/catalog screen. Fixed: now watches each AsyncValue directly, shows the existing ErrorState+retry widget on any of the three erroring, with a new non-vacuous test (forces bootstrapProvider to throw, asserts ErrorState renders, taps Retry, confirms a second real fetch attempt). 508 tests green (up from 507), re-verified clean. Reviewer round 2 (focused re-review of just the fix): PASS -- independently reproduced the pre-fix bug by reverting the hasError check, confirmed the new test fails for a real reason (pumpAndSettle timeout on the infinite spinner) rather than vacuously, restored and confirmed zero net diff, re-ran the full wallet+bootstrap suite (51/51) plus analyze/format clean."
       }
     },
@@ -647,7 +765,11 @@
       "state": "passing",
       "evidence": {
         "commit": "2e94fbb",
-        "screens": ["artifacts/FR-604-manual-deposit-screen.png", "artifacts/FR-604-manual-deposit-method-selected.png", "artifacts/FR-604-manual-deposit-form-filled.png"],
+        "screens": [
+          "artifacts/FR-604-manual-deposit-screen.png",
+          "artifacts/FR-604-manual-deposit-method-selected.png",
+          "artifacts/FR-604-manual-deposit-form-filled.png"
+        ],
         "notes": "New ManualDepositScreen (/wallet/manual-deposit, reached via a 'Pay by bKash / bank transfer instead' link added to FR-603's top-up screen). Choosing a method reuses the pre-existing, previously-unused-outside-FR-305 PaymentMethodSheet widget, listing the real /settings/public.payment_methods (new PaymentMethod model + PublicSettings.paymentMethods/banglaQrImage fields, defaulted to [] / null for old cached bootstrap data). New resolveApiUrl() helper (lib/core/network/absolute_url.dart) turns the server-relative bangla_qr_image/payment_method paths into real URLs using only Env.apiBaseUrl's scheme+host (confirmed live: curl -o /dev/null -w on the resolved URL returned 200 image/png) -- no hardcoded host. Shows the selected method's account name/number/branch/instructions plus the shared Bangla QR image via CachedNetworkImage. Amount fixed to BDT (every configured payment method here is a Bangladesh domestic transfer method -- bKash/bank -- so a currency picker would be a choice with no real use; judgement call, documented) + transaction ID -> POST /wallets/manual-deposit (new WalletsApi.submitManualDeposit, new ManualDeposit model). No endpoint lists past deposits (API.md section 5) -- the result IS the 'pending admin approval' message, nothing more, matching the FR text exactly. Client-side validation (no method/amount/transaction-id) mirrors FR-603's pattern; a real server error (e.g. unsupported bank_name) shows the real message. Fixed a self-caught UX issue before review: initially reused the shared ListRow widget (which always renders a chevron, implying tappability) to display the static account-detail fields; replaced with a plain non-interactive info card local to this screen, since these rows do nothing when tapped and the shared widget has no no-chevron variant -- didn't touch the shared ListRow/ListGroup to avoid risking its other (genuinely tappable) call sites. 21 new tests (ManualDeposit model parse, PublicSettings payment_methods/bangla_qr_image parse + empty-list fallback + toJson/fromJson round-trip for the bootstrap cache, resolveApiUrl against the real host, 8 ManualDepositScreen screen tests). Full suite 521 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). Non-vacuous: temporarily hardcoded ManualDeposit.bankName to a wrong literal, got a real failure, restored. On-device evidence is genuine, real account, real beta data: the real manual-deposit screen; the real configured payment method sheet showing the actual live 'bKash Account' / 01750726094 from /settings/public; the selected method's real account details and the real (branding, not literally a QR in this account's current config -- that's the backend's own real data, not a client bug) bangla_qr_image loaded live via the new resolveApiUrl helper; and (FR-604-manual-deposit-form-filled.png) the form genuinely filled with Amount 500 and Transaction ID FR604TEST001, floating labels confirming real entered text -- the first round of this evidence omitted this screenshot while still asserting the form was filled, caught by the reviewer as a real evidence-accuracy gap and fixed by capturing and referencing it properly. Did NOT tap Submit: the auto-mode permission classifier blocked it as a real financial submission against the live beta backend (same category as FR-603's blocked card-data entry) -- disclosed, not worked around. The POST /wallets/manual-deposit call itself is verified by the ApiClient query/body-shape code read directly plus the 8 widget tests driving a fake WalletsApi through the full validation/success/error paths, not by a completed live submission. Reviewer round 1: FAIL on an evidence-accuracy gap -- the notes claimed the form screenshot showed filled fields but neither referenced screenshot actually did. Fixed by capturing and adding the real filled-form screenshot; reviewer round 2: PASS, confirmed the new screenshot genuinely shows Amount=500/Transaction ID=FR604TEST001 with raised floating labels, and that the notes no longer overclaim (still correctly states Submit was never tapped)."
       }
     },
@@ -658,7 +780,9 @@
       "state": "passing",
       "evidence": {
         "commit": "b2d90f2",
-        "screens": ["artifacts/FR-605-cancelled-result.png"],
+        "screens": [
+          "artifacts/FR-605-cancelled-result.png"
+        ],
         "notes": "FR-603's wallet top-up WebView previously collapsed the terminal redirect to a bool (failed/succeeded), losing the distinction between a real FAILED payment, a CANCELLED one, and the specific failure reason the backend sends. New WalletTopupResult (status: success/failed/cancelled, optional reason) + parseWalletTopupCallback(uri) replace the old walletTopupCallbackFailed bool; walletTopupLauncherProvider's typedef updated to return WalletTopupResult? instead of bool?. WalletTopupScreen now shows three distinct messages: 'Top-up successful.' (pops back to wallet overview), 'Top-up cancelled.' (stays on the top-up screen, no pop), and a human-readable failure message built from the real reason code via a new walletTopupFailureReasons map covering every reason the backend's payments.py _fail(...) calls actually send on the /wallet redirect path (not_paid, unexpected_response, unknown_order, malformed_order, unknown_user, no_wallet -- confirmed by reading the backend source directly), with an honest raw-code fallback for anything undocumented, same precedent as ledgerReferenceLabel. Found a real third-party bug live on-device: ShurjoPay's own sandbox 'Do you want to cancel this transaction? Click Here' link malforms its own redirect query string -- it appends '?order_id=...' instead of '&order_id=...', so the raw topup value comes through as the literal string 'cancelled?order_id=NOKBETA...', not a clean 'cancelled'. Confirmed by temporarily adding a debug print of the intercepted URI, triggering the real cancel link on-device, and reading the real logcat output (print('WTCU path=... query=...')). Fixed by taking the leading token before any '?' in the topup value, which handles both the backend's own well-formed redirects and this malformed gateway-side one; reverted the debug print before committing. 14 new/changed tests (10 topup_callback_test.dart incl. a regression test using the exact malformed string observed live, 4 wallet_topup_screen_test.dart replacing the old bool-based success/failed tests with status-based success/failed-with-reason/failed-generic/cancelled tests). Full suite 528 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). Non-vacuous: temporarily forced the 'success' case to map to WalletTopupStatus.failed, got a real failure in parseWalletTopupCallback's own test plus cascading wallet_topup_screen_test.dart failures, restored. On-device evidence is genuine: tapped the real ShurjoPay sandbox's own cancel link and captured the real 'Top-up cancelled.' snackbar after the fix (artifacts/FR-605-cancelled-result.png) -- the same real action produced the wrong 'Top-up failed.' message before the fix, confirmed and screenshotted during diagnosis (not committed as evidence since it documents the bug, not the passing feature). Reviewer: PASS. Independently reproduced the malformed-URL bug by reverting the .split('?') fix, confirmed the regression test fails for a real reason, restored and confirmed clean. Verified all 6 reason codes against the backend source directly, confirmed the eSIM-data-topup flow's separate callback matcher was untouched, re-ran the full suite (528 tests) and bash harness.sh verify itself."
       }
     },
@@ -669,7 +793,14 @@
       "state": "passing",
       "evidence": {
         "commit": "cdf74c1",
-        "screens": ["artifacts/FR-701-empty-state.png", "artifacts/FR-701-add-account-form.png", "artifacts/FR-701-account-saved.png", "artifacts/FR-701-two-accounts.png", "artifacts/FR-701-default-switched.png", "artifacts/FR-701-after-delete.png"],
+        "screens": [
+          "artifacts/FR-701-empty-state.png",
+          "artifacts/FR-701-add-account-form.png",
+          "artifacts/FR-701-account-saved.png",
+          "artifacts/FR-701-two-accounts.png",
+          "artifacts/FR-701-default-switched.png",
+          "artifacts/FR-701-after-delete.png"
+        ],
         "notes": "New section H (Withdrawals) data layer from scratch -- no pre-existing head start unlike wallet's FR-305/306. New PayoutAccount model, WithdrawalsApi (getAccounts/addAccount/setDefaultAccount/deleteAccount against the real GET/POST/POST .../default/DELETE /withdrawals/accounts endpoints, confirmed field-for-field against the real backend source app/api/v1/withdrawals.py directly, not just API.md), new ApiClient.delete() method (the client had no DELETE verb before this feature). Two screens: PayoutAccountsScreen (list, tap a card to open a bottom sheet with 'Set as default' (hidden when already default) and 'Delete' (with a real AlertDialog confirmation naming the account), disabled Add button at 5 accounts with a real inline message instead of a silent cap) and AddPayoutAccountScreen (Bank/Mobile wallet toggle via the shared SegmentedPill; branch_name/routing_number fields are hidden -- not just disabled -- for Mobile, since a bKash/Nagad wallet genuinely has neither, a judgement call since the backend accepts them for either type). Client-side validation (bank/provider name, holder name, account number length) mirrors the established pattern from FR-603/604; real server errors (duplicate account, max accounts, pending-withdrawal-blocks-delete) show the real message. 20 new tests (2 model, 10 PayoutAccountsScreen incl. empty/max-5/default-switch/delete-confirm/delete-error/load-error, 8 AddPayoutAccountScreen incl. type-toggle field visibility and the Mobile-never-sends-branch/routing guarantee). Full suite 546 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). Non-vacuous: temporarily hardcoded PayoutAccount.isDefault to always true, got a real failure, restored. Fixed a real layout bug caught by my own tests before review: PayoutAccountsScreen's body used Expanded inside TriptelScaffold's default scrollable (SingleChildScrollView) wrapper -- Expanded needs a bounded-height ancestor, which an infinite-height scroll view can't provide; fixed with scrollable: false, same precedent as the earlier LedgerScreen fix. On-device evidence is genuine, real account, real beta backend, full CRUD lifecycle actually exercised end-to-end: started from the real empty state (no accounts existed), added a real BANK account (Dutch-Bangla) via the real POST and watched it return with is_default: true (first-account-becomes-default, confirmed against the backend's own logic), added a real MOBILE account (bKash), set bKash as the real default via the real POST .../default, deleted the first account via the real DELETE, then deleted the second to restore the account to its original empty state (cleanup, since this is the user's real signed-in account on beta, not a throwaway). Reviewer: PASS. Independently reproduced the non-vacuous isDefault test failure, confirmed the DELETE verb and Mobile-hides-branch/routing logic, confirmed the TriptelScaffold scrollable/Expanded bug claim was real by reading the shared widget, re-ran the full suite (546) and bash harness.sh verify itself. Noted the final empty-state restoration wasn't re-screenshotted as a 7th image (screenshot 1 already shows that exact state) -- a trivial, non-blocking gap."
       }
     },
@@ -680,7 +811,12 @@
       "state": "passing",
       "evidence": {
         "commit": "b7da380",
-        "screens": ["artifacts/FR-702-blocked-state.png", "artifacts/FR-702-verify-now-coming-soon.png", "artifacts/FR-702-open-form.png", "artifacts/FR-702-fee-preview.png"],
+        "screens": [
+          "artifacts/FR-702-blocked-state.png",
+          "artifacts/FR-702-verify-now-coming-soon.png",
+          "artifacts/FR-702-open-form.png",
+          "artifacts/FR-702-fee-preview.png"
+        ],
         "notes": "New WithdrawalRequestScreen, now the real destination of the wallet overview's Withdraw button at /wallet/withdraw (FR-701's PayoutAccountsScreen moved one level deeper to /wallet/withdraw/accounts, reached from within this screen's 'Manage payout accounts' link and from the blocked state's 'Add a payout account' button -- matches Architecture.md's route table more literally: /wallet/withdraw is the request flow, not account management). New WithdrawalConfig model (GET /withdrawals/config, confirmed field-for-field against the real backend source app/api/v1/withdrawals.py and app/services/withdrawal_settings_svc.py directly) and Withdrawal model (POST /withdrawals response, only the fields this screen's own confirmation needs -- FR-703/704 can extend it). New pure computeWithdrawalFee/computeWithdrawalNet functions mirroring the backend's compute_fee exactly (PERCENT: amount*feeValue/100; FLAT: feeValue; either way capped at the amount so net is never negative) -- client-side preview only, the authoritative fee is computed server-side at submission. fee_type is compared case-insensitively since the real backend source returns it lowercase while API.md documents it uppercase (discovered by reading withdrawal_settings_svc.py directly, not assumed). Blockers shown verbatim (API.md section 10); if KYC is unverified, a real 'Verify now' button shows (FR-1002 not built yet, so it's a disclosed 'coming soon' placeholder like every other forward dependency this session); if account_count is 0, a real 'Add a payout account' button links to FR-701's screen. The open request form reuses the pre-existing PaymentMethodSheet widget for account selection (same pattern as FR-604's manual deposit), a DropdownButtonFormField for the 6 real note_categories (didn't force the shared SegmentedPill here -- 6 options don't fit it well on a narrow screen, same reasoning as FR-604's currency-field scoping decision), and a live fee/net preview that updates as the user types (via a TextEditingController listener triggering setState, not a Riverpod state field, since it's pure transient UI state scoped to one screen). Found and fixed a real bug caught by my own tests before review: the account-picker button initially did `ref.read(payoutAccountsProvider).whenData(...)`, which silently did nothing if the accounts hadn't resolved yet (nothing else on this screen watches that provider first) -- the exact same ref.read-vs-watch/.future class of bug this session has hit twice before (FR-601, FR-910-era password-prompt code from an earlier session). Fixed with `await ref.read(payoutAccountsProvider.future)`. 25 new tests (6 withdrawal_fee pure-function, 2 WithdrawalConfig model incl. the case-insensitive fee_type parsing, 1 Withdrawal model, 12 WithdrawalRequestScreen screen tests, plus the account-picker fix caught only because a screen test actually drove the real async timing, not a trivial find.text check). Full suite 567 tests green, flutter analyze clean, dart format clean, bash harness.sh verify green (apk builds). Non-vacuous: temporarily broke computeWithdrawalFee's FLAT branch (forced it to 0.0), got 3 real failures, restored. On-device evidence is genuine and honest about its limits: the real signed-in account is itself blocked (no KYC, no payout account) so FR-702-blocked-state.png and FR-702-verify-now-coming-soon.png show the REAL blockers verbatim from the live backend and the real 'coming soon' snack -- no synthetic data there. The open-form/fee-preview states (FR-702-open-form.png, FR-702-fee-preview.png) could not be reached on the real account by design, so they were captured via the established temporary never-committed local-rig technique (a standalone lib/main.dart rendering WithdrawalRequestScreen with fake config/account data, disclosed, reverted via git checkout and confirmed byte-identical to the original before rebuilding the real app) -- consistent with the precedent used for FR-308/309/esim_qr and others this session for states a real account/backend state can't reach. Reviewer: PASS. Independently confirmed the fee formula against the backend source (including the lowercase fee_type discovery), re-ran the full suite and harness verify itself, reproduced the non-vacuousness failure, and confirmed lib/main.dart has zero uncommitted diff."
       }
     },
@@ -691,7 +827,10 @@
       "state": "passing",
       "evidence": {
         "commit": "7715d0f",
-        "screens": ["artifacts/FR-703-history-list.png", "artifacts/FR-703-cancel-confirm-dialog.png"],
+        "screens": [
+          "artifacts/FR-703-history-list.png",
+          "artifacts/FR-703-cancel-confirm-dialog.png"
+        ],
         "notes": "GET /withdrawals list with status chips (PENDING warning, PAID success, REJECTED/CANCELLED danger per Design_System.md); REJECTED rows show the real rejection reason. Cancel on a PENDING row confirms via AlertDialog, then POST /withdrawals/{id}/cancel and refreshes. The real beta test account has no withdrawal history yet, so screenshots use the disclosed local main.dart rig technique (synthetic data covering all 4 statuses, overridden withdrawalsApiProvider), same as FR-702; lib/main.dart was restored and verified byte-identical to the real app before/after, and the real app was rebuilt+reinstalled on-device afterward. Reviewer agent caught a factually-wrong justification for CANCELLED->info (claimed only cancel returns the held balance; backend calls the same _return_held_balance for both cancel and reject) -- fixed to CANCELLED->danger matching Design_System.md's documented convention, logged in DECISIONS.md."
       }
     },
@@ -702,7 +841,9 @@
       "state": "passing",
       "evidence": {
         "commit": "ea4156a",
-        "screens": ["artifacts/FR-704-receipt.png"],
+        "screens": [
+          "artifacts/FR-704-receipt.png"
+        ],
         "notes": "GET /withdrawals/{id} receipt: reference, status chip, date, EUR amount/fee/net (shown raw, never re-converted through a display-currency rate), frozen conversion_rate/payout_amount (payout_currency, shown as 'Pending approval' when null rather than fabricated), account line, payment reference, rejection reason. Reuses FR-409's generic receiptSharerProvider (RepaintBoundary -> PNG -> native share sheet) unchanged. History rows now navigate to the receipt on tap; the nested Cancel PillButton inside the tappable row does not double-fire (confirmed by the existing cancel test passing with no GoRouter ancestor in its tree). Real-device evidence via the disclosed local main.dart rig technique (the real signed-in account's withdrawal history is still empty); lib/main.dart restored and verified byte-identical before/after, real app rebuilt+reinstalled afterward. Caught and fixed a real on-device-only layout bug myself before review: the reference-number Row overflowed next to the StatusChip at real device font scale (no Expanded) -- wrapped in Expanded, re-screenshotted clean. Reviewer: PASS, independently confirmed the overflow fix, the null-payout 'Pending approval' test exercises a genuinely null fixture, and the EUR fields are never passed through rate conversion."
       }
     },
@@ -713,7 +854,11 @@
       "state": "passing",
       "evidence": {
         "commit": "b2bab24",
-        "screens": ["artifacts/FR-801-refer-earn.png", "artifacts/FR-801-refer-earn-stats.png", "artifacts/FR-801-refer-earn-rewards.png"],
+        "screens": [
+          "artifacts/FR-801-refer-earn.png",
+          "artifacts/FR-801-refer-earn-stats.png",
+          "artifacts/FR-801-refer-earn-rewards.png"
+        ],
         "notes": "GET /referrals/me: code chip + Invite (shares real share_url via SharePlus, no new dependency), BalanceCard stats (promo balance/total earned/people joined), how-it-works per-event amounts (JOINING/FIRST_PURCHASE; NEW_MERCHANT filtered out at the model layer, a merchant-only event), referred-people and rewards lists with empty states. New lib/features/referrals/ data layer + screen, opening section I. 'Refer & earn' link added to the still-placeholder Account tab, gated on signed-in only (matches the existing AuthAuthenticated switch pattern already used for Sign out/Set password on the same screen). FR-802 (claim)/FR-803 (pre-fill) deliberately not built -- claim() exists on the API unused. Real-device evidence: artifacts/FR-801-refer-earn.png is genuinely real (the real signed-in account's live beta data) and shows is_enabled:false -- this beta account's referral programme is actually disabled server-side, so the EmptyState path is real, not simulated. The populated-stats/list views (-stats.png, -rewards.png) could not be captured from this real account for that reason, so they use the established disclosed local-main.dart-rig technique (synthetic ReferralSummary with 2 referrals/rewards); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. 11 new/changed tests; full suite 598 green; flutter analyze/dart format clean; bash harness.sh verify green. Caught and fixed a real widget-test layout bug myself before review: PillButton's primary/secondary variants set an infinite-width minimumSize regardless of fullWidth, which broke the Invite button next to an Expanded code chip -- fixed with an explicit SizedBox(width: 110). Reviewer: PASS, independently confirmed the NEW_MERCHANT filter and is_enabled gating are enforced at the data/widget-branch level (not just UI dressing), the layout fix is correct and sufficient, and no FR-802/803 scope crept in."
       }
     },
@@ -724,7 +869,9 @@
       "state": "passing",
       "evidence": {
         "commit": "230fba9",
-        "screens": ["artifacts/FR-802-claim-form.png"],
+        "screens": [
+          "artifacts/FR-802-claim-form.png"
+        ],
         "notes": "Code field + Claim button added to the refer & earn screen, shown only while GET /referrals/me's can_claim is true. POST /referrals/claim on submit; success clears the field and invalidates referralSummaryProvider (a real server re-fetch, not client-side hiding -- confirmed can_claim flips server-side); a real 4xx (already has a referrer/invalid/self/post-purchase) shows the server's own message, form stays for retry. 3-16 char client-side check is a UX nicety only, never replaces real server error handling. Real-device evidence via the established disclosed local-main.dart-rig technique (this beta account's referral programme is is_enabled:false, so can_claim can never be exercised live); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. 3 new tests (shows+disappears after claim, hidden when can_claim false, real server error retains the form); full suite 601 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: flipped the canClaim condition to its inverse, confirmed 3 real test failures, reverted. Reviewer: PASS, independently confirmed the condition is not inverted, the re-fetch is real (not local state), no FR-803/referred_by scope crept in, and all 12 referrals tests plus the full 601-test suite pass with no regressions."
       }
     },
@@ -735,7 +882,10 @@
       "state": "passing",
       "evidence": {
         "commit": "d4fedab",
-        "screens": ["artifacts/FR-803-register-valid-code.png", "artifacts/FR-803-register-invited-by.png"],
+        "screens": [
+          "artifacts/FR-803-register-valid-code.png",
+          "artifacts/FR-803-register-invited-by.png"
+        ],
         "notes": "The register screen's referral-code field (already pre-filled from a ?ref= link via FR-007, untouched by this commit) now live-validates against the public GET /referrals/validate, 400ms debounced (same pattern as the catalog search sheet). Debounce race guarded: a slower in-flight response for a stale code is discarded if the field has since changed; clearing the field cancels the timer and the message immediately. New ReferralValidation model + ReferralsApi.validate(code). 5 new tests (3 register-screen, 2 model); full suite 606 green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence: artifacts/FR-803-register-valid-code.png is genuinely real -- validating this beta account's own real code 'ALICE12' against the live beta API returned valid:false, consistent with FR-801's separately-confirmed finding that this account's referral programme is is_enabled:false server-side (expected real behavior, not a bug). No real valid code is obtainable from this account, so artifacts/FR-803-register-invited-by.png (the 'Invited by @bob, you get X' success state) uses the established disclosed local-main.dart-rig technique (fake ReferralsApi.validate); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. Reviewer: PASS, independently confirmed the debounce/race-guard logic, that the pre-fill block is byte-identical to before this commit (no scope creep), and flagged that the verification command needed to include register_screen_test.dart (the file with the feature's primary tests) -- fixed here before marking passing."
       }
     },
@@ -761,7 +911,9 @@
       "state": "passing",
       "evidence": {
         "commit": "1fe7135",
-        "screens": ["artifacts/FR-953b-compat-gate-live.png"],
+        "screens": [
+          "artifacts/FR-953b-compat-gate-live.png"
+        ],
         "notes": "Investigated first rather than assuming new work was needed: FR-301's runPreCheckoutCompatibilityGate was already called from destination_plans_screen.dart's Continue handler, and FR-404/FR-310's install-gating (verdict.kind == supported gates the one-tap install button/link) was already wired into esim_detail_screen.dart and purchase_success_screen.dart -- all as part of building those features correctly the first time (Rules.md's 'compatibility never blocks, only gates install' was followed from day one). The one real gap: no end-to-end test proved the checkout-side wiring fires from its real call site -- pre_checkout_gate_test.dart only exercised runPreCheckoutCompatibilityGate in a bare harness, not through destination_plans_screen itself, and that screen's own test file lives outside this FR's stated verification command's original scope (test/features/catalog, not checkout/esims). Added 2 end-to-end tests there (unsupported device shows the real 'Buy Now, Use Later' dialog instead of navigating straight to checkout; supported device skips it) and updated the verification command to include that file. FR-404/FR-310's install-gating already had equivalent end-to-end tests in test/features/esims and test/features/checkout (confirmed by reading them), so no gap there. Non-vacuousness proof: temporarily short-circuited the gate's not-supported branch to always proceed, confirmed 3 real test failures, restored via git checkout. Full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence is genuine: this connected device has no eSIM hardware (confirmed originally in FR-301), so live-tapping Continue on a real Japan plan for real shows the actual 'Buy Now, Use Later!' dialog end-to-end (Home -> Japan -> select plan -> Continue) -- the same real behavior FR-301/FR-404/FR-310 already captured in their own evidence (artifacts/FR-301.png, FR-404.png, FR-310.png), now with a fresh confirming screenshot and a regression test that would catch it breaking."
       }
     },
@@ -772,7 +924,10 @@
       "state": "passing",
       "evidence": {
         "commit": "09d63f1",
-        "screens": ["artifacts/FR-901-setup-guide.png", "artifacts/FR-901-setup-guide-troubleshooting.png"],
+        "screens": [
+          "artifacts/FR-901-setup-guide.png",
+          "artifacts/FR-901-setup-guide-troubleshooting.png"
+        ],
         "notes": "New lib/features/guides/ (section K). Content ported line-by-line from the real web app's static guides/esim-setup-guide page (D:\\eSim\\frontend\\src\\app\\guides\\esim-setup-guide\\page.tsx) -- iOS/Android numbered steps, install-once warning, troubleshooting checklist, link to FR-952's supported-devices list. No backend endpoint (static copy, same both platforms). Replaces FR-404's previous external-browser placeholder on the eSIM detail screen's 'View setup guide' link (now navigates in-app); deleted the now-dead esim_install_links.dart/setupGuideUrl() and its test. Full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Real-device evidence is genuine: reached via real navigation (My eSIMs -> a real eSIM -> View setup guide) on the connected device, screens show the actual ported content live. Reviewer: FAIL then PASS -- first pass caught two real content omissions against the web source: the troubleshooting list dropped 'Still stuck? Contact Support with your order number.' and the install-once warning dropped '...and contact Support before removing it.' Both were silently deleted rather than disclosed, even though no general /support screen exists yet (FR-1101/1102 not_started, only FR-410's per-eSIM report-problem). Fixed by restoring both as plain text (no general support route to link to) with a comment explaining why it's not a tappable link; re-verified, re-captured both screenshots live showing the restored text. Commits: 18779e0 (feature), 09d63f1 (reviewer fix)."
       }
     },
@@ -783,7 +938,10 @@
       "state": "passing",
       "evidence": {
         "commit": "5e3dcf0",
-        "screens": ["artifacts/FR-902-empty-state.png", "artifacts/FR-902-sheet.png"],
+        "screens": [
+          "artifacts/FR-902-empty-state.png",
+          "artifacts/FR-902-sheet.png"
+        ],
         "notes": "No documented web/Eskimo source for this exact sheet (checked frontend source and docs/design-reference/ -- the closest screenshot, 15-help-sheet.png, is FR-1104's separate AI-assistant sheet), so content was designed fresh from the one-line FR spec and built using the existing coverage_sheet.dart bottom-sheet pattern. Short explainer + 'View setup guide' (FR-901) and 'Check device compatibility' (FR-952) buttons, both popping the sheet before pushing the real route; a plain-text 'Contact Support' line (no general /support screen exists yet -- same disclosed-limitation convention established fixing FR-901 today, see DECISIONS.md). Entry point: a 'New to eSIM?' link in My eSIMs' empty state (shown only with zero eSIMs) -- the natural place for a first-time user. 5 new/changed tests; full suite 615 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: temporarily pointed the setup-guide button at a wrong route, confirmed a real test failure, restored. Real-device evidence via the established disclosed local-main.dart-rig technique (the real signed-in account already has eSIMs, so the empty-state entry point can't be reached live); lib/main.dart restored and confirmed byte-identical before/after, real app rebuilt+reinstalled afterward. Reviewer: PASS, independently confirmed pop-before-push navigation, that both hardcoded route strings match the real router's registered paths, that the Support line is genuinely inert (no tap handler), and that no scope crept beyond the 4 changed files."
       }
     },
@@ -794,7 +952,11 @@
       "state": "passing",
       "evidence": {
         "commit": "c21d371",
-        "screens": ["artifacts/FR-1001-account-top.png", "artifacts/FR-1001-account-groups.png", "artifacts/FR-1001-track-dialog.png"],
+        "screens": [
+          "artifacts/FR-1001-account-top.png",
+          "artifacts/FR-1001-account-groups.png",
+          "artifacts/FR-1001-track-dialog.png"
+        ],
         "notes": "Replaces the long-standing AccountScreen placeholder with the real Eskimo-pattern screen, opening section L. Greeting BalanceCard (username, real DEFAULT wallet balance, REWARD stat via FR-601's existing walletBalance() helper) + Invite friends CTA pushing /refer -- consolidates FR-801's old standalone 'Refer & earn' button into this one real entry point (same destination, confirmed no functionality lost). 4 ListGroups: Account (Profile coming-soon/FR-1002; Identity verification shows the REAL GET /kyc/me status -- a minimal read confined to this row's subtitle, submission stays FR-1003's separate scope), Settings (Language/Currency rows embedding the existing pill switchers via a new _SwitcherRow, justified since ListRow has no trailing-widget slot), Support (Check device compatibility -> real FR-952; Setup guide -> real FR-901; Help/Support tickets coming-soon/FR-1101; Track an eSIM -> a new dialog accepting a full tracking link or bare token, reusing FR-007's deep-link parser), About (Legal documents coming-soon/FR-1201; Version -> real PackageInfo.fromPlatform(), never hardcoded). New minimal lib/features/kyc/ data layer (read-only). 26 new/changed tests; full suite 638 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof on resolveTrackingToken: hardcoded a wrong return value, confirmed a real test failure, reverted. Real-device evidence is genuinely real: live navigation (Account tab) shows the real signed-in balance, real 'Not verified' KYC status, real app version (1.0.0 (1)), and the real native Track-an-eSIM dialog -- no rig needed, everything on this screen is either real data or a coming-soon placeholder for a genuinely not-yet-built feature. Reviewer: PASS, independently confirmed the wallet-type lookups aren't swapped, the KYC subtitle genuinely reflects the async state (not hardcoded), Cancel never navigates, the FR-801 button consolidation loses no functionality, the KYC read stays within FR-1001's own scope (not FR-1003's write path), no FR-1002/1101-1104 UI leaked beyond inert coming-soon snacks, and no regressions in FR-801/FR-601's own test suites."
       }
     },
@@ -805,7 +967,9 @@
       "state": "passing",
       "evidence": {
         "commit": "49100a9",
-        "screens": ["artifacts/FR-1002-profile.png"],
+        "screens": [
+          "artifacts/FR-1002-profile.png"
+        ],
         "notes": "New ProfileScreen at /profile (GET /auth/me): avatar (real avatar_url or a plain icon fallback, no upload UI since none is documented), name/username, email + a real StatusDot badge driven by email_verified, a Google-linked row shown only when has_google, phone edit (PUT /auth/me/preferences sending only {\"phone\"}, never touching the separate client-local preferred_currency preference), and a Change password button reusing FR-105's existing /set-password screen as-is. CurrentUser extended with phone/fullName/isKycVerified/avatarUrl/emailVerified/hasGoogle per the full documented GET /auth/me shape. Account tab's Profile row now navigates here instead of a coming-soon snack. 10 new tests + 1 navigation test + 6 trivial stub overrides in pre-existing AuthApi fakes; full suite 649 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: inverted the email-verified ternary, confirmed a real test failure, reverted. Real-device evidence is genuinely real (live navigation to the real signed-in account's Profile screen shows the real avatar, name, email with its real verified badge, Google-linked status, and real phone) -- redacted before saving (avatar photo, full name, username, email, and phone blanked out with solid boxes) since this is real personal data of the account used for all this session's device testing and the repo is public; the UI structure, badges, and buttons remain visible as evidence. Reviewer: PASS, independently confirmed updatePhone sends only the phone field, the post-save refresh is a real re-fetch (not optimistic local state), the avatar/Google-row conditionals are genuine (not just hidden), Change password reuses FR-105's screen without duplicating logic, and the 6 touched auth test files each got only a trivial 3-line stub with no other changes."
       }
     },
@@ -816,7 +980,10 @@
       "state": "passing",
       "evidence": {
         "commit": "77bedac",
-        "screens": ["artifacts/FR-1003-kyc-screen.png", "artifacts/FR-1003-kyc-validation.png"],
+        "screens": [
+          "artifacts/FR-1003-kyc-screen.png",
+          "artifacts/FR-1003-kyc-validation.png"
+        ],
         "notes": "New KycScreen at /kyc, closing section L. Real status display (reusing FR-1001's kycStatusLabel), rejection_reason/submitted_at shown when present, NID field, required front photo + optional back photo (image_picker's first real use via a new kycImagePickerProvider seam, same pattern as urlLauncherProvider), Submit for review -> POST /kyc/submit multipart (document_back genuinely omitted from the form when not picked, not sent as null). APPROVED shows a plain success EmptyState with no form; PENDING/REJECTED/not-submitted all fall through to the form, matching the API's documented resubmission-resets-to-PENDING behavior. Post-submit, the screen does a real re-fetch via ref.invalidate(kycStatusProvider), never a locally faked status. 10 new/changed tests; full suite green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: changed the APPROVED gate's string comparison to a non-matching value, confirmed 2 real test failures, reverted. Real-device evidence: live navigation to the real signed-in account's Identity verification row reaches the real form showing its genuine 'Not verified' status, and a real client-side validation snackbar ('Enter your NID number.') fires correctly -- deliberately did NOT submit a real NID/document photo, since that would be an irreversible real submission of personal ID data to the live beta backend with no way to undo it; the client-side validation and status-display paths are exercised and verified live, the actual POST /kyc/submit call itself is covered by the test suite's fakes instead. Reviewer: PASS, independently confirmed the multipart omission of document_back, the APPROVED-only gate logic against all four real status combinations, that the image-picker seam is never bypassed to a real platform channel in any test, and flagged one cosmetic stale doc comment (fixed in a follow-up commit, 77bedac) -- no functional issues."
       }
     },
@@ -827,7 +994,9 @@
       "state": "passing",
       "evidence": {
         "commit": "39c5dd3",
-        "screens": ["artifacts/FR-1101-support-list.png"],
+        "screens": [
+          "artifacts/FR-1101-support-list.png"
+        ],
         "notes": "New SupportTicketListScreen at /support (GET /support/tickets): reference, subject, status chip, last activity (last_message_at, falling back to created_at -- confirmed against the real backend model that last_message_at genuinely drives queue ordering, the right field to prefer). SupportTicket extended with order_id/created_at/last_message_at/resolved_at/closed_at. New ticketStatusChip pure function (OPEN info, ANSWERED warning -- the one status needing the customer's attention, RESOLVED success, CLOSED danger -- a documented judgment call since Design_System.md's eSIM-lifecycle convention doesn't cover ticket statuses). TriptelScaffold(scrollable: false) since the screen hosts a ListView directly. Account tab's 'Help / Support tickets' row now navigates here instead of a coming-soon snack. Rows aren't tappable yet (FR-1103 not built). 9 new/changed tests; full suite 667 green; flutter analyze/dart format clean; bash harness.sh verify green. Non-vacuousness proof: forced the last-activity fallback to always use created_at, confirmed a real test failure, reverted. Real-device evidence is genuine: live navigation to the real signed-in account's Support screen shows its actual real ticket (TKT-261110-9A1CD, from this session's earlier FR-410 work) with its real 'Answered' status and real timestamp. Reviewer: FAIL then PASS -- first pass caught that CLOSED and OPEN shared the same info tone (opposite lifecycle ends looking visually identical) and that the code's own comment pointed to a DECISIONS.md entry that didn't exist. Fixed CLOSED to danger (matching the existing Cancelled/Expired/Failed terminal-state convention) and added the missing DECISIONS.md entry; re-verified, no re-capture needed since the real screenshot shows ANSWERED (untouched by the fix)."
       }
     },
@@ -870,14 +1039,54 @@
       "id": "FR-1104",
       "behavior": "Contact shortcuts sheet (hidden when null)",
       "verification": "flutter test test/features/support",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "022dfbc",
+        "screens": [
+          "artifacts/fr1104-account-support.png",
+          "artifacts/fr1104-sheet.png",
+          "artifacts/fr1104-whatsapp-tap.png"
+        ],
+        "notes": "New ContactShortcutsSheet, reachable via a new 'Contact us' row on the Account screen's Support section. WhatsApp/phone/email shortcuts built from GET /settings/public's support_whatsapp/support_phone/support_email (already-loaded PublicSettings, bootstrapProvider -- no new API call needed). Each row only shows when its field is real and non-null (never invented); an EmptyState covers the edge case where all three are null; a load error shows a real message instead of a crash. New pure URI builders (contactWhatsappUri strips non-digit formatting to build a real wa.me link; contactPhoneUri/contactEmailUri build real tel:/mailto: links) reused via the existing urlLauncherProvider seam (same DI pattern as FR-310/FR-404's install-button launcher). 3 new/changed test files (contact_shortcuts_test.dart, contact_shortcuts_sheet_test.dart, plus a new navigation test in account_screen_test.dart); full suite green, flutter analyze/dart format clean, bash harness.sh verify green (debug APK builds). Non-vacuousness proof: broke contactWhatsappUri's digit-stripping (passed the raw formatted string straight through instead), confirmed a real test failure with the exact malformed URL, restored. On-device evidence is genuine: real signed-in account, real beta backend -- Account > Support > 'Contact us' opens the real sheet showing the real WhatsApp/phone numbers and email from the live GET /settings/public response (+8801979891996, +8801979891996, support@triptel.co), and tapping WhatsApp opened a real browser tab navigating to the real https://wa.me/8801979891996 -- confirming the launch mechanism works end-to-end against the real OS, not just a fake in tests."
+      }
     },
     {
       "id": "FR-1201",
       "behavior": "Legal documents list and reader",
       "verification": "flutter test test/features/legal",
       "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-C901",
+      "behavior": "Chat support: WS client wiring (useSupportSocket equivalent), token auth",
+      "verification": "flutter test test/features/support_chat",
+      "state": "blocked",
+      "blocked_reason": "Waiting for D:\\eSim backend FR-C103 (ticket WS endpoint) to ship live on beta - see D:\\eSim/DECISIONS.md 2026-11-18 entry. Do not build against an unexercised contract.",
+      "evidence": null
+    },
+    {
+      "id": "FR-C902",
+      "behavior": "Chat support: live thread screen, avatars, typing indicator",
+      "verification": "flutter test test/features/support_chat",
+      "state": "blocked",
+      "blocked_reason": "Depends on FR-C901.",
+      "evidence": null
+    },
+    {
+      "id": "FR-C903",
+      "behavior": "Chat support: share an order or package in a message",
+      "verification": "flutter test test/features/support_chat",
+      "state": "blocked",
+      "blocked_reason": "Depends on FR-C901/FR-C902 and backend FR-C106.",
+      "evidence": null
+    },
+    {
+      "id": "FR-C904",
+      "behavior": "Home screen: Chat with Support button, opens the chat feature",
+      "verification": "flutter test test/features/support_chat",
+      "state": "blocked",
+      "blocked_reason": "Depends on FR-C901/FR-C902.",
       "evidence": null
     }
   ]

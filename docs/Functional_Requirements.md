@@ -194,6 +194,25 @@ State machine (port of web `PackageBrowser.tsx`):
 ## N. Legal
 - **FR-1201 Legal documents.** List + reader (markdown-lite).
 
+## O. Real-time support chat — BLOCKED, do not start (2026-11-18)
+Web ships first against the shared backend (`D:\eSim`); these build **after**
+a web chat FR is confirmed live on `beta.triptel.co` — see
+`feature_list.json`'s `blocked_reason` on each and `D:\eSim\DECISIONS.md`.
+Replaces FR-1101–1103 above with a live version once built (same
+`SupportTicket`/`SupportMessage` backend, not a new system).
+- **FR-C901 WS client wiring.** `wss://.../ws/support/tickets/{id}?token=`,
+  reconnect with backoff, falls back to the existing REST fetch while
+  disconnected. See `D:\eSim\docs\Rules.md` — WS auth is `?token=`, never a
+  header (mobile WS clients can set headers, but match the web contract
+  exactly rather than diverging).
+- **FR-C902 Live thread screen.** Avatars (`author_avatar_url`), typing
+  indicator (animated dots, never persisted — matches web), auto-scroll.
+- **FR-C903 Share an order or package.** Picker over the user's own
+  `GET /orders/my-esims`-backed orders or the catalog; sends
+  `shared_order_id`/`shared_product_id`; renders a rich card.
+- **FR-C904 Home "Chat with Support" button.** Visible on Home (FR-201),
+  opens FR-C902's thread (new ticket if none open).
+
 ---
 
 ## Traceability: web customer routes → FRs (nothing left out)

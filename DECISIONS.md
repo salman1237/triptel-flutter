@@ -1,6 +1,21 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-18 — Mobile real-time chat FRs added as `blocked`, not `not_started`
+**What I did:** appended FR-C901–C904 (real-time support chat) to
+`feature_list.json` with `state: "blocked"` and an explicit `blocked_reason`
+pointing at `D:\eSim\claude-progress.md`, and documented the planned WS
+contract in `docs/API.md` clearly marked "PLANNED, NOT YET LIVE." **Why:**
+explicit user instruction — web ships first against beta, mobile is built
+second against the same API once it's real. Building this UI now would mean
+guessing field names against a contract that's never been exercised, exactly
+what `docs/API.md`'s "confirmed, not guessed" discipline exists to prevent
+everywhere else in this project. The autonomous loop correctly does **not**
+stall on these: it stops when `not_started`/`active` run out, which these
+don't count as. **Revisit:** the moment `D:\eSim\claude-progress.md` confirms
+a web chat FR shipped live on beta — re-read `D:\eSim\docs\API.md`'s real WS
+section at that point (not this provisional one) before unblocking.
+
 ## 2026-11-18 — FR-201b: "active eSIM" for the Home card means `activatedAt` set and not expired, never `MyEsim.status`
 `GET /orders/my-esims`'s own `status` field (ALLOCATED|RELEASED|INSTALLED|
 ACTIVE|EXPIRED|SUSPENDED|REVOKED|CANCELLED) looks like the obvious signal

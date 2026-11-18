@@ -526,6 +526,30 @@ Withdrawal object:
 - `POST /support/tickets/{id}/close`
 - `GET /support/attachments/{id}` (auth) → file bytes. Download with the Bearer header (image widgets can't add it by themselves).
 
+### Real-time chat WebSocket — ⚠️ PLANNED, NOT YET LIVE (added 2026-11-18)
+**Do not build FR-C901–C904 against this section until `D:\eSim\claude-progress.md`
+confirms a web chat FR is live on beta.** Documented now so the contract is
+visible, same discipline as every other endpoint here — but this one hasn't
+been exercised for real yet, so treat every field name below as provisional
+until confirmed. See `D:\eSim\docs\Architecture.md` for the full design.
+
+Planned shape (backend FR-C101–C107):
+- `WS /ws/support/tickets/{ticket_id}?token=<jwt>` — same ownership rule as
+  the REST endpoints above. Inbound you can send: `{"type":"typing"}`
+  (ephemeral, never persisted — don't poll for its absence, don't retry it).
+  Outbound you'll receive:
+  - `{"type":"message","message":{...same shape as GET /support/tickets/{id}'s
+    messages[], plus "author_avatar_url" and "message_type":"TEXT|ORDER_SHARE|
+    PRODUCT_SHARE" and, when not TEXT, "shared_order":{...}/"shared_product":{...}}}`
+  - `{"type":"typing","from":"customer|staff"}`
+  - `{"type":"ticket_status","status":"OPEN|ANSWERED|RESOLVED|CLOSED"}`
+- Writing a message is still `POST /support/tickets/{id}/messages` (REST,
+  unchanged) — the WS only pushes what that endpoint already wrote. Planned
+  new optional multipart fields on that endpoint: `shared_order_id`,
+  `shared_product_id` (mutually exclusive with each other, not with `files`).
+- Reconnect with backoff; while disconnected, fall back to
+  `GET /support/tickets/{id}` so the thread is never silently stale.
+
 ---
 
 ## 13. Endpoints that do NOT exist (don't build against them)

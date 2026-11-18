@@ -1,6 +1,16 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-18 — Chat FRs queued, blocked
+Appended FR-C901–C904 (real-time support chat) to `feature_list.json`,
+`docs/Functional_Requirements.md` §O, and a provisional WS section in
+`docs/API.md` §"Support". All `blocked` — web (`D:\eSim`) ships the chat
+backend first; don't start these until that repo's own
+`claude-progress.md` confirms it's live on beta. See `DECISIONS.md`'s
+2026-11-18 entry. The existing autonomous loop is unaffected — it finishes
+`FR-1201` (the one remaining `not_started` item) and then correctly stops,
+rather than touching these.
+
 ## Current state (2026-11-13) — mode: AUTONOMOUS (no approvals; commit + push every step)
 - **Repo:** https://github.com/salman1237/triptel-flutter (public, `main`).
 - **CI:** `.github/workflows/release-apk.yml` builds `flutter build apk --release`
