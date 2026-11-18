@@ -1054,8 +1054,15 @@
       "id": "FR-1201",
       "behavior": "Legal documents list and reader",
       "verification": "flutter test test/features/legal",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "d894469",
+        "screens": [
+          "artifacts/fr1201-list.png",
+          "artifacts/fr1201-reader.png"
+        ],
+        "notes": "New LegalDocumentsScreen (/legal, GET /settings/legal) and LegalDocumentScreen (/legal/:slug, GET /settings/legal/{slug}): a real list of 6 documents, tap-through to a reader rendering the real markdown-lite body. Captured real fixtures from the live beta API first (test/fixtures/legal_documents.json, legal_document_privacy.json) to confirm the actual markdown-lite subset in use: only `## Heading`, `- bullet` lines, `**bold**` spans, and blank-line-separated paragraphs across both the real Privacy Policy and Terms & Conditions bodies -- no links, images, tables, nested/numbered lists, or other heading levels. Built a small hand-written parser (parseMarkdownLiteBlocks/parseMarkdownLiteInline) covering exactly that subset instead of adding a markdown package dependency for syntax this content never uses (documented in DECISIONS.md). Account screen's 'Legal documents' row now navigates here instead of showing a coming-soon snack. 5 new test files (model parsing against the real fixtures, parser block/inline tests including a full real-fixture parse, provider tests, and both screens' widget tests); full suite green, flutter analyze/dart format clean, bash harness.sh verify green (debug APK builds). Non-vacuousness proof: disabled bullet-line detection in the parser, confirmed 3 real test failures (including against the real captured fixture), restored. On-device evidence is genuine: real signed-in account, real beta backend -- Account > Legal documents shows the real 6-document list (Privacy Policy, Data Privacy, Terms & Conditions, Declaration, Refund Policy, Payment Policy) from the live GET /settings/legal, and tapping Privacy Policy renders its full real body with real headings ('Information we collect', 'How we use it', ...), real bold bullet labels ('Account details:', 'Google sign-in:', etc.), and real paragraph text -- confirming the parser and renderer work correctly against real, non-trivial content, not just the test fixtures."
+      }
     },
     {
       "id": "FR-C901",
