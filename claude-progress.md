@@ -180,11 +180,17 @@ Session log. Read first at session start, update last at session end.
   card (documented in `docs/API.md` section 3, commit `2cb8ff8`),
   unblocking it; FR-201b's own blockers (FR-402/403) had also already
   shipped, so its `blocked_reason` was stale. Both moved to
-  `not_started`, and **FR-201b** (Home usage summary card) is now also
-  **done** -- real signed-in account, real eSIM, real usage data on
-  Home. Continuing forward in strict array order, next is **FR-202b**
-  (Featured "Global" package card at the top of the explore sheet, now
-  unblocked by `GET /catalog/featured`).
+  `not_started`, and both are now **done**: **FR-201b** (Home usage
+  summary card -- real signed-in account, real eSIM, real usage data)
+  and **FR-202b** (featured "Global" package card -- real admin-flagged
+  product via `GET /catalog/featured`, verified live end-to-end:
+  confirmed the real endpoint was genuinely empty first via a removed
+  temporary debug log, then re-verified after the user flagged a real
+  product via the backend admin console). No blocked items remain.
+  Continuing forward in strict array order, next is **FR-1104** (Contact
+  shortcuts sheet, hidden when null) -- the only two features left after
+  it are FR-1104 itself and **FR-1201** (Legal documents list and
+  reader), both `not_started`, nothing blocked.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -200,6 +206,35 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-18 — FR-202b passing (featured "Global" package card at the top
+  of the explore sheet), the second half of the day's FR-201b/FR-202b
+  unblock. New `GET /catalog/featured` integration (`FeaturedPackage`
+  model, `CatalogApi.getFeaturedPackages`, `featuredPackagesProvider`): an
+  admin-picked storefront highlight with real product-level price/data/
+  validity/country-count, shown as a card above the Country/Regional tabs
+  (hidden while searching, hidden when the list is empty -- documented as
+  a normal response, never an error). Reuses the established
+  `formatMoney`/currency-provider pattern for price display; a new
+  `featuredPackageCoverageLabel` omits the country-count line entirely
+  (never "0 countries") when `country_count` is null, per the documented
+  plain-VivaPe-Global edge case. 6 new/changed test files; full suite 723
+  green; flutter analyze/dart format clean; bash harness.sh verify green.
+  Non-vacuousness proof: broke the null-omission (defaulted to 0 instead
+  of omitting), confirmed both a unit test and a widget test fail for
+  real, restored. **Real end-to-end on-device verification, not just the
+  empty-state fallback:** first confirmed via a temporary debug log
+  (removed before the final build) that the live beta backend genuinely
+  returned an empty list -- proving the hide-don't-error path works
+  against the real API, not merely in tests. The user then flagged the
+  real `Global139 10GB 30Days` product live via the backend's admin
+  console specifically so this could be verified fully; re-checked and
+  the real card appeared with its real globe icon, "10 GB · 30 days ·
+  127 countries", and real converted price (BDT 15752.52), confirmed via
+  debug log to be the exact live API response -- then tapping it opened
+  the real Global139 destination-plans screen with its two real
+  BDT-priced products. Reviewer: PASS outright, independently reproduced
+  the non-vacuousness proof and confirmed every other claim against the
+  code and commit bb29ba5.
 - 2026-11-18 — FR-201b passing (Home usage summary card for signed-in
   users with an active eSIM), closing the day's earlier unblock of both
   FR-201b and FR-202b (the user ran a backend session that shipped `GET
