@@ -274,8 +274,16 @@
       "id": "FR-201b",
       "behavior": "Signed-in users with an active eSIM see a usage summary card instead of the hero",
       "verification": "flutter test test/features/catalog",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "7ff5780",
+        "screens": [
+          "artifacts/fr201b-home-fixed2.png",
+          "artifacts/fr201b-tap-through.png",
+          "artifacts/fr201b-myesims.png"
+        ],
+        "notes": "New HomeUsageCard replaces Home's hero for a signed-in user (authNotifierProvider is AuthAuthenticated) whose real eSIMs (GET /orders/my-esims, myEsimsProvider) include one that's genuinely activated and not yet expired (activeEsimForHomeCard, pure function, newest-first). Reuses FR-403's own pure functions (usageFraction/usageCenterText/validityCountdownLabel) against that eSIM's real GET /esims/{id}/status data, so Home and the detail screen can never disagree about what 'X left'/'Y days left' means. Fails soft back to the plain hero at every step (no qualifying eSIM, still loading, any error) since this card is a bonus, never a requirement to use Home. UsageRing gained an optional textColor (for the hero's dark gradient, where the default dark ink text wouldn't read). New lib/features/catalog/application/home_usage_card_shape.dart (activeEsimForHomeCard) and lib/features/catalog/presentation/home_usage_card.dart (HomeUsageCard). 10 new/changed tests across 3 files. Full suite green, flutter analyze/dart format clean, bash harness.sh verify green (debug APK builds). Non-vacuousness proof: made activeEsimForHomeCard always return null, confirmed the real card-is-shown tests fail, restored. Real bug caught and fixed during on-device verification (not by the reviewer this time): the real signed-in account has several genuinely in-use eSIMs (confirmed independently via the web portal: Saudi Arabia 1GB 7Days, IN_USE, 617.10MB used, 1.40GB left, expires Dec 1 2026), but the first version of this feature kept showing the plain hero -- because it keyed off MyEsim.status (ACTIVE/INSTALLED), which this session had already documented elsewhere as known-stale for eSIM Access profiles (GET /orders/my-esims's own status enum 'never updates', per the FR-402/403 session finding). Fixed to key off activatedAt/expiresAt instead, the same signal esimValidityLabel already trusts over status for the exact same reason. On-device evidence is genuine: real signed-in account, real beta backend -- after the fix, Home shows the real Saudi Arabia 1GB 7Days card with its real 1.40GB remaining and real 12-days-left countdown, and tapping it opens the real eSIM detail screen (now showing IN_USE, telemetry having caught up since this card was built)."
+      }
     },
     {
       "id": "FR-202",
