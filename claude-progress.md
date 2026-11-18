@@ -196,11 +196,20 @@ rather than touching these.
   product via `GET /catalog/featured`, verified live end-to-end:
   confirmed the real endpoint was genuinely empty first via a removed
   temporary debug log, then re-verified after the user flagged a real
-  product via the backend admin console). No blocked items remain.
-  Continuing forward in strict array order, next is **FR-1104** (Contact
-  shortcuts sheet, hidden when null) -- the only two features left after
-  it are FR-1104 itself and **FR-1201** (Legal documents list and
-  reader), both `not_started`, nothing blocked.
+  product via the backend admin console). **FR-1104** (Contact shortcuts
+  sheet) is now also **done** -- WhatsApp/phone/email from the
+  already-loaded `PublicSettings`, each hidden independently when null,
+  verified live (real sheet, real numbers/email, a real tap opened a
+  real `wa.me` link in-browser). A separate commit (`a2cfac3`, not this
+  session's own work) queued four new **blocked** `FR-C9xx` real-time
+  support chat features -- intentionally `blocked` rather than
+  `not_started` so the autonomous loop finishes its remaining queue and
+  stops normally rather than waiting on them; they unblock once
+  `D:\eSim`'s own progress log confirms the web chat backend is live on
+  beta. Continuing forward in strict array order, the only item left is
+  **FR-1201** (Legal documents list and reader) -- once that lands, every
+  `not_started`/`active` item is done and the loop stops (the four
+  `FR-C9xx` items stay correctly `blocked`, not a reason to keep going).
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -216,6 +225,27 @@ rather than touching these.
   without a Mac.
 
 ## Done
+- 2026-11-18 — FR-1104 passing (contact shortcuts sheet). New
+  `ContactShortcutsSheet`, reachable via a new "Contact us" row on the
+  Account screen's Support section: WhatsApp/phone/email from
+  `GET /settings/public`'s already-loaded `PublicSettings`
+  (`support_whatsapp`/`support_phone`/`support_email`, all nullable) --
+  no new network call. Each row independently hidden when its own field
+  is null (never a shared gate, never an invented fallback); an
+  `EmptyState` covers the all-null edge case. New pure URI builders
+  (`contactWhatsappUri` strips non-digit formatting to build a real
+  `wa.me` link; `contactPhoneUri`/`contactEmailUri` build real `tel:`/
+  `mailto:` links), reusing the existing `urlLauncherProvider` seam (same
+  DI pattern as FR-310/FR-404's install-button launcher). 3 new/changed
+  test files; full suite green; flutter analyze/dart format clean; bash
+  harness.sh verify green. Non-vacuousness proof: broke the WhatsApp
+  digit-stripping, confirmed a real test failure with the exact
+  malformed URL, restored. On-device evidence is genuine: real
+  signed-in account, real beta backend -- the real sheet showed the real
+  WhatsApp/phone numbers and email from the live settings response, and
+  tapping WhatsApp opened a real browser tab navigating to the real
+  `https://wa.me/8801979891996`. Reviewer: PASS outright, independently
+  reproduced the non-vacuousness proof and confirmed every other claim.
 - 2026-11-18 — FR-202b passing (featured "Global" package card at the top
   of the explore sheet), the second half of the day's FR-201b/FR-202b
   unblock. New `GET /catalog/featured` integration (`FeaturedPackage`
