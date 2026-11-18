@@ -1,6 +1,44 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-18 — Real branding assets bundled as static files, not fetched at runtime
+User asked to pull the real Triptel favicon and brand logo from the
+backend (`GET /settings/public`'s `favicon`/`logo_light`/`logo_dark`
+fields, API.md section 1) and use them for the app launcher icon and
+in-app branding. Downloaded the three real PNGs from beta
+(`https://beta.triptel.co/api/v1/uploads/branding/...`) and inspected
+them: `favicon` is the brand mark (blue/purple ribbon "A", transparent
+background) -- used as the source for the app icon. `logo_light` is the
+full "triptel" wordmark in dark purple (for light backgrounds).
+`logo_dark` is the mark alone in white (for dark backgrounds, not
+currently used in-app). **Decision:** bundled these as static assets
+under `assets/branding/` (`app_icon.png`/`app_icon_adaptive_fg.png`
+derived from the real favicon via Pillow -- centered, padded for
+Android's adaptive-icon safe zone, real-content-only, no invented
+elements; `logo_light.png` is the real download, transparent margins
+trimmed, unmodified otherwise) rather than fetching them at runtime.
+**Why:** the app launcher icon is a build-time asset by platform design
+(Android/iOS bake it into the installed package; it can't be swapped at
+runtime), and the splash screen renders before `GET /settings/public`
+has resolved, so a network fetch isn't available at the point it's
+needed anyway. Added `flutter_launcher_icons` as a dev dependency
+(build-time tool only, not shipped in the app) to generate the full
+Android icon set (legacy + adaptive) from the real source image rather
+than hand-rolling per-density resizes. **Adaptive icon background:**
+first tried `#5E3CDA` (`AppColors.primary`, matching the brand's own
+purple) but the real mark's own gradient runs blue-to-purple, so on a
+solid purple background the icon visually blended into it -- switched
+to white (`#FFFFFF`) after this was flagged live on-device, which gives
+the full gradient mark proper contrast. The splash screen shows the
+full `logo_light` wordmark (which already contains the "triptel" text
+baked into the image, so no separate `Text('Triptel')` widget is
+needed) on a light (`AppColors.surface`) background to match
+`logo_light`'s own light-background design, replacing the earlier
+white-mark-on-dark-background version. **Revisit if:** the real
+backend's branding assets change (new favicon/logo uploaded) -- re-run
+the same download-and-regenerate steps; this is a point-in-time
+snapshot, not a live sync.
+
 ## 2026-11-18 — FR-1201: hand-written "markdown-lite" parser, no markdown dependency
 `GET /settings/legal/{slug}`'s `body` is documented as "admin-edited
 markdown-lite" (API.md section 1) -- not full CommonMark. Fetched the real
