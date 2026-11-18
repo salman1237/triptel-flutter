@@ -206,10 +206,17 @@ rather than touching these.
   `not_started` so the autonomous loop finishes its remaining queue and
   stops normally rather than waiting on them; they unblock once
   `D:\eSim`'s own progress log confirms the web chat backend is live on
-  beta. Continuing forward in strict array order, the only item left is
-  **FR-1201** (Legal documents list and reader) -- once that lands, every
-  `not_started`/`active` item is done and the loop stops (the four
-  `FR-C9xx` items stay correctly `blocked`, not a reason to keep going).
+  beta. **FR-1201** (Legal documents list and reader) is now also
+  **done** -- a new hand-written "markdown-lite" parser (no markdown
+  dependency, see DECISIONS.md), verified live against all 6 real beta
+  legal documents. **feature_list.json's queue is now complete: every
+  item is either `passing` (76) or deliberately `blocked` (the 4
+  `FR-C9xx` real-time chat items, awaiting the web backend) -- no
+  `not_started`/`active` items remain, and the autonomous loop stops
+  here normally.** Next session: start by re-checking whether
+  `D:\eSim`'s web backend has shipped the real-time chat WS contract
+  (see the FR-C9xx `blocked_reason`s); if so, unblock and build those.
+  Otherwise there is no forward work until the user adds new FRs.
 - **feature_list.json gotcha found this session:** FR-408's (and likely
   still FR-603's) pre-populated `verification` string required a
   not-yet-written `integration_test/fr_*_test.dart` hitting a real
@@ -225,6 +232,34 @@ rather than touching these.
   without a Mac.
 
 ## Done
+- 2026-11-18 — FR-1201 passing (legal documents list and reader), closing
+  **feature_list.json's queue** -- every remaining item is now `passing`
+  (76) or deliberately `blocked` (the 4 `FR-C9xx` real-time chat items).
+  New `LegalDocumentsScreen` (`/legal`, `GET /settings/legal`) and
+  `LegalDocumentScreen` (`/legal/:slug`, `GET /settings/legal/{slug}`).
+  Fetched the real beta Privacy Policy and Terms & Conditions bodies
+  live before building anything (per new-api-call's own step 2) and
+  found the documented "markdown-lite" `body` field only ever uses `##
+  Heading`, `- bullet` lines, `**bold**` spans, and blank-line-separated
+  paragraphs -- no links, tables, numbered/nested lists. **Decision:**
+  wrote a small, dependency-free parser for exactly that subset instead
+  of adding a markdown package (DECISIONS.md). Account screen's "Legal
+  documents" row now navigates here instead of showing a coming-soon
+  snack (the now-dead `_comingSoon` helper was removed). 5 new test
+  files, including one that parses the real captured fixture end-to-end;
+  full suite green; flutter analyze/dart format clean; bash harness.sh
+  verify green (debug APK builds). Non-vacuousness proof: disabled
+  bullet-line detection, confirmed 3 real test failures (including
+  against the real fixture), restored. On-device evidence is genuine:
+  real signed-in account, real beta backend -- the real 6-document list
+  (Privacy Policy, Data Privacy, Terms & Conditions, Declaration, Refund
+  Policy, Payment Policy) and a fully-rendered real Privacy Policy with
+  real headings, bold bullet labels, and paragraphs. Reviewer: PASS
+  outright -- went beyond the session's own checks by independently
+  live-curling all 6 real legal documents (not just the two checked this
+  session) and manually tracing the parser's state machine against real
+  body text for each, confirming the markdown-lite premise holds across
+  the full real document set, not just the sample checked.
 - 2026-11-18 — FR-1104 passing (contact shortcuts sheet). New
   `ContactShortcutsSheet`, reachable via a new "Contact us" row on the
   Account screen's Support section: WhatsApp/phone/email from
