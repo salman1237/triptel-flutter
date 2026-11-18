@@ -171,15 +171,13 @@ Session log. Read first at session start, update last at session end.
   FR-601 through FR-605, all of **section H (FR-701 through FR-704,
   withdrawals)**, all of **section I (FR-801 through FR-803,
   referrals)**, FR-953b, all of **section K (FR-901, FR-902, guides)**,
-  all of **section L (FR-1001 through FR-1003, Account & KYC)**, and
-  now **FR-1101** (Support ticket list, opening **section M**) all
-  done (see Done below), plus a non-FR UI refresh pass (visual polish
-  only, see Done entry). Continuing forward in strict array order,
-  next is **FR-1102** (New ticket -- category (no PARTNER), subject,
-  body, optional eSIM link, up to 5 attachments ≤ 5 MB each --
-  FR-410's existing "Report a problem" flow already creates a ticket
-  with no attachments/category picker/optional-link UI; FR-1102 is the
-  full standalone "new ticket" form with all of that). FR-201b stays
+  all of **section L (FR-1001 through FR-1003, Account & KYC)**,
+  **FR-1101** (Support ticket list), and now **FR-1102** (New ticket --
+  category/subject/body/optional eSIM link/up to 5 image attachments)
+  all done (see Done below), plus a non-FR UI refresh pass (visual
+  polish only, see Done entry). Continuing forward in strict array
+  order, next is **FR-1103** (Ticket thread reply/close, authenticated
+  attachments). FR-201b stays
   blocked -- it needs real eSIM usage data (FR-402/403, already
   passing) AND "the referral promo context (FR-801)"; now that FR-801
   exists, re-check FR-201b's blocker text and consider unblocking it.
@@ -198,6 +196,41 @@ Session log. Read first at session start, update last at session end.
   without a Mac.
 
 ## Done
+- 2026-11-18 — FR-1102 passing (new ticket with category and attachments).
+  New `NewTicketScreen` at `/support/new`: real category dropdown (`GET
+  /support/categories`, `PARTNER` hidden client-side, tested directly
+  against a hand-written Dio adapter mock since the filtering lives in
+  `SupportApiImpl`, not reachable via a provider-boundary fake), subject/
+  body with client-side validation, an optional "Link an eSIM" picker
+  (embeds order/eSIM info as body text -- same no-real-`order_id`
+  reasoning as FR-410/FR-1101), up to 5 image attachments via
+  `image_picker` (`SupportApi.createTicket()` gained `filePaths`; pdf/
+  txt from `API.md` disclosed as a known gap in a code comment and a new
+  DECISIONS.md entry, not silently dropped -- no `file_picker` dependency
+  added). `SupportTicketListScreen` got a "+" AppBar action and an
+  `EmptyState` CTA, both routed here. 6 new/changed test files, 26 tests
+  in `test/features/support`; widget tests needed a grown surface
+  (`tester.binding.setSurfaceSize`) since the full 5-attachment form
+  doesn't fit the default small viewport even with `ensureVisible`. Full
+  suite 680 tests green, `flutter analyze`/`dart format` clean, `bash
+  harness.sh verify` green (debug APK builds). Non-vacuousness proof:
+  broke the PARTNER filter, confirmed a real failure, restored. On-device
+  evidence is genuine: real signed-in account, real beta backend --
+  navigated Account -> Help/Support tickets -> "+", picked a real
+  category from the live API, submitted two real test tickets
+  (TKT-261118-81436, TKT-261118-E5EB0), both created for real. Caught and
+  fixed during this device pass, not by the reviewer: the first ticket
+  didn't show in the list without relaunching the app --
+  `new_ticket_screen.dart` was missing the `ref.invalidate
+  (supportTicketsProvider)` call that `withdrawal_request_screen.dart`
+  already established as the "refresh list after create" pattern; fixed,
+  rebuilt, reverified on-device with the second submit. Reviewer: PASS
+  outright -- independently reproduced the PARTNER-filter proof, also
+  independently broke/restored the eSIM-info-embedding logic to confirm
+  it's genuinely tested (not just asserted), and confirmed the invalidate
+  fix is correctly ordered (runs unconditionally before the confirmation
+  UI state change) and sufficient (no other stale caches exist yet, since
+  FR-1103's ticket-thread screen isn't built).
 - 2026-11-17 — UI refresh pass (visual polish only, not tied to a single
   FR). The client sent an 8-panel branded mockup asking to "polish the
   existing UI... throughout the app." The mockup also shows real
