@@ -148,7 +148,7 @@ class _SignedInHero extends ConsumerWidget {
     final esims = esimsAsync.valueOrNull;
     if (esims == null) return const _DefaultHero();
 
-    final activeEsim = activeEsimForHomeCard(esims);
+    final activeEsim = activeEsimForHomeCard(esims, DateTime.now());
     if (activeEsim == null) return const _DefaultHero();
 
     final statusAsync = ref.watch(esimStatusProvider(activeEsim.id));

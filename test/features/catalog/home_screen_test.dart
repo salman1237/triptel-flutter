@@ -49,7 +49,10 @@ const _token = AuthToken(
   mustChangePassword: false,
 );
 
-MyEsim _esim({String id = 'esim-1', String status = 'ACTIVE'}) => MyEsim(
+final _farPast = DateTime.utc(2020, 1, 1);
+final _farFuture = DateTime.utc(2099, 1, 1);
+
+MyEsim _esim({String id = 'esim-1', bool activated = true}) => MyEsim(
       id: id,
       orderNo: 'ORD-TEST-1',
       productTitle: 'Japan 1GB 7Days',
@@ -60,11 +63,14 @@ MyEsim _esim({String id = 'esim-1', String status = 'ACTIVE'}) => MyEsim(
       lpaString: '',
       qrCodeData: '',
       smdpAddress: '',
-      status: status,
+      // Deliberately a stale 'RELEASED' even for a qualifying eSIM, mirroring
+      // the real account this was verified against -- activeEsimForHomeCard
+      // must key off activatedAt/expiresAt, never status.
+      status: 'RELEASED',
       isMockFallback: false,
-      createdAt: DateTime.utc(2026, 11, 1),
-      activatedAt: DateTime.utc(2026, 11, 1),
-      expiresAt: DateTime.utc(2026, 11, 20),
+      createdAt: _farPast,
+      activatedAt: activated ? _farPast : null,
+      expiresAt: activated ? _farFuture : null,
       isBeneficiary: false,
     );
 
@@ -270,11 +276,13 @@ void main() {
   });
 
   testWidgets(
-      'a signed-in user with no ACTIVE/INSTALLED eSIM still sees the '
-      'default hero', (tester) async {
+      'a signed-in user with no genuinely-activated eSIM still sees the '
+      'default hero -- even one whose status still says RELEASED (the '
+      'real, known-stale case) but was never actually activated',
+      (tester) async {
     await tester.pumpWidget(_app(
       auth: const AuthAuthenticated(_token),
-      esims: [_esim(status: 'RELEASED')],
+      esims: [_esim(activated: false)],
     ));
     await tester.pumpAndSettle();
 

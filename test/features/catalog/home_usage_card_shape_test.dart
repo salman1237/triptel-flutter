@@ -2,7 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:triptel/features/catalog/application/home_usage_card_shape.dart';
 import 'package:triptel/features/esims/data/models/my_esim.dart';
 
-MyEsim _esim({required String id, required String status}) => MyEsim(
+final _now = DateTime.utc(2026, 11, 18);
+
+MyEsim _esim({
+  required String id,
+  String status = 'RELEASED',
+  DateTime? activatedAt,
+  DateTime? expiresAt,
+}) =>
+    MyEsim(
       id: id,
       orderNo: 'ORD-$id',
       productTitle: 'Japan 1GB 7Days',
@@ -16,36 +24,63 @@ MyEsim _esim({required String id, required String status}) => MyEsim(
       status: status,
       isMockFallback: false,
       createdAt: DateTime.utc(2026, 11, 1),
-      activatedAt: null,
-      expiresAt: null,
+      activatedAt: activatedAt,
+      expiresAt: expiresAt,
       isBeneficiary: false,
     );
 
 void main() {
-  test('picks the first ACTIVE or INSTALLED eSIM (list is newest-first)', () {
+  test(
+      'picks the first genuinely activated, not-yet-expired eSIM '
+      '(list is newest-first) -- status is deliberately ignored, since it '
+      'never updates for eSIM Access profiles (see doc comment)', () {
     final esims = [
-      _esim(id: '1', status: 'RELEASED'),
-      _esim(id: '2', status: 'ACTIVE'),
-      _esim(id: '3', status: 'INSTALLED'),
+      _esim(id: '1'), // never installed: activatedAt null
+      _esim(
+        id: '2',
+        status: 'RELEASED', // the real, known-stale case
+        activatedAt: DateTime.utc(2026, 11, 10),
+        expiresAt: DateTime.utc(2026, 11, 25),
+      ),
+      _esim(
+        id: '3',
+        activatedAt: DateTime.utc(2026, 11, 5),
+        expiresAt: DateTime.utc(2026, 11, 30),
+      ),
     ];
 
-    expect(activeEsimForHomeCard(esims)?.id, '2');
+    expect(activeEsimForHomeCard(esims, _now)?.id, '2');
   });
 
-  test('skips RELEASED/ALLOCATED and terminal statuses', () {
+  test('skips a not-yet-installed eSIM (activatedAt null)', () {
+    final esims = [_esim(id: '1', activatedAt: null)];
+
+    expect(activeEsimForHomeCard(esims, _now), isNull);
+  });
+
+  test('skips an activated eSIM that has already expired', () {
     final esims = [
-      _esim(id: '1', status: 'RELEASED'),
-      _esim(id: '2', status: 'ALLOCATED'),
-      _esim(id: '3', status: 'SUSPENDED'),
-      _esim(id: '4', status: 'REVOKED'),
-      _esim(id: '5', status: 'CANCELLED'),
-      _esim(id: '6', status: 'EXPIRED'),
+      _esim(
+        id: '1',
+        activatedAt: DateTime.utc(2026, 11, 1),
+        expiresAt: DateTime.utc(2026, 11, 8),
+      ),
     ];
 
-    expect(activeEsimForHomeCard(esims), isNull);
+    expect(activeEsimForHomeCard(esims, _now), isNull);
+  });
+
+  test(
+      'an activated eSIM with no expiresAt still counts (unlimited-days '
+      'plan, or the backend simply hasn\'t set one)', () {
+    final esims = [
+      _esim(id: '1', activatedAt: DateTime.utc(2026, 11, 1), expiresAt: null),
+    ];
+
+    expect(activeEsimForHomeCard(esims, _now)?.id, '1');
   });
 
   test('returns null when there are no eSIMs at all', () {
-    expect(activeEsimForHomeCard(const []), isNull);
+    expect(activeEsimForHomeCard(const [], _now), isNull);
   });
 }
