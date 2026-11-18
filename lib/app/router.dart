@@ -20,6 +20,7 @@ import '../features/kyc/presentation/kyc_screen.dart';
 import '../features/support/presentation/new_ticket_screen.dart';
 import '../features/support/presentation/report_problem_screen.dart';
 import '../features/support/presentation/support_ticket_list_screen.dart';
+import '../features/support/presentation/ticket_thread_screen.dart';
 import '../features/tracking/presentation/tracking_screen.dart';
 import '../features/wallet/presentation/ledger_screen.dart';
 import '../features/wallet/presentation/manual_deposit_screen.dart';
@@ -138,6 +139,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/support/new',
       builder: (context, state) => const NewTicketScreen(),
+    ),
+    GoRoute(
+      path: '/support/:id',
+      builder: (context, state) =>
+          TicketThreadScreen(ticketId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/guides/esim-setup-guide',

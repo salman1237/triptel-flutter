@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/support/application/support_providers.dart';
+import 'package:triptel/features/support/data/models/support_attachment.dart';
 import 'package:triptel/features/support/data/models/support_category.dart';
 import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
@@ -27,6 +30,24 @@ class _FakeSupportApi implements SupportApi {
     required String category,
     List<String> filePaths = const [],
   }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> getTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> replyToTicket(
+    String id, {
+    required String body,
+    List<String> filePaths = const [],
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> closeTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<Uint8List> downloadAttachment(SupportAttachment attachment) =>
       throw UnimplementedError();
 
   @override
@@ -65,6 +86,12 @@ Widget _routedApp(Object result) {
       path: '/support/new',
       builder: (context, state) =>
           const Scaffold(body: Text('new-ticket-screen-placeholder')),
+    ),
+    GoRoute(
+      path: '/support/:id',
+      builder: (context, state) => Scaffold(
+          body: Text('ticket-thread-screen-placeholder-'
+              '${state.pathParameters['id']}')),
     ),
   ]);
   return ProviderScope(
@@ -165,5 +192,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('new-ticket-screen-placeholder'), findsOneWidget);
+  });
+
+  testWidgets('tapping a ticket row navigates to its real FR-1103 thread',
+      (tester) async {
+    await tester.pumpWidget(_routedApp([_ticket(id: 'ticket-42')]));
+    await tester.pumpAndSettle();
+
+    await tester
+        .tap(find.byKey(const ValueKey('support-ticket-row-ticket-42')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ticket-thread-screen-placeholder-ticket-42'),
+        findsOneWidget);
   });
 }

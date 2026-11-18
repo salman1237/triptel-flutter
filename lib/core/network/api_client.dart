@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import '../config/env.dart';
 import 'api_exception.dart';
@@ -36,6 +38,21 @@ class ApiClient {
       _unwrap(() => _dio.put(path, data: data));
 
   Future<dynamic> delete(String path) => _unwrap(() => _dio.delete(path));
+
+  /// Downloads raw bytes with the auth header attached (FR-1103: support
+  /// attachments need `Authorization`, which an `Image.network`/`WebView`
+  /// can't add on its own -- API.md section 12).
+  Future<Uint8List> getBytes(String path) async {
+    try {
+      final response = await _dio.get<List<int>>(
+        path,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const []);
+    } on DioException catch (e) {
+      throw _toApiException(e);
+    }
+  }
 
   Future<dynamic> _unwrap(Future<Response<dynamic>> Function() call) async {
     try {

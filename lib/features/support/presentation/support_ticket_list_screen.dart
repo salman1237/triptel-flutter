@@ -12,9 +12,8 @@ import '../data/models/support_ticket.dart';
 
 /// FR-1101: support ticket list. `GET /support/tickets`, newest activity
 /// first (already sorted server-side) -- reference, subject, status chip,
-/// last activity. Rows aren't tappable yet (FR-1103's thread screen isn't
-/// built). The "+" action and empty-state CTA open FR-1102's new-ticket
-/// form.
+/// last activity. Rows open FR-1103's thread screen. The "+" action and
+/// empty-state CTA open FR-1102's new-ticket form.
 class SupportTicketListScreen extends ConsumerWidget {
   const SupportTicketListScreen({super.key});
 
@@ -72,30 +71,33 @@ class _TicketRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final chip = ticketStatusChip(ticket.status);
     final lastActivity = ticket.lastMessageAt ?? ticket.createdAt;
-    return Padding(
+    return InkWell(
       key: ValueKey('support-ticket-row-${ticket.id}'),
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(ticket.reference,
-              style: AppTypography.caption(color: AppColors.inkMuted)),
-          const SizedBox(height: 2),
-          Text(ticket.subject, style: AppTypography.body()),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              StatusChip(label: chip.label, tone: chip.tone),
-              if (lastActivity != null) ...[
-                const SizedBox(width: 8),
-                Text(
-                  DateFormat.yMMMd().add_jm().format(lastActivity.toLocal()),
-                  style: AppTypography.caption(color: AppColors.inkMuted),
-                ),
+      onTap: () => context.push('/support/${ticket.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(ticket.reference,
+                style: AppTypography.caption(color: AppColors.inkMuted)),
+            const SizedBox(height: 2),
+            Text(ticket.subject, style: AppTypography.body()),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                StatusChip(label: chip.label, tone: chip.tone),
+                if (lastActivity != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    DateFormat.yMMMd().add_jm().format(lastActivity.toLocal()),
+                    style: AppTypography.caption(color: AppColors.inkMuted),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import 'models/support_attachment.dart';
 import 'models/support_category.dart';
 import 'models/support_ticket.dart';
 
@@ -20,6 +23,25 @@ abstract class SupportApi {
 
   /// `GET /support/tickets` (auth), up to 100, newest activity first.
   Future<List<SupportTicket>> getTickets();
+
+  /// `GET /support/tickets/{id}` (auth) -- ticket + full `messages` thread.
+  Future<SupportTicket> getTicket(String id);
+
+  /// `POST /support/tickets/{id}/messages` (auth, multipart). Replying to
+  /// a RESOLVED ticket reopens it; a CLOSED ticket rejects this with a 400
+  /// (API.md section 12) -- surfaced to the caller as the real
+  /// [ApiException] message, not guessed client-side.
+  Future<SupportTicket> replyToTicket(
+    String id, {
+    required String body,
+    List<String> filePaths = const [],
+  });
+
+  /// `POST /support/tickets/{id}/close` (auth).
+  Future<SupportTicket> closeTicket(String id);
+
+  /// `GET /support/attachments/{id}` (auth) -- raw file bytes.
+  Future<Uint8List> downloadAttachment(SupportAttachment attachment);
 
   /// `GET /support/categories` (public). `PARTNER` is filtered out of the
   /// result -- hidden in this customer app.
@@ -60,6 +82,41 @@ class SupportApiImpl implements SupportApi {
         .map((t) => SupportTicket.fromJson(t as Map<String, dynamic>))
         .toList();
   }
+
+  @override
+  Future<SupportTicket> getTicket(String id) async {
+    final response = await _client.get('/support/tickets/$id');
+    return SupportTicket.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<SupportTicket> replyToTicket(
+    String id, {
+    required String body,
+    List<String> filePaths = const [],
+  }) async {
+    final response = await _client.post(
+      '/support/tickets/$id/messages',
+      data: FormData.fromMap({
+        'body': body,
+        if (filePaths.isNotEmpty)
+          'files': [
+            for (final path in filePaths) await MultipartFile.fromFile(path),
+          ],
+      }),
+    );
+    return SupportTicket.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<SupportTicket> closeTicket(String id) async {
+    final response = await _client.post('/support/tickets/$id/close');
+    return SupportTicket.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Uint8List> downloadAttachment(SupportAttachment attachment) =>
+      _client.getBytes(attachment.url);
 
   @override
   Future<List<SupportCategory>> getCategories() async {

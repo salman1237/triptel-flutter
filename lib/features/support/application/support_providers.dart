@@ -18,3 +18,9 @@ final supportTicketsProvider = FutureProvider<List<SupportTicket>>((ref) {
 final supportCategoriesProvider = FutureProvider<List<SupportCategory>>((ref) {
   return ref.watch(supportApiProvider).getCategories();
 });
+
+/// FR-1103: a single ticket's full thread (`GET /support/tickets/{id}`).
+final supportTicketProvider =
+    FutureProvider.family<SupportTicket, String>((ref, id) {
+  return ref.watch(supportApiProvider).getTicket(id);
+});

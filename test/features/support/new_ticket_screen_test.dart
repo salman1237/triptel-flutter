@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,7 @@ import 'package:triptel/features/esims/data/models/my_esim.dart';
 import 'package:triptel/features/esims/data/my_esims_api.dart';
 import 'package:triptel/features/support/application/support_image_picker.dart';
 import 'package:triptel/features/support/application/support_providers.dart';
+import 'package:triptel/features/support/data/models/support_attachment.dart';
 import 'package:triptel/features/support/data/models/support_category.dart';
 import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
@@ -77,6 +80,24 @@ class _FakeSupportApi implements SupportApi {
 
   @override
   Future<List<SupportTicket>> getTickets() => throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> getTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> replyToTicket(
+    String id, {
+    required String body,
+    List<String> filePaths = const [],
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> closeTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<Uint8List> downloadAttachment(SupportAttachment attachment) =>
+      throw UnimplementedError();
 
   @override
   Future<List<SupportCategory>> getCategories() async => _categories;

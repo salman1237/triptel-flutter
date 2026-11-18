@@ -1,7 +1,12 @@
+import 'support_message.dart';
+
 /// `POST /support/tickets` / `GET /support/tickets` response (API.md
 /// section 12) -- `order_id`/timestamps are only present on the full
 /// `GET /support/tickets` shape FR-1101's list needs; FR-410's create
 /// confirmation only reads id/reference/subject/category/status.
+/// [messages] is only present on `GET /support/tickets/{id}` (and the
+/// create/reply responses, which embed the same shape) -- null on the
+/// plain list.
 class SupportTicket {
   const SupportTicket({
     required this.id,
@@ -14,6 +19,7 @@ class SupportTicket {
     this.lastMessageAt,
     this.resolvedAt,
     this.closedAt,
+    this.messages,
   });
 
   final String id;
@@ -26,6 +32,7 @@ class SupportTicket {
   final DateTime? lastMessageAt;
   final DateTime? resolvedAt;
   final DateTime? closedAt;
+  final List<SupportMessage>? messages;
 
   factory SupportTicket.fromJson(Map<String, dynamic> json) => SupportTicket(
         id: json['id'] as String,
@@ -46,5 +53,11 @@ class SupportTicket {
         closedAt: json['closed_at'] == null
             ? null
             : DateTime.parse(json['closed_at'] as String),
+        messages: json['messages'] == null
+            ? null
+            : [
+                for (final m in json['messages'] as List)
+                  SupportMessage.fromJson(m as Map<String, dynamic>),
+              ],
       );
 }
