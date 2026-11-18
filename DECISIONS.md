@@ -57,6 +57,29 @@ this subset, extend the existing parser instead of adding a dependency.
 subset (a link, a numbered list, etc.) -- then either extend the parser
 for that one syntax element or reconsider a real markdown package.
 
+## 2026-11-19 — Mobile real-time chat FRs unblocked
+**What I did:** flipped FR-C901–C904 from `blocked` to `not_started`,
+rewrote `docs/API.md`'s §12 WS section from "PLANNED, NOT YET LIVE" to a
+confirmed, exercised contract, and updated the REST message/my-esims
+shapes it references (new fields added alongside the chat feature:
+`author_avatar_url`, `message_type`, `shared_order`/`shared_product`,
+`GET /orders/my-esims`'s `order_id`). **Why now, not earlier:** the
+2026-11-18 blocking decision's own revisit condition —
+`D:\eSim\claude-progress.md` confirming a web chat FR live on beta — is
+now met, and more than that: the web session's own first "live" check
+on 2026-11-18 found a real gap (WS connect/auth worked, but broadcast
+delivery silently didn't — a datetime-serialization bug), fixed it, and
+reverified end-to-end before calling it done. That whole story is worth
+reading (`D:\eSim\claude-progress.md`'s "Real production bug" entry) before
+starting FR-C901: it's a concrete demonstration of why "the endpoint
+accepts a connection" was never sufficient proof here, and the same bar
+(two-socket evidence of actual delivery, not just connection) applies to
+this app's own WS client work. **Also confirmed while re-reading:** the
+backend's close codes for a rejected WS handshake are `4401`
+(unauthorized) and `4403` (forbidden) — not generic WS close codes,
+app-specific ones `ws_support.py` defines — documented in API.md so
+FR-C901 doesn't have to rediscover them by trial and error.
+
 ## 2026-11-18 — Mobile real-time chat FRs added as `blocked`, not `not_started`
 **What I did:** appended FR-C901–C904 (real-time support chat) to
 `feature_list.json` with `state: "blocked"` and an explicit `blocked_reason`

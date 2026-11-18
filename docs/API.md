@@ -355,11 +355,14 @@ Body = `OrderCreateRequest` with **`"mobile": true`**:
 ### `GET /orders/my-esims` (auth) → list (newest first)
 Every profile where I'm buyer **or** beneficiary:
 ```json
-{"id":"<esim profile id>","order_no","product_title","data_amount_gb":1.0,"is_unlimited":false,
+{"id":"<esim profile id>","order_id":"<order id>","order_no","product_title","data_amount_gb":1.0,"is_unlimited":false,
  "validity_days":7,"iccid","lpa_string","qr_code_data","smdp_address",
  "status":"ALLOCATED","is_mock_fallback":false,"created_at",
  "activated_at":null,"expires_at":null,"is_beneficiary":true}
 ```
+- `order_id` added 2026-11-18 for the chat "share an order" feature
+  (FR-C903) — the field the WS section's `shared_order.esim_profile_id`
+  effectively maps back to; confirmed live.
 - Orders still provisioning (no profile yet) are **not** in this list.
 - `data_amount_gb/validity_days` are the **original purchase** — after a top-up they
   are stale. Use `/esims/{id}/status` for real totals.
@@ -520,35 +523,77 @@ Withdrawal object:
 - `GET /support/categories` (public) → `[{"value":"ESIM","label":"eSIM not working"},{"value":"PAYMENT",...},{"value":"REFUND"},{"value":"ACCOUNT"},{"value":"PARTNER"},{"value":"OTHER"}]` — hide PARTNER in this app.
 - `GET /support/tickets` → up to 100, newest activity first:
   `{"id","reference","subject","category","status","order_id","created_at","last_message_at","resolved_at","closed_at"}`
-- `POST /support/tickets` multipart: `subject`, `body` (≤ 5000), `category` (default OTHER), `order_id` (optional, link an eSIM's order), `files` (repeatable, ≤ 5, ≤ 5 MB each; png/jpeg/webp/heic/pdf/txt) → ticket + `messages`
-- `GET /support/tickets/{id}` → ticket + `messages:[{"id","body","is_staff","author":"You|Support","created_at","attachments":[{"id","name","content_type","size_bytes","url":"/api/v1/support/attachments/<id>"}]}]`
-- `POST /support/tickets/{id}/messages` multipart `body`, `files` → updated ticket. Replying to a resolved ticket reopens it; a CLOSED ticket rejects replies (400).
+- `POST /support/tickets` multipart: `subject`, `body` (optional now — see note below; ≤ 5000), `category` (default OTHER), `order_id` (optional, link an eSIM's order), `shared_order_id`/`shared_product_id` (optional, mutually exclusive with each other — FR-C903, see WS section below), `files` (repeatable, ≤ 5, ≤ 5 MB each; png/jpeg/webp/heic/pdf/txt) → ticket + `messages`
+- `GET /support/tickets/{id}` → ticket + `messages:[{"id","body","is_staff","author_id","author":"You|Support","author_avatar_url":"<url>|null","message_type":"TEXT|ORDER_SHARE|PRODUCT_SHARE","shared_order":{...}|null,"shared_product":{...}|null,"created_at","attachments":[{"id","name","content_type","size_bytes","url":"/api/v1/support/attachments/<id>"}]}]`
+  - `shared_order`: `{"id","order_no","status","total_amount","currency","product_title","esim_profile_id":"<id>|null"}` — `esim_profile_id` is the id `GET /orders/my-esims`/`GET /esims/{id}/status` use; null while the order hasn't provisioned an eSIM yet. `null` instead of a `shared_order` object at all means the shared order was deleted (`ON DELETE SET NULL`) — still a readable message, just nothing to link to.
+  - `shared_product`: `{"id","title","data_amount_gb","validity_days","is_unlimited","retail_price","currency","country_slug"}` — `country_slug` is the same slug `GET /catalog/countries` computes, for building a destination link if this app ever wants one. Same null-on-delete behavior as `shared_order`.
+  - `message_type` is explicit, never infer it from whether `shared_order`/`shared_product` is non-null.
+- `POST /support/tickets/{id}/messages` multipart `body` (optional — see note below), `shared_order_id`/`shared_product_id` (optional, mutually exclusive), `files` → updated ticket. Replying to a resolved ticket reopens it; a CLOSED ticket rejects replies (400).
+  - ⚠️ **Real bug hit on web, fixed 2026-11-18, matters for this client's multipart encoder too:** sending `body` as an empty string used to 422 ("Field required") on both endpoints above — Starlette's multipart parser treated an empty-string value for a *required* `body` field as the field being absent entirely, not "present but empty." Fixed server-side (`body` now defaults to `""`), so sending an explicitly-empty `body` field (e.g. for a share-only message with no extra text) now works correctly — but if this client's multipart library ever *omits* a field entirely when its value is empty (several do, check the one in use), always send `body` as a field with value `""` rather than skipping it, to be safe either way.
 - `POST /support/tickets/{id}/close`
 - `GET /support/attachments/{id}` (auth) → file bytes. Download with the Bearer header (image widgets can't add it by themselves).
 
-### Real-time chat WebSocket — ⚠️ PLANNED, NOT YET LIVE (added 2026-11-18)
-**Do not build FR-C901–C904 against this section until `D:\eSim\claude-progress.md`
-confirms a web chat FR is live on beta.** Documented now so the contract is
-visible, same discipline as every other endpoint here — but this one hasn't
-been exercised for real yet, so treat every field name below as provisional
-until confirmed. See `D:\eSim\docs\Architecture.md` for the full design.
+### Real-time chat WebSocket — ✅ LIVE, confirmed end-to-end on beta (2026-11-18)
+Replaces the earlier "planned" version of this section. Confirmed for real,
+not just deployed: connect/auth, a real broadcast sent by one client and
+received by a second real socket, reconnect behavior, and the datetime-
+serialization bug that initially broke broadcast delivery in production
+(found via live beta logs, fixed, reverified) — see
+`D:\eSim\claude-progress.md`'s 2026-11-18 "Real production bug" entry for
+the full account. `D:\eSim\docs\Architecture.md`/`Rules.md` have the
+backend-side design; this is the client-facing contract.
 
-Planned shape (backend FR-C101–C107):
-- `WS /ws/support/tickets/{ticket_id}?token=<jwt>` — same ownership rule as
-  the REST endpoints above. Inbound you can send: `{"type":"typing"}`
-  (ephemeral, never persisted — don't poll for its absence, don't retry it).
-  Outbound you'll receive:
-  - `{"type":"message","message":{...same shape as GET /support/tickets/{id}'s
-    messages[], plus "author_avatar_url" and "message_type":"TEXT|ORDER_SHARE|
-    PRODUCT_SHARE" and, when not TEXT, "shared_order":{...}/"shared_product":{...}}}`
-  - `{"type":"typing","from":"customer|staff"}`
-  - `{"type":"ticket_status","status":"OPEN|ANSWERED|RESOLVED|CLOSED"}`
+- `WS wss://beta.triptel.co/api/v1/ws/support/tickets/{ticket_id}?token=<jwt>`
+  — same ownership rule as the REST endpoints (ticket's `user_id` or staff).
+  A WS handshake can't carry an `Authorization` header from a browser, so
+  the web client sends the token this way too — match it exactly, don't
+  invent a header-based auth path for this one connection just because
+  this client *can* set WS handshake headers.
+  - **Rejected connections close immediately** with an app-level code, no
+    response body (a WS handshake has none to put a reason in):
+    `4401` = missing/invalid token, `4403` = valid token but not this
+    ticket's owner and not staff. Neither is retryable with the same
+    token — don't reconnect-with-backoff on these two codes specifically
+    (see Reconnect below).
+  - Inbound, you may send `{"type":"typing"}` — ephemeral, never
+    persisted, no ack. Don't poll for its absence; the recipient clears
+    its own typing indicator ~3s after the last one arrives.
+  - Outbound, you'll receive:
+    - `{"type":"message","message":{<exact same shape as
+      GET /support/tickets/{id}'s messages[] entries, documented above>}}`
+      — fired once per new message (yours too; the sender's own socket
+      also receives its own message back over the ticket channel, so
+      dedupe by `id` against whatever you already optimistically
+      rendered or just-fetched via the REST POST's response).
+    - `{"type":"typing","from":"customer"|"staff"}` — the *other* side
+      only; your own typing events are never echoed back to you.
+  - There is no `ticket_status`-only event — a status change (e.g. staff
+    resolves the ticket) arrives as part of the next `message` event's
+    ticket state via a REST re-fetch, or is picked up on reconnect. If a
+    live-without-reconnecting status update turns out to matter for this
+    app, that's new scope (not currently built on web either) — raise it
+    rather than assuming the event exists.
+- `WS wss://beta.triptel.co/api/v1/ws/support/queue?token=<jwt>` — **staff
+  only** (`4403` for a non-staff token). Not relevant to this customer-only
+  app; documented so it isn't confused with the ticket channel above if
+  ever seen in backend logs.
 - Writing a message is still `POST /support/tickets/{id}/messages` (REST,
-  unchanged) — the WS only pushes what that endpoint already wrote. Planned
-  new optional multipart fields on that endpoint: `shared_order_id`,
-  `shared_product_id` (mutually exclusive with each other, not with `files`).
-- Reconnect with backoff; while disconnected, fall back to
-  `GET /support/tickets/{id}` so the thread is never silently stale.
+  unchanged) — the WS only pushes what that endpoint already durably
+  wrote. Never send a chat message over the WS connection itself.
+- **Reconnect:** exponential backoff, e.g. 1s/2s/4s/8s/16s capped at 30s —
+  not a tight retry loop. Skip reconnecting entirely on a `4401`/`4403`
+  close (the same token will fail identically every time). On a
+  successful *reconnect* (not the first connect), re-fetch
+  `GET /support/tickets/{id}` to catch anything sent while disconnected —
+  the socket is never the only source of truth. While disconnected, the
+  thread still works via the existing REST fetch/reply, just not live —
+  never a hard error blocking viewing or sending.
+- **Known, accepted limitation, carried over from the backend design:**
+  the connection manager is a single in-process registry — correct only
+  because `esim-backend`/`esim-backend-beta` are single-instance
+  containers today. If that ever changes, this client needs no changes;
+  it's a backend-side concern only (flagged here so no one "fixes" a
+  client symptom that's actually this).
 
 ---
 
@@ -571,3 +616,8 @@ Planned shape (backend FR-C101–C107):
 - 2026-11-18: new `GET /catalog/featured` for the destination-search sheet's top
   "Global" card (§3) — requested for this app, backed by a new
   `Product.is_storefront_highlight` admin flag, not `is_featured`.
+- 2026-11-19: real-time chat WS (§12) went from "planned" to confirmed live;
+  `GET /orders/my-esims` gained `order_id`; the support message shape gained
+  `author_avatar_url`/`message_type`/`shared_order`/`shared_product`;
+  `shared_order_id`/`shared_product_id` are new optional fields on both
+  ticket-write endpoints.

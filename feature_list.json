@@ -1068,32 +1068,28 @@
       "id": "FR-C901",
       "behavior": "Chat support: WS client wiring (useSupportSocket equivalent), token auth",
       "verification": "flutter test test/features/support_chat",
-      "state": "blocked",
-      "blocked_reason": "Waiting for D:\\eSim backend FR-C103 (ticket WS endpoint) to ship live on beta - see D:\\eSim/DECISIONS.md 2026-11-18 entry. Do not build against an unexercised contract.",
+      "state": "not_started",
       "evidence": null
     },
     {
       "id": "FR-C902",
       "behavior": "Chat support: live thread screen, avatars, typing indicator",
       "verification": "flutter test test/features/support_chat",
-      "state": "blocked",
-      "blocked_reason": "Depends on FR-C901.",
+      "state": "not_started",
       "evidence": null
     },
     {
       "id": "FR-C903",
       "behavior": "Chat support: share an order or package in a message",
       "verification": "flutter test test/features/support_chat",
-      "state": "blocked",
-      "blocked_reason": "Depends on FR-C901/FR-C902 and backend FR-C106.",
+      "state": "not_started",
       "evidence": null
     },
     {
       "id": "FR-C904",
       "behavior": "Home screen: Chat with Support button, opens the chat feature",
       "verification": "flutter test test/features/support_chat",
-      "state": "blocked",
-      "blocked_reason": "Depends on FR-C901/FR-C902.",
+      "state": "not_started",
       "evidence": null
     }
   ]

@@ -194,12 +194,19 @@ State machine (port of web `PackageBrowser.tsx`):
 ## N. Legal
 - **FR-1201 Legal documents.** List + reader (markdown-lite).
 
-## O. Real-time support chat — BLOCKED, do not start (2026-11-18)
-Web ships first against the shared backend (`D:\eSim`); these build **after**
-a web chat FR is confirmed live on `beta.triptel.co` — see
-`feature_list.json`'s `blocked_reason` on each and `D:\eSim\DECISIONS.md`.
-Replaces FR-1101–1103 above with a live version once built (same
-`SupportTicket`/`SupportMessage` backend, not a new system).
+## O. Real-time support chat — unblocked 2026-11-19
+Was blocked on web shipping the chat backend first; all of it
+(FR-C101–C107, FR-C201–C206, FR-C301/C302) is now built and confirmed
+**genuinely live** on `beta.triptel.co` — not just "deployed," actually
+proven end-to-end with a real connect + a real broadcast received by a
+real second socket (see `D:\eSim\claude-progress.md`'s 2026-11-18
+entries, especially "Real production bug" — the first live check found
+WS connect/auth worked but broadcast delivery silently didn't, root-
+caused to a datetime-serialization bug, fixed and reverified live
+before this was called done). `docs/API.md`'s §12 WS section now
+documents the real, exercised contract — read that before FR-C901,
+not this paragraph. Replaces FR-1101–1103 above with a live version
+(same `SupportTicket`/`SupportMessage` backend, not a new system).
 - **FR-C901 WS client wiring.** `wss://.../ws/support/tickets/{id}?token=`,
   reconnect with backoff, falls back to the existing REST fetch while
   disconnected. See `D:\eSim\docs\Rules.md` — WS auth is `?token=`, never a

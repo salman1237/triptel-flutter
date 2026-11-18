@@ -1,6 +1,31 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — Chat FRs unblocked, harness docs resynced to the real contract
+Web's real-time chat (`D:\eSim`) shipped all 15 of its own FRs
+(FR-C101–C107 backend, FR-C201–C206 widget, FR-C301/C302 admin) and
+confirmed them genuinely live on beta — including finding and fixing a
+real production bug (WS connect/auth worked but broadcast delivery
+silently didn't, a datetime-serialization issue) before calling it
+done. See `D:\eSim\claude-progress.md`'s 2026-11-18 entries for the
+full account, worth reading before FR-C901.
+Flipped `FR-C901`–`FR-C904` from `blocked` to `not_started` in
+`feature_list.json`. Rewrote `docs/API.md` §12's WS section from
+"PLANNED, NOT YET LIVE" to the real, exercised contract — WS URL, the
+`4401`/`4403` app-level close codes, the real inbound/outbound event
+shapes, reconnect-backoff guidance, and the single-instance-backend
+limitation carried over from the backend's own design. Also synced two
+REST shapes that gained fields alongside the chat feature:
+`GET /orders/my-esims`'s new `order_id`, and the support message shape's
+new `author_avatar_url`/`message_type`/`shared_order`/`shared_product`
+fields (plus the two ticket-write endpoints' new optional
+`shared_order_id`/`shared_product_id` fields). `docs/Functional_
+Requirements.md` §O's header updated to match. See `DECISIONS.md`'s
+2026-11-19 entry for the full reasoning.
+**Next step:** `FR-C901` (WS client wiring) is next in the autonomous
+loop - the first `not_started` item now that `FR-1201` (legal
+documents) is the last `passing` one before it.
+
 ## 2026-11-18 — Chat FRs queued, blocked
 Appended FR-C901–C904 (real-time support chat) to `feature_list.json`,
 `docs/Functional_Requirements.md` §O, and a provisional WS section in
