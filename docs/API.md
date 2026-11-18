@@ -190,6 +190,48 @@ Only countries with at least one active, visible product. Sorted by name
   listed on China's page — by design.
 - `search` matches `name_en` or `iso2` (ILIKE).
 
+### `GET /catalog/featured` (public) → `FeaturedPackageResponse[]` — NEW, added 2026-11-18
+The destination-search sheet's top "Global" card. **Does not exist on `CountryResponse`
+or `ProductResponse`** — added as its own cheap endpoint rather than extra fields on
+`GET /catalog/countries`, because there is no automatic way to derive "the one global
+package": `is_featured` is a *per-country* "recommended pick" (235 different products
+on beta as of 2026-11-18, essentially one per destination, not a single global
+selector), and beta actually has **three separate "Global"-named pseudo-countries**
+(a plain VivaPe "Global" with no coverage list, and two eSIM Access ones —
+"Global139"/127 countries and "Global (120+ areas)"/117 countries — each with several
+data/validity variants). An admin now explicitly flags which product(s) this endpoint
+returns (`Product.is_storefront_highlight`, set via the admin catalog editor). Usually
+returns 0 or 1 item; shaped as a list in case more than one is ever highlighted at once.
+
+Real example (beta, `Global139 10GB 30Days` flagged as the highlight):
+```json
+[
+  {
+    "product_id": "d291e871-d86b-47bb-b372-e8bef1eb8ed7",
+    "title": "Global139 10GB 30Days",
+    "retail_price": "111.7200",
+    "currency": "USD",
+    "data_amount_gb": "10.00",
+    "validity_days": 30,
+    "is_unlimited": false,
+    "country_count": 127,
+    "country_iso2": "GL-139",
+    "country_name": "Global139",
+    "country_slug": "global139",
+    "flag_url": null
+  }
+]
+```
+- Empty array `[]` is a normal response (nothing currently highlighted) — hide the
+  card, don't show an error.
+- `currency` has the same "treat as EUR" caveat as everywhere else (§0.2).
+- `country_count` is `null` when the product has no coverage list at all (true for a
+  plain VivaPe "Global" row — that supplier never reports one). **Don't show "0
+  countries"** in that case; omit the coverage line instead.
+- Tap-through target: `GET /catalog/destinations/{country_slug}` (or `{country_iso2}`),
+  same as any other destination card — this is a real `Country` row, not a one-off.
+- Respects the same active-supplier visibility switch as every other catalog endpoint.
+
 ### `GET /catalog/destinations/{slug}` → `{country: CountryResponse, products: ProductResponse[]}`
 `slug` = name slug (`japan`) **or** ISO2 (`jp`). 404 `Country not found`.
 
@@ -502,3 +544,6 @@ Withdrawal object:
 - Products: Day Pass (`supplier_period_num`), unlimited fixed plans, regional
   pseudo-countries with `coverage_countries`, `region == "Regional"`.
 - eSIM Access products are labelled `USD` (§0.2).
+- 2026-11-18: new `GET /catalog/featured` for the destination-search sheet's top
+  "Global" card (§3) — requested for this app, backed by a new
+  `Product.is_storefront_highlight` admin flag, not `is_featured`.
