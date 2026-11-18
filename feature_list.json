@@ -300,8 +300,16 @@
       "id": "FR-202b",
       "behavior": "Featured 'Global' package card at the top of the explore sheet (needs product-level price/country-count data, not just the country list)",
       "verification": "flutter test test/features/catalog",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "bb29ba5",
+        "screens": [
+          "artifacts/fr202b-featured-live.png",
+          "artifacts/fr202b-tap-through.png",
+          "artifacts/fr202b-live-check.png"
+        ],
+        "notes": "New GET /catalog/featured integration (FeaturedPackage model, CatalogApi.getFeaturedPackages, featuredPackagesProvider), unblocked this session by the user's backend session shipping the endpoint (documented in this repo's docs/API.md, commit 2cb8ff8 -- an admin-picked storefront highlight via a new Product.is_storefront_highlight flag, deliberately its own endpoint rather than fields on CountryResponse/ProductResponse since there's no automatic way to derive 'the one global package' from those alone). The explore sheet shows it as a card above the Country/Regional tabs, hidden while actively searching, hidden when the list is empty (a documented normal response, never an error). Real currency-converted price via the same formatMoney/selectedCurrencyRateProvider pattern destination_plans_screen.dart already uses; data/validity label and country-count line via two new pure functions (featuredPackageDataLabel, featuredPackageCoverageLabel) -- the latter omits the line entirely (never '0 countries') when country_count is null, per the documented VivaPe-Global edge case. Tapping the card closes the sheet and navigates via country_slug, same as any other catalog entry. 6 new/changed test files (featured_package_test.dart, plus featured-card coverage added to catalog_providers_test.dart/explore_sheet_test.dart/plan_shape_test.dart, plus the 4 other test files' CatalogApi fakes updated for the grown interface); full suite green, flutter analyze/dart format clean, bash harness.sh verify green (debug APK builds). Non-vacuousness proof: broke featuredPackageCoverageLabel's null-handling (defaulted null to 0 instead of omitting), confirmed both a unit test and a widget test fail for real, restored. On-device evidence is genuine and complete, not just the empty-state fallback: first confirmed (via temporary debug logging, removed before the final build) that the live beta backend genuinely returned an empty list -- proving the hide-don't-error path works against the real API, not just in tests. The user then flagged the real Global139 10GB 30Days product live via the backend's admin console (same real product id documented in API.md's own example) specifically so this feature could be verified end-to-end; re-checked and the real card now renders on-device with the real globe icon (flag_url null), 'Global139 10GB 30Days', '10 GB · 30 days · 127 countries', and the real converted price (BDT 15752.52 from the real EUR-treated amount) -- confirmed via debug log to be the exact live API response, not a coincidence. Tapping it opens the real destination-plans screen for Global139 with its real two real products (1GB 7Days / 1GB 365Days, real BDT prices). Debug logging was removed and the file diffed clean before the final bash harness.sh verify and APK build used for this evidence."
+      }
     },
     {
       "id": "FR-203",
