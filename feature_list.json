@@ -1068,8 +1068,12 @@
       "id": "FR-C901",
       "behavior": "Chat support: WS client wiring (useSupportSocket equivalent), token auth",
       "verification": "flutter test test/features/support_chat",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "970c711",
+        "screens": [],
+        "notes": "New SupportSocket (lib/features/support_chat/data/support_socket.dart) connects to wss://beta.triptel.co/api/v1/ws/support/tickets/{id}?token=<jwt> (API.md section 12's confirmed-live contract). Parses inbound {type:message}/{type:typing} events (reusing the existing SupportMessage.fromJson), sends the outbound {type:typing} ephemeral frame, reconnects with 1s/2s/4s/8s/16s/30s capped exponential backoff on an ordinary disconnect (emitting a Reconnected event so the thread screen knows to re-fetch GET /support/tickets/{id}), and treats 4401/4403 close codes as terminal -- never retried, since the same token fails identically every time. Wired via a new supportSocketProvider (Provider.autoDispose.family<SupportSocket,String>): one live socket per open ticket thread, connects on creation, disposed (and stops reconnecting) when nothing watches that ticket id anymore. No UI yet -- that's FR-C902. 8 new unit tests (test/features/support_chat/support_socket_test.dart) using a fake SupportSocketConnection seam (no real network): token-as-query-param not header, message parsing, typing parsing, the exact typing wire frame, reconnect+Reconnected on an ordinary close, no-reconnect on 4401, no-reconnect on 4403, dispose cancels a pending reconnect. flutter analyze/dart format clean, full suite 766 tests pass, bash harness.sh verify green (debug APK builds). Non-vacuousness proven: temporarily replaced the 4401/4403 guard with `if (false)`, confirmed exactly those two tests failed for real (reconnected when it shouldn't have), restored and reconfirmed green. Reviewer agent: PASS -- independently reran the tests, the non-vacuousness proof, and the full harness.sh verify itself rather than trusting the claim; confirmed the wss:// URI construction, the backoff math (capped, resets on success), the exact wire frames, and that Env.apiBaseUrl (not a hardcoded host) is the only source of the connection URL. Flagged two minor, non-disqualifying gaps (forever-retry on a synchronous connector throw; the broadcast 'connecting' event not replayed to late subscribers) -- recorded in DECISIONS.md's 2026-11-19 'FR-C901: two known, accepted WS-client gaps' entry for FR-C902 to inherit knowingly; also added a connect() idempotency guard while addressing the review."
+      }
     },
     {
       "id": "FR-C902",

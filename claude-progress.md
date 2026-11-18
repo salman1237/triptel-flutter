@@ -1,6 +1,28 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-C901 passing: WS client wiring
+New `SupportSocket` (`lib/features/support_chat/data/support_socket.dart`)
+connects to `wss://beta.triptel.co/api/v1/ws/support/tickets/{id}?token=`
+(API.md section 12's confirmed-live contract): parses inbound
+`message`/`typing` events, sends the outbound ephemeral `typing` frame,
+reconnects with capped exponential backoff on an ordinary disconnect
+(emitting `Reconnected` so the future thread screen re-fetches the REST
+ticket), and treats `4401`/`4403` closes as terminal, never retried.
+Wired via `supportSocketProvider` (`Provider.autoDispose.family`) in
+`lib/features/support_chat/application/support_chat_providers.dart` --
+one live socket per open ticket, torn down when nothing watches it.
+Added `web_socket_channel: ^3.0.3`. 8 new unit tests (fake connection
+seam, no real network); non-vacuousness proven (broke the 4401/4403
+guard, watched exactly those two tests fail, restored). `bash
+harness.sh verify` green (766 tests). Reviewer: PASS, independently
+reran everything; flagged two minor non-disqualifying gaps recorded in
+`DECISIONS.md`'s 2026-11-19 entry for FR-C902 to inherit knowingly.
+Commits: `970c711` (feature), state commit next.
+**Next step:** FR-C902 (live thread screen: avatars, typing indicator,
+auto-scroll, built on `SupportSocket` -- read the two DECISIONS.md
+caveats first) -- the next `not_started` item.
+
 ## 2026-11-19 — Chat FRs unblocked, harness docs resynced to the real contract
 Web's real-time chat (`D:\eSim`) shipped all 15 of its own FRs
 (FR-C101–C107 backend, FR-C201–C206 widget, FR-C301/C302 admin) and
