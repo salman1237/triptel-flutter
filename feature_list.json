@@ -838,8 +838,19 @@
       "id": "FR-1103",
       "behavior": "Ticket thread reply/close, authenticated attachments",
       "verification": "flutter test test/features/support",
-      "state": "not_started",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "cb4b0c8",
+        "screens": [
+          "artifacts/fr1103-thread-1.png",
+          "artifacts/fr1103-reply-sent-2.png",
+          "artifacts/fr1103-closed-2.png",
+          "artifacts/fr1103fix-attached.png",
+          "artifacts/fr1103fix-attachment-tap.png",
+          "artifacts/fr1103fix-closed.png"
+        ],
+        "notes": "New TicketThreadScreen at /support/:id (GET /support/tickets/{id} -- ticket + full messages thread): message bubbles (You/Support), a reply box (POST .../messages, up to 5 image attachments reusing supportImagePickerProvider), Close ticket (POST .../close), a resolved banner for RESOLVED, and a closed notice that replaces the reply box once CLOSED (matches the documented 400-on-reply-to-CLOSED behavior). Attachments download with the real auth header via a new ApiClient.getBytes() (responseType: bytes) -- an Image.network/WebView can't add Authorization itself -- then hand off to the OS share sheet via a new supportAttachmentOpenerProvider seam, same reasoning/precedent as FR-409's receiptSharerProvider (real platform channel, not drivable in a widget test). SupportTicket model extended with an optional messages field (null on the plain list and close responses, present on get/create/reply -- confirmed against real shapes, see below). Ticket list rows now navigate here (previously dead ends per FR-1101's own disclosed gap). 4 new/changed test files, 42 tests total in test/features/support; full suite 684 tests, flutter analyze/dart format clean, bash harness.sh verify green (debug APK builds). Non-vacuousness proofs: (1) forced isClosed to always be false, confirmed the CLOSED-hides-reply-field test fails for real, restored; (2) reverted the attachment-URL fix below, confirmed support_api_test.dart fails with the exact predicted doubled-/api/v1 URL, restored. Real response shapes for GET /support/tickets/{id}, POST .../messages, and POST .../close were NOT guessed from API.md's prose alone -- confirmed against the live beta backend via temporary debug logging (added, used on-device, removed before commit) since no curl credentials were available this session; close's response genuinely omits `messages` entirely (confirmed live), which is why the model field is nullable, not just defensively nullable. A real captured ticket-detail response is saved at test/fixtures/support_ticket_detail.json (email redacted, repo is public). **Reviewer caught a real bug (FAIL) and it's fixed (commit cb4b0c8):** `attachment.url` is already absolute from the API root (API.md section 12: `/api/v1/support/attachments/<id>`), but `downloadAttachment()` passed it straight into `ApiClient.getBytes()` on a Dio instance whose `baseUrl` already is `.../api/v1` -- Dio concatenates strings for relative paths, producing a doubled `/api/v1` segment that 404s for real. Fixed by routing through the existing `resolveApiUrl()` helper (same pattern already used for other server-relative asset paths). `support_api_test.dart` now asserts on the real resolved request URI (`options.uri`), not the raw unresolved path, using the real documented URL shape -- this class of bug is now caught by the suite. On-device evidence is genuine throughout, including the fix itself: real signed-in account, real beta backend -- opened a real ticket's thread, sent a real reply, closed it for real (status flipped to 'Closed', reply box replaced by the closed notice, list reflected it immediately without relaunching); then, on a second real ticket, attached a real photo from the device's real gallery via the real system photo picker, sent the reply for real (attachment uploaded, shown with its real filename in the thread), tapped the attachment, and confirmed the OS share sheet opened with a correct preview of the real downloaded image -- i.e. the authenticated download worked with no 404 against the live backend, directly confirming the reviewer's fix. Closed both real test tickets afterward."
+      }
     },
     {
       "id": "FR-1104",
