@@ -1,6 +1,37 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-C901: two known, accepted WS-client gaps for FR-C902 to inherit knowingly
+Reviewer (PASS) flagged two real but non-disqualifying gaps in
+`lib/features/support_chat/data/support_socket.dart` while reviewing
+FR-C901. Recording them here so FR-C902 (the live thread screen, the
+first real consumer of `SupportSocket`) doesn't quietly inherit them
+unexamined. **1) A synchronous throw from the socket connector (e.g. a
+malformed-URI-type construction error, not a `4401`/`4403` close code)
+is retried forever on the same capped 1s-30s backoff as an ordinary
+disconnect** -- there's no separate "give up" path for a local
+construction error the way there correctly is for the two documented
+close codes. In practice `WebSocketChannel.connect()` (web_socket_channel
+3.x) doesn't throw synchronously for auth/ownership rejections -- those
+only ever arrive as a close code on the stream, which is the path
+that's actually exercised and correct -- so this is a latent gap, not
+an active bug. **2) The `connecting` status event fires before the
+first `await`, and `_eventsController` is a broadcast stream (no replay
+for late subscribers)** -- a widget that reads `supportSocketProvider`
+and subscribes to `.events` only after that first microtask will miss
+the very first "connecting" event. Not a problem for `SupportSocket`
+itself (which has no listeners of its own), but FR-C902's thread screen
+must not assume it will see every status transition from the very
+start; it should derive its own initial "loading" state locally rather
+than depending on catching that first event. **Also fixed in the same
+pass:** added a `_connecting` guard to `SupportSocket.connect()` so a
+second overlapping call (there wasn't one in practice, but the method
+had no guard) can't stack a duplicate connection/subscription. **Revisit
+if:** FR-C902 actually needs a terminal (non-retrying) state for local
+connector errors, or needs to reliably observe the very first
+"connecting" event -- otherwise leave as-is, it's a documented,
+inert gap, not a bug to chase now.
+
 ## 2026-11-18 — Real branding assets bundled as static files, not fetched at runtime
 User asked to pull the real Triptel favicon and brand logo from the
 backend (`GET /settings/public`'s `favicon`/`logo_light`/`logo_dark`
