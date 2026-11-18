@@ -11,6 +11,9 @@ import 'package:triptel/features/account/presentation/account_screen.dart';
 import 'package:triptel/features/auth/application/auth_providers.dart';
 import 'package:triptel/features/auth/application/auth_state.dart';
 import 'package:triptel/features/auth/data/models/auth_token.dart';
+import 'package:triptel/features/bootstrap/application/bootstrap_providers.dart';
+import 'package:triptel/features/bootstrap/data/models/bootstrap_data.dart';
+import 'package:triptel/features/bootstrap/data/models/public_settings.dart';
 import 'package:triptel/features/kyc/application/kyc_providers.dart';
 import 'package:triptel/features/kyc/data/kyc_api.dart';
 import 'package:triptel/features/kyc/data/models/kyc_status.dart';
@@ -80,6 +83,7 @@ Widget _testApp(
     Wallet(walletType: 'REWARD', balance: Money(200), isFrozen: false),
   ],
   KycStatus kyc = const KycStatus(submitted: false),
+  BootstrapData? bootstrap,
 }) {
   final router = GoRouter(
     initialLocation: '/account',
@@ -132,6 +136,21 @@ Widget _testApp(
       languagePreferenceProvider.overrideWith(() => _FixedLanguage()),
       kycApiProvider.overrideWithValue(_FakeKycApi(kyc)),
       appVersionProvider.overrideWith((ref) async => '1.2.3 (45)'),
+      bootstrapProvider.overrideWith((ref) async =>
+          bootstrap ??
+          const BootstrapData(
+            settings: PublicSettings(
+              platformName: 'Triptel',
+              maintenanceMode: false,
+              defaultCurrency: 'EUR',
+              supportWhatsapp: '+8801979891996',
+              supportPhone: '+8801979891996',
+              supportEmail: 'support@triptel.co',
+            ),
+            rates: [],
+            languages: [],
+            fromCache: false,
+          )),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -291,6 +310,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('support-screen-placeholder'), findsOneWidget);
+  });
+
+  testWidgets('tapping Contact us opens the real FR-1104 shortcuts sheet',
+      (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const ValueKey('account-contact-row'));
+    await tester.ensureVisible(row);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Contact us'), findsWidgets);
+    expect(find.text('support@triptel.co'), findsOneWidget);
   });
 
   testWidgets(

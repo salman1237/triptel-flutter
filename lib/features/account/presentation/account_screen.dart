@@ -15,6 +15,7 @@ import '../../auth/application/auth_state.dart';
 import '../../auth/data/models/auth_token.dart';
 import '../../kyc/application/kyc_providers.dart';
 import '../../kyc/application/kyc_status_label.dart';
+import '../../support/presentation/contact_shortcuts_sheet.dart';
 import '../../wallet/application/wallet_balance.dart';
 import '../../wallet/application/wallet_providers.dart';
 import '../application/app_version_provider.dart';
@@ -24,8 +25,9 @@ import '../application/track_input.dart';
 /// reward credit) + Invite CTA, then grouped rows (Account/Settings/
 /// Support/About), Sign out. Profile -> FR-1002's real screen, Identity
 /// verification -> FR-1003's real screen, Help/Support tickets ->
-/// FR-1101's real screen. Legal docs -> FR-1201, still not built, shows
-/// a "coming soon" snack rather than a dead link.
+/// FR-1101's real screen, Contact us -> FR-1104's WhatsApp/phone/email
+/// shortcuts sheet. Legal docs -> FR-1201, still not built, shows a
+/// "coming soon" snack rather than a dead link.
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
@@ -236,6 +238,12 @@ class _AuthedBody extends ConsumerWidget {
                 icon: Icons.support_agent_outlined,
                 title: 'Help / Support tickets',
                 onTap: () => context.push('/support'),
+              ),
+              ListRow(
+                key: const ValueKey('account-contact-row'),
+                icon: Icons.contact_support_outlined,
+                title: 'Contact us',
+                onTap: () => showContactShortcutsSheet(context),
               ),
               ListRow(
                 key: const ValueKey('account-track-row'),
