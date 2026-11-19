@@ -1139,6 +1139,17 @@
       }
     },
     {
+      "id": "FR-L906",
+      "behavior": "eSIM adapter: hand off a profile install to an already-installed LPA app via the lpa: deep link -- no OMAPI/ARA-M access of Triptel's own needed",
+      "verification": "flutter test test/features/esims test/features/adapter",
+      "state": "passing",
+      "evidence": {
+        "commit": "ac25d08",
+        "screens": ["artifacts/fr-l906-2.png", "artifacts/fr-l906-3.png"],
+        "notes": "Confirmed live on BS88823AA14C0601334: the new 'Install to a removable eSIM adapter' button opens a real Android chooser listing two independently-installed LPA apps (JMP SIM Manager, 9eSIM), built from the order's real smdp_address/matching_id via buildActivationCodeFromOrderData + the lpa: scheme. Backed out before completing a download (eSIM already IN_USE elsewhere; a real handoff would risk the one-time-install limit on a live order)."
+      }
+    },
+    {
       "id": "FR-L910",
       "behavior": "eSIM adapter: detect USB CCID readers (interface class 0x0B) with live attach/detach while foregrounded, streamed to Dart; unsupported state on iOS / no USB host",
       "verification": "flutter test test/features/adapter",

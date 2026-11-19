@@ -1,6 +1,29 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-L906 passing: `lpa:` deep-link handoff, confirmed live
+Following FR-L905's `ara_m_denied` dead end and the jmp-sim-manager/ARA-M
+research (DECISIONS.md), found a materially better path than "sign with
+someone else's certificate": SGP.22's `lpa:` deep-link scheme needs no
+OMAPI/ARA-M access at all. Added a secondary "Install to a removable
+eSIM adapter" button on the eSIM detail screen (Android only), reusing
+FR-L901's `buildActivationCodeFromOrderData`/`ActivationCode.toLpaString()`
+and the existing `urlLauncherProvider` seam; one `AndroidManifest.xml`
+`<queries>` entry for the `lpa` scheme. 153+ tests pass (new widget test
+confirms the Android-only gate, proven to fail when reverted);
+`bash harness.sh verify` green (analyze, format, full suite, debug APK).
+**Confirmed live** on device `BS88823AA14C0601334`: tapping the button
+opens a real Android chooser listing two independently-installed LPA
+apps (JMP SIM Manager, 9eSIM) built from the real order's
+`smdp_address`/`matching_id` -- not a synthetic string. Backed out
+before completing an actual download since this order's eSIM was
+already `IN_USE` (see DECISIONS.md). FR-L906 passing, commit `ac25d08`.
+**Net effect:** the eSIM adapter feature now has one fully-shipped,
+zero-native-code path to beta; FR-L910+ (USB-CCID) remain `blocked` on
+gate 3 (a real USB CCID reader) as the harder, native-code tier.
+**Next step:** FR-L902 (activation-code input screen) is the next
+item with no hardware/license gate, or wait for a real USB CCID reader.
+
 ## 2026-11-19 — FR-L901, FR-L905 passing: adapter parser built, in-tray card access confirmed denied
 User gave the go-ahead gate; built FR-L901 (SGP.22 activation-code
 parser, pure Dart, 24 tests, reviewed PASS, commit `e764f2a`). When

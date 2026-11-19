@@ -1,6 +1,26 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-L906 shipped (the `lpa:` deep-link handoff); backed out before completing a real download on a live order
+Built and verified on-device (serial `BS88823AA14C0601334`, a different
+phone than FR-L905/FR-L901's `10EF1302BJ000R5`): the eSIM detail screen's
+new "Install to a removable eSIM adapter" button builds the real
+activation code from the order's own `smdp_address`/`matching_id`
+(`buildActivationCodeFromOrderData`), launches it as an `lpa:` URI via
+the existing `urlLauncherProvider`, and Android's real chooser offered
+two independently-installed LPA apps (JMP SIM Manager, 9eSIM) -- proof
+the deep link reaches real, already-ARA-M-trusted handlers with
+Triptel's own real order data, not a synthetic test string.
+
+Deliberately did **not** tap through to either app and complete the
+download: this specific eSIM (`Bangladesh 1GB 7Days`) was already
+`IN_USE` -- per the app's own one-time-install warning, finishing a
+second real handoff against a live order risked consuming/breaking a
+real customer-facing install, for a confirmation (`Intent.ACTION_VIEW`
+resolving and handing off correctly) the chooser screenshot already
+gives. Revisit if a disposable/test-only order becomes available to
+prove the full write-to-card path end to end.
+
 ## 2026-11-19 — Verified on-device: the card works fine (9eSIM, via NekokoLPA); found a real `lpa:` deep-link handoff path that needs no OMAPI access at all
 Following up the ARA-M research, checked what was already on the
 connected test device: `ee.nekoko.nlpa.flavor1` ("9eSIM for Android" /
