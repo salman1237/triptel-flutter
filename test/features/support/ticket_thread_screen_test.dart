@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:triptel/core/network/api_exception.dart';
 import 'package:triptel/core/widgets/widgets.dart';
 import 'package:triptel/features/support/application/support_attachment_opener.dart';
@@ -131,20 +132,40 @@ Widget _app(
   SupportAttachmentOpener? opener,
   List<MyEsim>? myEsims,
   List<FeaturedPackage>? featuredPackages,
-}) =>
-    ProviderScope(
-      overrides: [
-        supportApiProvider.overrideWithValue(api),
-        if (picker != null)
-          supportImagePickerProvider.overrideWithValue(picker),
-        if (opener != null)
-          supportAttachmentOpenerProvider.overrideWithValue(opener),
-        myEsimsProvider.overrideWith((ref) async => myEsims ?? const []),
-        featuredPackagesProvider
-            .overrideWith((ref) async => featuredPackages ?? const []),
-      ],
-      child: const MaterialApp(home: TicketThreadScreen(ticketId: _ticketId)),
-    );
+}) {
+  final router = GoRouter(
+    initialLocation: '/support/$_ticketId',
+    routes: [
+      GoRoute(
+        path: '/support/:id',
+        builder: (context, state) =>
+            TicketThreadScreen(ticketId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/my-esims/:id',
+        builder: (context, state) =>
+            Text('esim-detail-placeholder-${state.pathParameters['id']}'),
+      ),
+      GoRoute(
+        path: '/explore/:slug',
+        builder: (context, state) =>
+            Text('plans-placeholder-${state.pathParameters['slug']}'),
+      ),
+    ],
+  );
+  return ProviderScope(
+    overrides: [
+      supportApiProvider.overrideWithValue(api),
+      if (picker != null) supportImagePickerProvider.overrideWithValue(picker),
+      if (opener != null)
+        supportAttachmentOpenerProvider.overrideWithValue(opener),
+      myEsimsProvider.overrideWith((ref) async => myEsims ?? const []),
+      featuredPackagesProvider
+          .overrideWith((ref) async => featuredPackages ?? const []),
+    ],
+    child: MaterialApp.router(routerConfig: router),
+  );
+}
 
 void main() {
   // FR-C902: the screen now also wires a live `SupportSocket` (reads the
@@ -591,6 +612,108 @@ void main() {
 
       expect(find.text('This shared order is no longer available.'),
           findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping an ORDER_SHARE card with a provisioned eSIM opens its '
+        'detail screen', (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: '',
+            isStaff: false,
+            author: 'You',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'ORDER_SHARE',
+            sharedOrder: const SharedOrder(
+              id: 'order-1',
+              orderNo: 'ORD-1',
+              status: 'COMPLETED',
+              totalAmount: Money(1250),
+              productTitle: 'Bangladesh 1GB 7Days',
+              esimProfileId: 'esim-1',
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-shared-order-tap')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('esim-detail-placeholder-esim-1'), findsOneWidget);
+    });
+
+    testWidgets(
+        "tapping an ORDER_SHARE card for an order that hasn't provisioned "
+        'an eSIM yet does nothing (no esim_profile_id to open)',
+        (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: '',
+            isStaff: false,
+            author: 'You',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'ORDER_SHARE',
+            sharedOrder: const SharedOrder(
+              id: 'order-1',
+              orderNo: 'ORD-1',
+              status: 'PENDING',
+              totalAmount: Money(1250),
+              productTitle: 'Bangladesh 1GB 7Days',
+              esimProfileId: null,
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-shared-order-tap')),
+          warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TicketThreadScreen), findsOneWidget);
+    });
+
+    testWidgets(
+        "tapping a PRODUCT_SHARE card opens that country's plans screen",
+        (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: 'Check this one',
+            isStaff: true,
+            author: 'Support',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'PRODUCT_SHARE',
+            sharedProduct: const SharedProduct(
+              id: 'product-1',
+              title: 'Japan 3GB 15Days',
+              dataAmountGb: 3,
+              validityDays: 15,
+              isUnlimited: false,
+              retailPrice: Money(1899),
+              countrySlug: 'japan',
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-shared-product-tap')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('plans-placeholder-japan'), findsOneWidget);
     });
   });
 }

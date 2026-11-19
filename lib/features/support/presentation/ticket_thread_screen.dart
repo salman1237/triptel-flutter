@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/money/currency_format.dart';
@@ -658,30 +659,43 @@ class _SharedOrderCard extends ConsumerWidget {
         formatMoney(order.totalAmount, currencyCode: code, rateToBase: rate),
       _ => '',
     };
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.smallTag),
-        border: Border.all(color: AppColors.lilac200),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(order.productTitle, style: AppTypography.body()),
-                Text('${order.orderNo} · ${order.status}',
-                    style: AppTypography.caption(color: AppColors.inkMuted)),
-              ],
+    // Only navigable once the order has provisioned a real eSIM profile
+    // (API.md section 12: `esim_profile_id` is null until then) -- the
+    // eSIM detail screen needs that id, not the order id itself.
+    final canOpen = order.esimProfileId != null;
+    return InkWell(
+      key: const ValueKey('ticket-shared-order-tap'),
+      borderRadius: BorderRadius.circular(AppRadius.smallTag),
+      onTap: canOpen
+          ? () => context.push('/my-esims/${order.esimProfileId}')
+          : null,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.smallTag),
+          border: Border.all(color: AppColors.lilac200),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(order.productTitle, style: AppTypography.body()),
+                  Text('${order.orderNo} · ${order.status}',
+                      style: AppTypography.caption(color: AppColors.inkMuted)),
+                ],
+              ),
             ),
-          ),
-          if (priceText.isNotEmpty)
-            Text(priceText, style: AppTypography.body()),
-        ],
+            if (priceText.isNotEmpty)
+              Text(priceText, style: AppTypography.body()),
+            if (canOpen)
+              const Icon(Icons.chevron_right, color: AppColors.inkMuted),
+          ],
+        ),
       ),
     );
   }
@@ -712,30 +726,36 @@ class _SharedProductCard extends ConsumerWidget {
     final dataLabel = product.isUnlimited
         ? 'Unlimited'
         : '${product.dataAmountGb.toStringAsFixed(product.dataAmountGb % 1 == 0 ? 0 : 1)} GB';
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.smallTag),
-        border: Border.all(color: AppColors.lilac200),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.sim_card_outlined, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(product.title, style: AppTypography.body()),
-                Text('$dataLabel · ${product.validityDays} days',
-                    style: AppTypography.caption(color: AppColors.inkMuted)),
-              ],
+    return InkWell(
+      key: const ValueKey('ticket-shared-product-tap'),
+      borderRadius: BorderRadius.circular(AppRadius.smallTag),
+      onTap: () => context.push('/explore/${product.countrySlug}'),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.smallTag),
+          border: Border.all(color: AppColors.lilac200),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.sim_card_outlined, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.title, style: AppTypography.body()),
+                  Text('$dataLabel · ${product.validityDays} days',
+                      style: AppTypography.caption(color: AppColors.inkMuted)),
+                ],
+              ),
             ),
-          ),
-          if (priceText.isNotEmpty)
-            Text(priceText, style: AppTypography.body()),
-        ],
+            if (priceText.isNotEmpty)
+              Text(priceText, style: AppTypography.body()),
+            const Icon(Icons.chevron_right, color: AppColors.inkMuted),
+          ],
+        ),
       ),
     );
   }
