@@ -1,6 +1,24 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-C904: "open" ticket means anything but CLOSED, newest match wins
+The FR text ("opens FR-C902's thread (new ticket if none open)") didn't
+define "open." **Decision:** any ticket whose status isn't `CLOSED`
+counts -- `OPEN`/`ANSWERED`/`RESOLVED` all still accept replies (same
+rule `TicketThreadScreen` itself already uses to decide whether to show
+the reply box), so a RESOLVED ticket with a lingering question is
+reused rather than silently starting a parallel new one. `GET /support/
+tickets` returns newest-activity-first (API.md section 12), so taking
+the first non-CLOSED entry picks the most recently active open ticket,
+not an arbitrary one. A brand-new ticket is created only when every
+existing ticket is CLOSED (or there are none at all), with a generic
+subject ("Chat with Support") and empty body -- the user's first
+message in the thread screen is the real content. **Revisit if:** a
+real need surfaces for picking a *specific* open ticket rather than
+"the most recent one" (e.g. several concurrently open topics) --
+that's a bigger UI (a chooser) this FR's single-tap button doesn't
+attempt.
+
 ## 2026-11-19 — FR-C903: two scope calls for "share an order or package"
 The FR text ("Picker over the user's own `GET /orders/my-esims`-backed
 orders or the catalog") left two things underspecified; both resolved

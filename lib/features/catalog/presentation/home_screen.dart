@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/money/currency_pill_switcher.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
@@ -10,10 +11,56 @@ import '../../auth/application/auth_state.dart';
 import '../../compatibility/presentation/compatibility_promo_card.dart';
 import '../../esims/application/esim_status_providers.dart';
 import '../../esims/application/my_esims_providers.dart';
+import '../../support/application/support_providers.dart';
 import '../application/catalog_providers.dart';
 import '../application/home_usage_card_shape.dart';
 import 'explore_sheet.dart';
 import 'home_usage_card.dart';
+
+/// Guards [_openSupportChat] against a rapid double-tap: without this, two
+/// taps before the first `getTickets()` call resolves would both see "no
+/// open ticket" and both call `createTicket`, creating two duplicate
+/// tickets from one tap -- same class of bug `TicketThreadScreen`'s own
+/// `_sending`/`_closing` flags already guard against for its buttons.
+final _openingSupportChatProvider = StateProvider<bool>((ref) => false);
+
+/// FR-C904: opens the signed-in user's own open ticket thread (FR-C902,
+/// live chat), or starts a new empty ticket first if none is open
+/// (anything but CLOSED counts as open -- a RESOLVED/ANSWERED ticket can
+/// still be replied to, same rule `TicketThreadScreen` itself uses).
+Future<void> _openSupportChat(BuildContext context, WidgetRef ref) async {
+  if (ref.read(_openingSupportChatProvider)) return;
+  ref.read(_openingSupportChatProvider.notifier).state = true;
+  try {
+    final tickets = await ref.read(supportApiProvider).getTickets();
+    String? openTicketId;
+    for (final t in tickets) {
+      if (t.status != 'CLOSED') {
+        openTicketId = t.id;
+        break;
+      }
+    }
+    final String ticketId;
+    if (openTicketId != null) {
+      ticketId = openTicketId;
+    } else {
+      final created = await ref.read(supportApiProvider).createTicket(
+            subject: 'Chat with Support',
+            body: '',
+            category: 'OTHER',
+          );
+      ticketId = created.id;
+    }
+    if (!context.mounted) return;
+    context.push('/support/$ticketId');
+  } on ApiException catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(e.message)));
+  } finally {
+    ref.read(_openingSupportChatProvider.notifier).state = false;
+  }
+}
 
 /// FR-201 Home: dark hero (search entry + quick actions), promo cards,
 /// popular destinations. The search pill and "Buy data" both open FR-202's
@@ -35,6 +82,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final popularAsync = ref.watch(popularCountriesProvider);
     final authState = ref.watch(authNotifierProvider).value;
+    final openingChat = ref.watch(_openingSupportChatProvider);
 
     return TriptelScaffold(
       key: const ValueKey('home-tab'),
@@ -54,6 +102,16 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             const CompatibilityPromoCard(),
+            if (authState is AuthAuthenticated) ...[
+              const SizedBox(height: 12),
+              PillButton(
+                key: const ValueKey('home-chat-with-support'),
+                label: 'Chat with Support',
+                variant: PillButtonVariant.secondary,
+                onPressed:
+                    openingChat ? null : () => _openSupportChat(context, ref),
+              ),
+            ],
             const SizedBox(height: 20),
             Text('Popular destinations', style: AppTypography.headline()),
             const SizedBox(height: 12),

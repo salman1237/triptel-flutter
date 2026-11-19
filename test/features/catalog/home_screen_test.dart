@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,12 @@ import 'package:triptel/features/esims/application/esim_status_providers.dart';
 import 'package:triptel/features/esims/application/my_esims_providers.dart';
 import 'package:triptel/features/esims/data/models/esim_status.dart';
 import 'package:triptel/features/esims/data/models/my_esim.dart';
+import 'package:triptel/core/network/api_exception.dart';
+import 'package:triptel/features/support/application/support_providers.dart';
+import 'package:triptel/features/support/data/models/support_attachment.dart';
+import 'package:triptel/features/support/data/models/support_category.dart';
+import 'package:triptel/features/support/data/models/support_ticket.dart';
+import 'package:triptel/features/support/data/support_api.dart';
 
 const _countries = [
   Country(
@@ -117,12 +124,77 @@ EsimStatus _status({String esimId = 'esim-1'}) => EsimStatus(
       dailyBreakdown: const [],
     );
 
+/// FR-C904's own fake -- not a mocktail Mock, same hand-written pattern as
+/// every other `SupportApi` fake in this project's support tests.
+class _FakeSupportApi implements SupportApi {
+  _FakeSupportApi({
+    this.tickets = const [],
+    this.getTicketsError,
+    this.getTicketsDelay,
+  });
+  List<SupportTicket> tickets;
+  ApiException? getTicketsError;
+  Duration? getTicketsDelay;
+  SupportTicket? lastCreated;
+  int createTicketCalls = 0;
+
+  @override
+  Future<List<SupportTicket>> getTickets() async {
+    if (getTicketsDelay != null) await Future.delayed(getTicketsDelay!);
+    if (getTicketsError != null) throw getTicketsError!;
+    return tickets;
+  }
+
+  @override
+  Future<SupportTicket> createTicket({
+    required String subject,
+    required String body,
+    required String category,
+    List<String> filePaths = const [],
+  }) async {
+    final created = SupportTicket(
+      id: 'new-ticket',
+      reference: 'TKT-NEW',
+      subject: subject,
+      category: category,
+      status: 'OPEN',
+    );
+    createTicketCalls++;
+    lastCreated = created;
+    return created;
+  }
+
+  @override
+  Future<SupportTicket> getTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> replyToTicket(
+    String id, {
+    required String body,
+    List<String> filePaths = const [],
+    String? sharedOrderId,
+    String? sharedProductId,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SupportTicket> closeTicket(String id) => throw UnimplementedError();
+
+  @override
+  Future<Uint8List> downloadAttachment(SupportAttachment attachment) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<SupportCategory>> getCategories() => throw UnimplementedError();
+}
+
 Widget _app({
   AsyncValue<List<Country>> popular =
       const AsyncData<List<Country>>(_countries),
   AuthState auth = const AuthUnauthenticated(),
   List<MyEsim> esims = const [],
   EsimStatus? status,
+  SupportApi? supportApi,
 }) {
   final router = GoRouter(
     initialLocation: '/home',
@@ -144,6 +216,11 @@ Widget _app({
         builder: (context, state) =>
             Text('plans-placeholder-${state.pathParameters['slug']}'),
       ),
+      GoRoute(
+        path: '/support/:id',
+        builder: (context, state) =>
+            Text('support-thread-placeholder-${state.pathParameters['id']}'),
+      ),
     ],
   );
 
@@ -161,6 +238,7 @@ Widget _app({
       myEsimsProvider.overrideWith((ref) async => esims),
       if (status != null)
         esimStatusProvider(status.esimId).overrideWith((ref) async => status),
+      if (supportApi != null) supportApiProvider.overrideWithValue(supportApi),
     ],
     child: MaterialApp.router(routerConfig: router),
   );
@@ -297,5 +375,132 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Travel smart.\nStay connected.'), findsOneWidget);
+  });
+
+  group('FR-C904: Chat with Support', () {
+    testWidgets('is hidden when signed out', (tester) async {
+      await tester.pumpWidget(_app());
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('home-chat-with-support')), findsNothing);
+    });
+
+    testWidgets('is visible when signed in', (tester) async {
+      await tester.pumpWidget(_app(auth: const AuthAuthenticated(_token)));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('home-chat-with-support')), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping it with an existing OPEN ticket opens that ticket, no new '
+        'one created', (tester) async {
+      final api = _FakeSupportApi(tickets: [
+        const SupportTicket(
+          id: 'existing-1',
+          reference: 'TKT-1',
+          subject: 'Earlier question',
+          category: 'OTHER',
+          status: 'ANSWERED',
+        ),
+      ]);
+      await tester.pumpWidget(_app(
+        auth: const AuthAuthenticated(_token),
+        supportApi: api,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('home-chat-with-support')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('support-thread-placeholder-existing-1'), findsOneWidget);
+      expect(api.lastCreated, isNull);
+    });
+
+    testWidgets('tapping it with only a CLOSED ticket starts a new one instead',
+        (tester) async {
+      final api = _FakeSupportApi(tickets: [
+        const SupportTicket(
+          id: 'closed-1',
+          reference: 'TKT-1',
+          subject: 'Old, resolved',
+          category: 'OTHER',
+          status: 'CLOSED',
+        ),
+      ]);
+      await tester.pumpWidget(_app(
+        auth: const AuthAuthenticated(_token),
+        supportApi: api,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('home-chat-with-support')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('support-thread-placeholder-new-ticket'), findsOneWidget);
+      expect(api.lastCreated, isNotNull);
+    });
+
+    testWidgets('tapping it with no tickets at all starts a new one',
+        (tester) async {
+      final api = _FakeSupportApi();
+      await tester.pumpWidget(_app(
+        auth: const AuthAuthenticated(_token),
+        supportApi: api,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('home-chat-with-support')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('support-thread-placeholder-new-ticket'), findsOneWidget);
+      expect(api.lastCreated?.subject, 'Chat with Support');
+    });
+
+    testWidgets('a real server error shows the real message, never crashes',
+        (tester) async {
+      final api = _FakeSupportApi(
+        getTicketsError:
+            const ApiException(statusCode: 500, message: 'Server error.'),
+      );
+      await tester.pumpWidget(_app(
+        auth: const AuthAuthenticated(_token),
+        supportApi: api,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('home-chat-with-support')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Server error.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a rapid double-tap with no existing tickets creates only one new '
+        'ticket, not two', (tester) async {
+      final api = _FakeSupportApi(
+        getTicketsDelay: const Duration(milliseconds: 50),
+      );
+      await tester.pumpWidget(_app(
+        auth: const AuthAuthenticated(_token),
+        supportApi: api,
+      ));
+      await tester.pumpAndSettle();
+
+      final button = find.byKey(const ValueKey('home-chat-with-support'));
+      await tester.tap(button);
+      await tester.pump(const Duration(milliseconds: 10));
+      // The button must already be disabled while the first tap's
+      // getTickets()/createTicket() is still in flight.
+      await tester.tap(button, warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(api.createTicketCalls, 1);
+    });
   });
 }
