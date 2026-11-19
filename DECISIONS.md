@@ -1,6 +1,59 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — How removable-eSIM ARA-M allowlisting actually works (researched, not guessed) -- strengthens the case for USB-CCID over in-tray OMAPI
+Followed up FR-L905's `ara_m_denied` result by researching how
+commercial removable-eSIM vendors (9eSIM, ESTKme, eSIM.me, JMP) and
+their apps actually get ARA-M access working, since the user asked
+whether Triptel must follow the same pattern.
+
+**The mechanism is confirmed, not inferred:** OpenEUICC's own README
+states it outright: *"For removable eSIM chip vendors: to have your
+chip supported by official builds of EasyEUICC when inserted, include
+the ARA-M hash `2A2FA878BC7C3354C2CF82935A5945A3EDAE4AFA`."* This is a
+**one-time, vendor-side manufacturing/personalization step** -- the
+card vendor deliberately bakes a specific app certificate's hash into
+the card's own access-control rules before it ships. It is not
+something an app developer, including Triptel, can do after the fact
+from client code; there is no API for an app to request or negotiate
+ARA-M access at runtime. 9eSIM appears to follow the same pattern with
+their own distinct "9eSIMCommunityKey" (a public keystore on their
+GitHub, topic `ara-m`) rather than EasyEUICC's canonical hash --
+consistent with each vendor pre-provisioning *a* known, shared
+certificate, their own or the open-source project's, never an
+arbitrary third party's on request.
+
+**What this means for Triptel concretely:** the in-tray OMAPI path
+(FR-L910-L913 rewritten to OMAPI, the "if FR-L905 passes" branch) was
+never actually a client-engineering problem to solve -- it's gated on
+one of:
+1. Signing Triptel's adapter code with the *same* certificate as
+   EasyEUICC or a specific vendor's community key -- not viable; that
+   would mean adopting a shared/community signing identity for part of
+   a commercial app, a real security and distribution risk, not a
+   normal dependency choice.
+2. A direct business relationship with a card vendor to get Triptel's
+   own certificate hash added to their cards' ARA-M at manufacture
+   time -- a partnership/procurement decision, not something this
+   session can do from code.
+3. Dropping the in-tray path and using **USB CCID instead** -- and
+   OpenEUICC's own README states plainly that *USB CCID readers work
+   "regardless of whether the chip contains the correct ARA-M hash."*
+   USB CCID access goes through the reader's own USB permission model
+   (`UsbManager.requestPermission`, a normal Android runtime
+   permission this app already knows how to ask for), not the card's
+   ARA-M at all.
+
+**Conclusion:** this doesn't just confirm FR-L905's dead-end result,
+it explains *why* the dead end is structural rather than a bug to
+route around, and it sharpens the case for the originally-scoped
+section P2 (USB-CCID, FR-L910 onward) as the only path that doesn't
+depend on a card vendor's cooperation. **Revisit if:** the user
+pursues a direct relationship with a removable-eSIM card vendor (e.g.
+ordering cards pre-provisioned with Triptel's own cert hash) -- that
+would be a real, separate business decision to log here when made, not
+an engineering default to assume.
+
 ## 2026-11-19 — Explored jmp-sim-manager (gitea.angry.im/jmp-sim/jmp-sim-manager): confirms the plan, with one build-tooling correction
 User pointed at this repo (the app behind "the JMP eSIM Adapter," a
 removable-eSIM product sold by jmp.chat) asking whether Triptel must
