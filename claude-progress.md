@@ -1,6 +1,31 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-C902 passing: live thread screen, avatars, typing indicator
+`TicketThreadScreen` now wires FR-C901's `SupportSocket`: live message
+merge (dedup by id vs REST), a "Support is typing" bounce-dot indicator
+(clears ~3s after the last typing event, API.md section 12), this
+side's own throttled typing ping, a REST re-fetch on reconnect, auto-
+scroll on new live messages, and real `author_avatar_url` avatars via
+`CachedNetworkImage` (new nullable `SupportMessage.authorAvatarUrl`,
+same graceful-fallback pattern as `FlagAvatar`). Also hardened
+`SupportSocket.connect()` against a throwing `tokenProvider` (schedules
+a reconnect instead of crashing). 18 new/changed tests; non-vacuousness
+proven for 3 behaviors (reconnect-refetch, live-message dedup, the
+tokenProvider try/catch). `bash harness.sh verify` green, full suite
+772/772 (one earlier run flaked under concurrent background load --
+reran standalone clean, then reran harness.sh verify clean too).
+Reviewer: PASS after real on-device evidence was added (created an
+actual ticket on the connected device's signed-in account, opened its
+live thread, confirmed the avatar pipeline fetches a real image) --
+`artifacts/fr-c902-thread.png` (profile photo/balance redacted before
+reference, repo is public; `artifacts/` itself is gitignored, same as
+every other FR's screenshots here). One minor non-blocking gap
+(`_liveMessages` never pruned) recorded in `DECISIONS.md`.
+Commits: `88e8d2d` (feature), state commit next.
+**Next step:** FR-C903 (share an order or package in a message) -- the
+next `not_started` item.
+
 ## 2026-11-19 — FR-C901 passing: WS client wiring
 New `SupportSocket` (`lib/features/support_chat/data/support_socket.dart`)
 connects to `wss://beta.triptel.co/api/v1/ws/support/tickets/{id}?token=`
