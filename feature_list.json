@@ -1112,17 +1112,26 @@
     {
       "id": "FR-L901",
       "behavior": "eSIM adapter: parse/validate/round-trip SGP.22 activation codes (LPA:1$smdp$matchingId[$oid[$confFlag]], lpa: URI, URL-wrapped carddata) and build one from Triptel order data",
-      "verification": "flutter test test/features/adapter",
-      "state": "blocked",
-      "blocked_reason": "Gate 1: awaiting the user's go-ahead on section P (requested 2026-11-19). Pure Dart, no other gate.",
-      "evidence": null
+      "verification": "flutter test test/features/adapter/activation_code_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "pending",
+        "screens": [],
+        "notes": "Pure Dart lib/features/adapter/application/activation_code.dart: ActivationCode (smdpAddress, matchingId, smdpOid nullable, confirmationCodeRequired), toLpaString() round-trip, maskedLabel() for a pre-download preview. Sealed ActivationCodeResult (ActivationCodeParsed | ActivationCodeInvalid with a typed ActivationCodeError enum) -- parseActivationCode(String) never throws. Accepts the documented LPA:1$smdp$matchingId[$oid[$confFlag]] grammar, the lowercase lpa: scheme, and a URL-wrapped carddata query param (API.md's install-link shape); trims whitespace; rejects wrong prefix/version/too-few/too-many fields, a missing smdp-address, and an invalid (non-0/1) confirmation flag. buildActivationCodeFromOrderData(lpaString, smdpAddress, matchingId) for FR-L922 to call later, checked against both real API shapes (API.md section 6's my-esims/orders, which lack a separate matching_id -- covered by the lpaString-first preference -- and section 7's /esims/{id}/status, which has all three). 24 tests, including an explicit-but-empty-4th-field edge case added after review. Non-vacuousness proven for the confirmation-flag read and the toLpaString round-trip. flutter analyze/dart format clean. Reviewer: PASS -- independently reran the suite, redid a non-vacuousness proof, and hand-checked several edge cases not in the original 23 tests (all correct; one, the empty-oid-field case, was added as a 24th test per its note). Scope note from the reviewer: FR-L901's own two files were clean/isolated even though FR-L905 (OMAPI spike, see DECISIONS.md) was being built concurrently in the same working tree -- committed separately, scoped to just these two files plus this state entry."
+      }
     },
     {
       "id": "FR-L902",
       "behavior": "eSIM adapter: activation-code input screen (QR camera, QR from gallery image, clipboard paste, manual form) feeding FR-L901, with masked preview and confirmation-code hint",
       "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L902",
-      "state": "blocked",
-      "blocked_reason": "Gate 1: awaiting the user's go-ahead on section P. Adds the mobile_scanner dependency (version pin recorded in DECISIONS.md when built).",
+      "state": "not_started",
+      "evidence": null
+    },
+    {
+      "id": "FR-L905",
+      "behavior": "eSIM adapter: OMAPI ARA-M access probe -- real test of whether the in-tray removable eUICC's access-control list grants this app's cert, before committing to the USB-CCID path",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L905",
+      "state": "not_started",
       "evidence": null
     },
     {
