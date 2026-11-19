@@ -166,6 +166,44 @@ void main() {
     });
 
     testWidgets(
+        'a live camera detection fills the manual form fields too, so a '
+        'later tap on "Use this code" re-submits the same data instead of '
+        "clobbering the scan's preview with an empty-form error",
+        (tester) async {
+      await tester.pumpWidget(_app(
+        scannerBuilder: (onCode, onError) => ElevatedButton(
+          key: const ValueKey('fake-scan-trigger'),
+          onPressed: () => onCode(_lpa),
+          child: const Text('fake scan'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('fake-scan-trigger')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.widgetWithText(TextField, 'smdp.example.invalid',
+              skipOffstage: false),
+          findsOneWidget);
+      expect(
+          find.widgetWithText(TextField, 'ACTIVATION-CODE',
+              skipOffstage: false),
+          findsOneWidget);
+
+      final submit =
+          find.byKey(const ValueKey('activation-input-manual-submit-button'));
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('activation-input-preview')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('activation-input-error')), findsNothing);
+    });
+
+    testWidgets(
         'a camera error shows an inline message, not a blocking dialog -- '
         'the other input sources stay available', (tester) async {
       await tester.pumpWidget(_app(

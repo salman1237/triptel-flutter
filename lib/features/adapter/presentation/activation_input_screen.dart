@@ -37,9 +37,20 @@ class _ActivationInputScreenState extends ConsumerState<ActivationInputScreen> {
   }
 
   void _applyCode(String raw) {
+    final result = parseActivationCode(raw);
     setState(() {
-      _result = parseActivationCode(raw);
+      _result = result;
       _cameraError = false;
+      // Keep the manual form in sync with whatever was just scanned/
+      // pasted, so it reflects the real result instead of silently
+      // going stale -- and so a later tap on "Use this code" re-submits
+      // the same data rather than clobbering a good result with an
+      // empty-form error.
+      if (result is ActivationCodeParsed) {
+        _smdpController.text = result.code.smdpAddress;
+        _matchingIdController.text = result.code.matchingId;
+        _confirmationRequired = result.code.confirmationCodeRequired;
+      }
     });
   }
 
