@@ -1,6 +1,74 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — Explored jmp-sim-manager (gitea.angry.im/jmp-sim/jmp-sim-manager): confirms the plan, with one build-tooling correction
+User pointed at this repo (the app behind "the JMP eSIM Adapter," a
+removable-eSIM product sold by jmp.chat) asking whether Triptel must
+follow it. Gitea's bot-protection blocked a browser-style fetch; `git
+clone` worked fine (different code path). Cloned to a scratch dir,
+read, did not modify/commit/push to it.
+
+**What it actually is:** a literal soft-fork/rebrand of OpenEUICC --
+`app-unpriv`'s `build.gradle.kts` defines a `chat.jmp.simmanager`
+flavor right next to upstream's own `im.angry.easyeuicc`, same source.
+Confirms this app is the EasyEUICC (unprivileged) variant, not a
+custom implementation.
+
+**Confirms the whole architecture already planned for section P:**
+- `OmapiApduInterface.kt` opens the reader via `SEService.readers`
+  filtered by name (`"SIM${slot}"`/`"SIM"` on API <30,
+  `getUiccReader(slot)` on 30+) -- exactly the reader-selection logic
+  `OmapiProbe.kt` already uses, now doubly confirmed correct.
+- Its own code comment states outright: *"ARA-M only grants access to
+  OMAPI, but not TelephonyManager APIs that are associated with
+  carrier privileges"* (`TelephonyCompat.kt`) -- independent
+  confirmation of the exact gate FR-L905 tested and found denied.
+- `libs/lpac-jni`'s native build (`lpac-jni.mk`/`Android.bp`) compiles
+  **only** `lpac/euicc/*.c` and `cjson-ext/*.c` into the final `.so`.
+  The git submodule checks out lpac's *entire* repo (including the
+  AGPL `src/`/`driver/`), but those files are present on disk and
+  never referenced by a single build rule -- deliberately excluded.
+  Their own JNI glue (`lpac-jni.c`) wires `euicc/`'s APDU/HTTP function
+  pointers to Kotlin callbacks (`OmapiApduInterface`, an HTTP
+  equivalent) -- i.e. they wrote their own drivers, same as FR-L913/
+  L914 already planned, not lpac's own CLI drivers. This is the exact
+  "link only `euicc/`, write your own drivers" plan from the
+  2026-11-19 "ask before deciding" license entry, now validated against
+  real, shipping, reference code -- not just reasoned from REUSE.toml.
+
+**One real correction:** their native build uses **`ndk-build`**
+(`externalNativeBuild { ndkBuild { ... } }`, a classic `.mk` file), not
+CMake as FR-L914/Technical_Requirements.md assumed. `ndk-build` is the
+proven-working choice here; switch the plan to match rather than
+guessing CMake would work equally well.
+
+**Why JMP SIM Manager itself doesn't just solve FR-L905 for Triptel:**
+their app bundling the whole lpac repo is safe for *them* because their
+own app is GPL-3.0 (copyleft-compatible with AGPL) -- Triptel's app is
+proprietary/closed-source, so it cannot follow that exact move without
+either open-sourcing Triptel or buying ESTKME's commercial license for
+the AGPL-covered parts. This was already the plan (link `euicc/` only);
+this repo doesn't change that, it confirms it's the right boundary.
+More directly: even installing the *real* JMP SIM Manager app wouldn't
+make Triptel's own `co.triptel.app`-signed build pass FR-L905's probe --
+ARA-M checks the exact requesting app's certificate hash, and JMP SIM
+Manager's cert is not Triptel's.
+
+**Suggested diagnostic, not yet done:** if the card in hand is
+genuinely a "JMP eSIM Adapter" (or another OpenEUICC-ecosystem card),
+installing the real JMP SIM Manager or EasyEUICC app on the same phone
+and seeing whether *it* can open a channel would confirm whether the
+card itself works with the OpenEUICC ecosystem's certificate (expected:
+yes) as a sanity check independent of anything in this repo -- not
+required, since FR-L905's `ara_m_denied` result already fully answers
+Triptel's own question regardless of this diagnostic's outcome.
+
+**Revisit if:** FR-L914 is ever started -- update its plan to `ndk-build`
+per this confirmed precedent, and link straight to this repo's
+`lpac-jni` as the reference implementation (same `euicc/`-only
+boundary, same JNI-driver-wrapping pattern) rather than re-deriving the
+approach from lpac's own generic docs.
+
 ## 2026-11-19 — eSIM adapter: pivoted from "USB CCID reader" to "probe the in-tray card's OMAPI access" first
 When asked to clear gate 3 (hardware), the user said the removable eUICC
 card is already in the test phone's physical SIM tray, not behind a USB

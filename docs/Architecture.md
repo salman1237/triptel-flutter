@@ -55,7 +55,9 @@ android/app/src/main/kotlin/co/triptel/app/
   ccid/          UsbCcidReaders.kt (detect/hot-plug/permission), CcidTransceiver.kt,
                  Atr.kt, ApduChannel.kt (MANAGE CHANNEL, SELECT ISD-R, chaining)
   lpa/           LpaBridge.kt (JNI to euicc), HttpsDriver.kt
-android/app/src/main/cpp/   CMakeLists.txt + lpa_jni.c (APDU/HTTP driver glue)
+android/app/src/main/jni/   lpa-jni.mk + lpa_jni.c (APDU/HTTP driver glue, ndk-build
+                             not CMake -- matches jmp-sim-manager's libs/lpac-jni,
+                             DECISIONS.md 2026-11-19)
 third_party/lpac-euicc/     vendored lpac euicc/ only, with its LICENSES (LGPL-2.1)
 android/app/src/test/kotlin/  JVM unit tests (framing, ATR, APDU chaining transcripts)
 ```

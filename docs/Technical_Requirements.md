@@ -12,7 +12,7 @@
 | Test device | vivo V2344, Android 14, serial `10EF1302BJ000R5` — **no eUICC** (`pm has-feature android.hardware.telephony.euicc` = false): perfect "not supported" case |
 | iOS | Cannot build on Windows. iOS code is written to the same contract but unverified until a Mac/CI build |
 
-| Android NDK / CMake | NDK `27.1.12297006`, CMake `3.22.1` and `3.31.6` under the SDK (verified 2026-11-19), needed only for FR §P (FR-L914) |
+| Android NDK | NDK `27.1.12297006` under the SDK (verified 2026-11-19), needed only for FR §P (FR-L914) — built via **`ndk-build`**, not CMake (confirmed against a real reference implementation, see DECISIONS.md's 2026-11-19 "jmp-sim-manager" entry) |
 | Second test device | TMRV07P5G "Pinehurst", serial `BS88823AA14C0601334`, Android SDK 36 (used for FR-C901–C904 evidence). Verified 2026-11-19: `android.hardware.usb.host` = **true** (FR §P's USB-host phone), `android.hardware.telephony.euicc` = true (internal eSIM, irrelevant to §P) |
 
 ## Android config
@@ -32,7 +32,7 @@ Also present: `web_socket_channel` (FR-C901), dev `flutter_launcher_icons`.
 | Piece | Plan | Constraint |
 |---|---|---|
 | `mobile_scanner` | FR-L902 QR camera + gallery-image decode | Pin the newest version that still supports Flutter 3.27 / Dart 3.6; record in DECISIONS.md |
-| lpac `euicc/` | FR-L914, vendored C source under `third_party/lpac-euicc/`, built as its own `.so` via `externalNativeBuild` CMake | **LGPL-2.1-only** (or ESTKME commercial): keep it a separate shared library, ship its license + source notice, never statically merge it into app code. lpac's `src/` and `driver/` are **AGPL-3.0-only** — never vendored |
+| lpac `euicc/` | FR-L914, vendored C source under `third_party/lpac-euicc/`, built as its own `.so` via `externalNativeBuild { ndkBuild {...} }` (a classic `.mk`, not CMake — matches the real, shipping `jmp-sim-manager`/OpenEUICC reference, whose `libs/lpac-jni` builds the same way) | **LGPL-2.1-only** (or ESTKME commercial): keep it a separate shared library, ship its license + source notice, never statically merge it into app code. lpac's `src/` and `driver/` are **AGPL-3.0-only** — never vendored. That reference's own `.mk` only ever compiles `euicc/*.c` + `cjson-ext/*.c`, confirming this boundary is both legally necessary for Triptel's closed-source app and technically sufficient (their own JNI glue never needed the AGPL parts either) |
 | ABIs | `arm64-v8a`, `armeabi-v7a`, `x86_64` | Pin `ndkVersion` in `android/app/build.gradle` |
 | Android permissions | `android.hardware.usb.host` declared `required="false"`; `CAMERA` (FR-L902) | No `device_filter.xml` (no auto-launch on plug-in) |
 

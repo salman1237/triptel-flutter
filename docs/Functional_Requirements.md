@@ -346,13 +346,22 @@ not substitute for.
   transcripts.
 - **FR-L914 euicc library integration.** Vendor lpac's `euicc/` (LGPL)
   under `third_party/lpac-euicc/` with its license files, build it with
-  the NDK + CMake as a separate shared library for `arm64-v8a`,
-  `armeabi-v7a` and `x86_64`, and write the app's own JNI glue for
-  **its own** APDU driver (→ FR-L913) and HTTPS driver (Kotlin
-  `HttpsURLConnection`; TLS validated, no cleartext). No AGPL `src/` or
-  `driver/` code. **The first step is a spike** that confirms the
-  library's real driver-interface shape and API from its headers before
-  any glue is written. Done = a real EID read from a real card.
+  the NDK via **`ndk-build`** (`externalNativeBuild { ndkBuild {...} }`
+  + a `.mk` file — not CMake; confirmed against a real, shipping
+  reference implementation, `gitea.angry.im/jmp-sim/jmp-sim-manager`'s
+  `libs/lpac-jni`, see DECISIONS.md's 2026-11-19 entry) as a separate
+  shared library for `arm64-v8a`, `armeabi-v7a` and `x86_64`, and write
+  the app's own JNI glue for **its own** APDU driver (→ FR-L913) and
+  HTTPS driver (Kotlin `HttpsURLConnection`; TLS validated, no
+  cleartext) — exactly that reference's own pattern: its `.mk` compiles
+  only `euicc/*.c` + `cjson-ext/*.c` into the `.so`, never the AGPL
+  `src/`/`driver/` files its submodule checkout also contains but never
+  builds. No AGPL `src/` or `driver/` code here either. **The first
+  step is a spike** that confirms the library's real driver-interface
+  shape and API from its headers before any glue is written (that
+  reference's `lpac-jni.c`/`lpac-jni.h` is a second, independent source
+  to check the shape against, not just `euicc/`'s own headers). Done =
+  a real EID read from a real card.
 - **FR-L915 Adapter screen + chip info.** New screen (Account → "eSIM
   adapter (USB)", Android only): connected reader, permission CTA, EID
   (masked, tap to reveal/copy; never sent to any API), EuiccInfo2
