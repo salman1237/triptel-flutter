@@ -15,6 +15,18 @@ Launched it for real, on the real card:
   certificate-trust gap, exactly as the ARA-M research predicted --
   not a broken card, not a broken probe.
 
+**User-reported (not independently verified by this session): JMP SIM
+Manager can also access this same card.** If accurate, that's a second,
+differently-signed OpenEUICC fork succeeding on the same card --
+suggesting its ARA-M may list the canonical EasyEUICC public hash
+(`2A2FA878BC7C3354C2CF82935A5945A3EDAE4AFA`), not only a 9eSIM-specific
+one, i.e. this card may be broadly "open-source-LPA compatible" rather
+than single-vendor-locked. Doesn't change Triptel's own situation
+either way -- Triptel's app is signed with neither cert -- but it
+strengthens the case for the deep-link handoff approach below, since it
+means *more than one* already-installable app could serve as the
+handoff target, not just 9eSIM's own.
+
 **Checked whether "sign with someone else's cert" (the user's question)
 is viable:** 9eSIM does publish a community signing key
 (`9eSIMCommunityKey` on GitHub) specifically so third-party builds can
