@@ -1,6 +1,76 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — Verified on-device: the card works fine (9eSIM, via NekokoLPA); found a real `lpa:` deep-link handoff path that needs no OMAPI access at all
+Following up the ARA-M research, checked what was already on the
+connected test device: `ee.nekoko.nlpa.flavor1` ("9eSIM for Android" /
+NekokoLPA, v2.5.0, installed the same day) was already present.
+Launched it for real, on the real card:
+
+- Real EID read (`89086030********0135090432`), real free/RAM figures
+  (427.42 KB / 12.26 KB), and a **real existing enabled profile**
+  (`ESIM_ACCESS_CARRIER`, ICCID `8948010010013953541`, toggle ON).
+- This **proves the card, the reader/slot, and OMAPI are all fine**.
+  FR-L905's `ara_m_denied` for Triptel's own app was purely a
+  certificate-trust gap, exactly as the ARA-M research predicted --
+  not a broken card, not a broken probe.
+
+**Checked whether "sign with someone else's cert" (the user's question)
+is viable:** 9eSIM does publish a community signing key
+(`9eSIMCommunityKey` on GitHub) specifically so third-party builds can
+get ARA-M access to 9eSIM V2 cards. But using it would mean a separate,
+isolated companion APK sharing a community identity with anyone else
+who has that same public keystore file -- not something to fold into
+Triptel's own branded, Play-Store-identity app. Documented as real but
+narrow.
+
+**Found a materially better path instead, verified live:**
+`adb shell pm resolve-activity -a android.intent.action.VIEW -d
+'lpa:1$smdp.example.com$TESTMATCH'` resolves to
+`ee.nekoko.nlpa.flavor1`/`ee.nekoko.nlpa2.MainActivity` with
+`isDefault=true` -- the 9eSIM app is registered as this device's
+**system default handler for the `lpa:` scheme**
+(`docs/DEEP-LINK.md` in the OpenEUICC/jmp-sim-manager repo already
+explored documents this exact mechanism: any LPA app can register for
+it, and `PackageManager#queryIntentActivities` is the documented way
+to check beforehand). This means Triptel's own app, **using its own
+certificate, needing no OMAPI/ARA-M access of its own at all**, could:
+1. Build the real `lpa:1$smdp$matchingid` URI from an order's real
+   `lpa_string`/`smdp_address`/`matching_id` (FR-L901's
+   `buildActivationCodeFromOrderData` + `ActivationCode.toLpaString()`
+   already do exactly this).
+2. Check `PackageManager#queryIntentActivities` for an installed
+   handler (`app_links`, already a Triptel dependency, or a small
+   native call).
+3. If one exists: launch `Intent(ACTION_VIEW, uri)` and let that
+   already-installed, already-trusted app do the actual card write.
+4. If none exists: fall back to showing the LPA string for manual
+   entry into whatever app the user installs (the existing documented
+   fallback, API.md's "Install links" section already covers the
+   `esimsetup.{apple,android}.com` web equivalent for internal eSIMs).
+
+**Why this is a real alternative to section P2's native engine, not
+just a stopgap:** zero native Android code, zero NDK, zero `lpac`
+vendoring, zero license questions (Triptel never touches lpac/euicc at
+all), works with *any* installed LPA app (NekokoLPA, EasyEUICC, MiniLPA
+-- not locked to one vendor), and needs no USB-CCID reader either,
+since it's agnostic to whatever transport the handler app itself uses.
+The tradeoffs to weigh: Triptel doesn't own the install UX past the
+handoff (the other app's own screens take over), and it does nothing
+if the user has no compatible LPA app installed (graceful fallback to
+manual entry handles that, but isn't as smooth as a native in-app
+flow).
+
+**Not yet decided or built.** This is a finding to choose between, not
+a chosen direction -- the user has section P2 (full native USB-CCID +
+lpac engine, FR-L910 onward) already scoped as the ARA-M-independent
+fallback; this deep-link handoff is a second, much lighter option that
+also doesn't depend on ARA-M, discovered after the fact. **Revisit
+when:** the user picks one (or decides to offer both -- deep-link
+handoff as the default/easy path, full native engine for devices with
+no LPA app installed) -- then write the real FR(s) for whichever is
+chosen, the same way section P was scoped before anything was built.
+
 ## 2026-11-19 — How removable-eSIM ARA-M allowlisting actually works (researched, not guessed) -- strengthens the case for USB-CCID over in-tray OMAPI
 Followed up FR-L905's `ara_m_denied` result by researching how
 commercial removable-eSIM vendors (9eSIM, ESTKme, eSIM.me, JMP) and
