@@ -15,6 +15,8 @@ import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
 import 'package:triptel/features/support/presentation/ticket_thread_screen.dart';
 
+import '../auth/secure_storage_test_mock.dart';
+
 const _ticketId = 'ticket-1';
 
 SupportTicket _ticket({
@@ -122,6 +124,13 @@ Widget _app(
     );
 
 void main() {
+  // FR-C902: the screen now also wires a live `SupportSocket` (reads the
+  // JWT via the real `secureStoreProvider`); fake the plugin channel so
+  // these REST-focused tests don't touch a real keychain/keystore. With
+  // no token saved, `readToken()` resolves null and `SupportSocket`
+  // no-ops rather than attempting a real network connection.
+  setUp(installFakeSecureStorage);
+
   testWidgets('shows the real subject, reference, and status chip',
       (tester) async {
     final api = _FakeSupportApi(ticket: _ticket());

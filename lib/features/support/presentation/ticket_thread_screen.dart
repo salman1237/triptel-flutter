@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +9,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../support_chat/application/support_chat_providers.dart';
+import '../../support_chat/data/support_socket.dart';
 import '../application/support_attachment_opener.dart';
 import '../application/support_image_picker.dart';
 import '../application/support_providers.dart';
@@ -15,10 +20,24 @@ import '../data/models/support_ticket.dart';
 
 const _maxAttachments = 5;
 
-/// FR-1103: a single ticket's thread -- messages (You/Support), each
-/// message's attachments downloaded with the real auth header (API.md
-/// section 12 -- `GET /support/attachments/{id}`), a reply box with files
-/// (hidden once CLOSED), a Close action, and a resolved banner.
+/// How long after the last `typing` event the indicator clears, if no
+/// further one arrives (API.md section 12: "the recipient clears its own
+/// typing indicator ~3s after the last one arrives" -- matches web).
+const _typingClearDelay = Duration(seconds: 3);
+
+/// Throttle for this side's own outbound typing pings while the reply
+/// field is being edited -- avoids a frame on every keystroke.
+const _typingSendThrottle = Duration(seconds: 2);
+
+/// FR-1103/FR-C902: a single ticket's thread -- messages (You/Support)
+/// with avatars, each message's attachments downloaded with the real auth
+/// header (API.md section 12 -- `GET /support/attachments/{id}`), a reply
+/// box with files (hidden once CLOSED), a Close action, a resolved
+/// banner, and -- live, via `SupportSocket` -- new messages and a "Support
+/// is typing" indicator without polling. Replaces the FR-1101-1103
+/// REST-only version with the now-live chat contract (same `SupportTicket`/
+/// `SupportMessage` backend, not a new system -- Functional_Requirements.md
+/// section O).
 class TicketThreadScreen extends ConsumerStatefulWidget {
   const TicketThreadScreen({super.key, required this.ticketId});
 
@@ -30,14 +49,80 @@ class TicketThreadScreen extends ConsumerStatefulWidget {
 
 class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
   final _replyController = TextEditingController();
+  final _scrollController = ScrollController();
   final List<String> _attachmentPaths = [];
+  final List<SupportMessage> _liveMessages = [];
   bool _sending = false;
   bool _closing = false;
   String? _error;
+  bool _staffTyping = false;
+  Timer? _typingClearTimer;
+  DateTime? _lastTypingSentAt;
+  StreamSubscription<SupportSocketEvent>? _socketSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final socket = ref.read(supportSocketProvider(widget.ticketId));
+    _socketSub = socket.events.listen(_onSocketEvent);
+    _replyController.addListener(_onReplyTextChanged);
+  }
+
+  void _onSocketEvent(SupportSocketEvent event) {
+    if (!mounted) return;
+    switch (event) {
+      case SupportSocketMessage(message: final message):
+        setState(() {
+          if (!_liveMessages.any((m) => m.id == message.id)) {
+            _liveMessages.add(message);
+          }
+        });
+        _scrollToBottom();
+      case SupportSocketTyping(from: 'staff'):
+        setState(() => _staffTyping = true);
+        _typingClearTimer?.cancel();
+        _typingClearTimer = Timer(_typingClearDelay, () {
+          if (mounted) setState(() => _staffTyping = false);
+        });
+      case SupportSocketTyping():
+        break; // this app is customer-only; a non-staff sender never occurs
+      case SupportSocketReconnected():
+        // The socket is never the only source of truth (API.md section
+        // 12) -- re-fetch to catch anything sent while disconnected.
+        ref.invalidate(supportTicketProvider(widget.ticketId));
+      case SupportSocketStatusChanged():
+        break; // no connection-status UI for this FR
+    }
+  }
+
+  void _onReplyTextChanged() {
+    final now = DateTime.now();
+    if (_lastTypingSentAt != null &&
+        now.difference(_lastTypingSentAt!) < _typingSendThrottle) {
+      return;
+    }
+    _lastTypingSentAt = now;
+    ref.read(supportSocketProvider(widget.ticketId)).sendTyping();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
 
   @override
   void dispose() {
+    _socketSub?.cancel();
+    _typingClearTimer?.cancel();
+    _replyController.removeListener(_onReplyTextChanged);
     _replyController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -96,6 +181,9 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
   @override
   Widget build(BuildContext context) {
     final ticketAsync = ref.watch(supportTicketProvider(widget.ticketId));
+    // Keeps the autoDispose socket alive (and connected) for as long as
+    // this screen is on-screen; torn down automatically once it isn't.
+    ref.watch(supportSocketProvider(widget.ticketId));
 
     return TriptelScaffold(
       key: const ValueKey('ticket-thread-screen'),
@@ -104,6 +192,9 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
       body: switch (ticketAsync) {
         AsyncData(:final value) => _Thread(
             ticket: value,
+            liveMessages: _liveMessages,
+            staffTyping: _staffTyping,
+            scrollController: _scrollController,
             replyController: _replyController,
             attachmentPaths: _attachmentPaths,
             sending: _sending,
@@ -130,6 +221,9 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
 class _Thread extends StatelessWidget {
   const _Thread({
     required this.ticket,
+    required this.liveMessages,
+    required this.staffTyping,
+    required this.scrollController,
     required this.replyController,
     required this.attachmentPaths,
     required this.sending,
@@ -142,6 +236,9 @@ class _Thread extends StatelessWidget {
   });
 
   final SupportTicket ticket;
+  final List<SupportMessage> liveMessages;
+  final bool staffTyping;
+  final ScrollController scrollController;
   final TextEditingController replyController;
   final List<String> attachmentPaths;
   final bool sending;
@@ -155,7 +252,16 @@ class _Thread extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chip = ticketStatusChip(ticket.status);
-    final messages = ticket.messages ?? const [];
+    // `liveMessages` carries anything the socket delivered that a REST
+    // fetch hasn't caught up with yet (including this device's own
+    // just-sent message, which the ticket channel echoes back -- API.md
+    // section 12); dedupe by id once the REST list catches up with it.
+    final restMessages = ticket.messages ?? const <SupportMessage>[];
+    final restIds = restMessages.map((m) => m.id).toSet();
+    final messages = [
+      ...restMessages,
+      ...liveMessages.where((m) => !restIds.contains(m.id)),
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     final isClosed = ticket.status == 'CLOSED';
 
     return Column(
@@ -199,10 +305,25 @@ class _Thread extends StatelessWidget {
         Expanded(
           child: ListView.builder(
             key: const ValueKey('ticket-thread-messages'),
+            controller: scrollController,
             itemCount: messages.length,
             itemBuilder: (context, i) => _MessageBubble(message: messages[i]),
           ),
         ),
+        if (staffTyping)
+          Padding(
+            key: const ValueKey('ticket-staff-typing'),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Support is typing',
+                    style: AppTypography.caption(color: AppColors.inkMuted)),
+                const SizedBox(width: 4),
+                const _TypingDots(),
+              ],
+            ),
+          ),
         if (error != null) ...[
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -282,6 +403,56 @@ class _Thread extends StatelessWidget {
   }
 }
 
+/// FR-C902: a small bounce-dot "typing" indicator, matching web's
+/// (never persisted -- API.md section 12).
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1),
+                child: Opacity(
+                  opacity: 0.3 +
+                      0.7 *
+                          (((_controller.value * 3 - i) % 3).clamp(0, 1) < 0.5
+                              ? 1
+                              : 0.2),
+                  child: const Icon(Icons.circle,
+                      size: 5, color: AppColors.inkMuted),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _MessageBubble extends ConsumerWidget {
   const _MessageBubble({required this.message});
 
@@ -291,14 +462,59 @@ class _MessageBubble extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final align =
         message.isStaff ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+    final fallbackIcon = Container(
+      width: 28,
+      height: 28,
+      decoration: const BoxDecoration(
+          color: AppColors.lilac100, shape: BoxShape.circle),
+      child: Icon(
+        message.isStaff ? Icons.support_agent : Icons.person,
+        size: 16,
+        color: AppColors.primary,
+      ),
+    );
+    // Same pattern as `FlagAvatar` -- a broken/unreachable avatar URL
+    // falls back to the icon rather than surfacing a raw image error.
+    final avatar = KeyedSubtree(
+      key: const ValueKey('ticket-message-avatar'),
+      child: message.authorAvatarUrl == null
+          ? fallbackIcon
+          : ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: message.authorAvatarUrl!,
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => fallbackIcon,
+                errorWidget: (_, __, ___) => fallbackIcon,
+              ),
+            ),
+    );
     return Padding(
       key: ValueKey('ticket-message-${message.id}'),
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       child: Column(
         crossAxisAlignment: align,
         children: [
-          Text(message.author,
-              style: AppTypography.caption(color: AppColors.inkMuted)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: message.isStaff
+                ? [
+                    avatar,
+                    const SizedBox(width: 6),
+                    Text(message.author,
+                        style:
+                            AppTypography.caption(color: AppColors.inkMuted)),
+                  ]
+                : [
+                    Text(message.author,
+                        style:
+                            AppTypography.caption(color: AppColors.inkMuted)),
+                    const SizedBox(width: 6),
+                    avatar,
+                  ],
+          ),
           const SizedBox(height: 2),
           Container(
             padding: const EdgeInsets.all(10),

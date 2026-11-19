@@ -11,6 +11,7 @@ class SupportMessage {
     required this.author,
     required this.createdAt,
     required this.attachments,
+    this.authorAvatarUrl,
   });
 
   final String id;
@@ -19,6 +20,10 @@ class SupportMessage {
   final String author;
   final DateTime createdAt;
   final List<SupportAttachment> attachments;
+
+  /// `null` for messages sent before the real-time chat feature shipped
+  /// (API.md section 12) or when the author has no avatar set.
+  final String? authorAvatarUrl;
 
   factory SupportMessage.fromJson(Map<String, dynamic> json) => SupportMessage(
         id: json['id'] as String,
@@ -30,5 +35,6 @@ class SupportMessage {
           for (final a in (json['attachments'] as List? ?? const []))
             SupportAttachment.fromJson(a as Map<String, dynamic>),
         ],
+        authorAvatarUrl: json['author_avatar_url'] as String?,
       );
 }

@@ -213,6 +213,29 @@ void main() {
       socket.dispose();
     });
 
+    test(
+        'a throwing tokenProvider (e.g. a real secure-storage read error) '
+        'schedules a reconnect instead of crashing', () async {
+      var calls = 0;
+      final socket = SupportSocket(
+        ticketId: 't1',
+        apiBaseUrl: 'https://beta.triptel.co/api/v1',
+        tokenProvider: () async {
+          calls++;
+          if (calls == 1) throw Exception('platform channel unavailable');
+          return 'tok';
+        },
+        connector: (_) => FakeSupportSocketConnection(),
+        backoffSchedule: _fixedBackoff,
+      );
+
+      await socket.connect();
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      expect(calls, greaterThanOrEqualTo(2));
+      socket.dispose();
+    });
+
     test('dispose stops any pending reconnect', () async {
       final connections = <FakeSupportSocketConnection>[];
       final socket = SupportSocket(

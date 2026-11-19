@@ -1,6 +1,24 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-C902: `_liveMessages` is never pruned once the REST list catches up
+Reviewer (independent re-review, PASS) noted while checking FR-C902's
+live-message dedup: `TicketThreadScreen`'s `_liveMessages` list (socket-
+delivered messages not yet confirmed in the REST `ticket.messages`) only
+ever grows for the life of the screen -- once an id also appears in a
+REST refetch, `_Thread`'s render-time filter correctly hides the
+duplicate, but the now-redundant entry is never removed from
+`_liveMessages` itself. **Why not fixed now:** not a correctness bug (no
+visible duplicate, the filter runs on every rebuild) and bounded by one
+ticket-thread screen's lifetime (not cross-session) -- for a normal
+support conversation's message volume this is immaterial. **Revisit if:**
+a single ticket thread is ever expected to stay open for an unusually
+long live session with many messages/reconnects, where the unbounded
+list could become a real memory concern -- then prune `_liveMessages`
+by removing entries whose id appears in the latest REST fetch (e.g. in
+the `SupportSocketReconnected`/`ref.invalidate` handler once the new
+REST data lands).
+
 ## 2026-11-19 — FR-C901: two known, accepted WS-client gaps for FR-C902 to inherit knowingly
 Reviewer (PASS) flagged two real but non-disqualifying gaps in
 `lib/features/support_chat/data/support_socket.dart` while reviewing

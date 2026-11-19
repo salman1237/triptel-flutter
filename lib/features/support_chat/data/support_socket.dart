@@ -121,7 +121,14 @@ class SupportSocket {
     _connecting = true;
     _eventsController
         .add(SupportSocketStatusChanged(SupportSocketStatus.connecting));
-    final token = await tokenProvider();
+    String? token;
+    try {
+      token = await tokenProvider();
+    } catch (_) {
+      _connecting = false;
+      _scheduleReconnect();
+      return;
+    }
     if (_disposed || token == null) {
       _connecting = false;
       return;
