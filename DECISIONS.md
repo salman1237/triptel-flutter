@@ -1,6 +1,32 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-L902 shipped: `mobile_scanner` added; manual form's "confirmation code" field scoped to the SGP.22 requirement flag, not a code value
+Added `mobile_scanner: ^6.0.11` (resolved by `flutter pub add`) for live
+QR camera scan and gallery-image QR decode, per
+`docs/Technical_Requirements.md`'s "record why" rule. Supports Dart 3.6
+and Android + iOS (iOS unverified, no Mac, per that doc's existing iOS
+row); `minSdk 23` already clears its Android floor. Added
+`android.permission.CAMERA` (+ an optional `uses-feature` so a
+camera-less device can still install) and iOS's
+`NSCameraUsageDescription`.
+
+**Scope call on the manual form's "optional confirmation code" field:**
+the FR text ("manual form: SM-DP+ address, matching ID, optional
+confirmation code") is ambiguous between capturing the actual secret
+code and just the SGP.22 LPA-string flag ("a confirmation code will be
+required later"). `ActivationCode` (FR-L901) only ever models the
+latter — SGP.22's own LPA-string format has no field for the secret
+itself, which is always entered at *download* time (ES9+), exactly
+matching FR-L917's text ("plus a confirmation code when the flag
+requires it"). Implemented the manual form's field as a
+"confirmation code will be required" checkbox (sets
+`ActivationCode.confirmationCodeRequired`), not a text field for the
+code itself — avoids inventing a data-model field FR-L901 doesn't have
+and keeps the two FRs' responsibilities cleanly split. Revisit if a
+real SM-DP+ activation flow turns out to need the code earlier than
+download.
+
 ## 2026-11-19 — FR-L906 shipped (the `lpa:` deep-link handoff); backed out before completing a real download on a live order
 Built and verified on-device (serial `BS88823AA14C0601334`, a different
 phone than FR-L905/FR-L901's `10EF1302BJ000R5`): the eSIM detail screen's

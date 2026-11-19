@@ -249,13 +249,20 @@ class _AuthedBody extends ConsumerWidget {
               ),
               // FR-L905: Android-only diagnostic (OMAPI/USB adapter
               // hardware doesn't exist on iOS) -- never shown there.
-              if (Platform.isAndroid)
+              if (Platform.isAndroid) ...[
                 ListRow(
                   key: const ValueKey('account-adapter-diagnostic-row'),
                   icon: Icons.sim_card_outlined,
                   title: 'eSIM adapter diagnostic',
                   onTap: () => context.push('/adapter/omapi-probe'),
                 ),
+                ListRow(
+                  key: const ValueKey('account-adapter-activation-input-row'),
+                  icon: Icons.qr_code_scanner,
+                  title: 'Add eSIM via adapter',
+                  onTap: () => context.push('/adapter/activation-input'),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 24),

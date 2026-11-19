@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- FR-L902: live QR camera scan for an eSIM activation code
+         (mobile_scanner). Denial is a normal state: the other three
+         input sources (gallery, clipboard, manual) stay available. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:label="Triptel"

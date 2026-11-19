@@ -10,6 +10,7 @@ import '../features/catalog/presentation/destination_plans_screen.dart';
 import '../features/catalog/presentation/home_screen.dart';
 import '../features/checkout/presentation/checkout_review_screen.dart';
 import '../features/compatibility/presentation/compatibility_result_screen.dart';
+import '../features/adapter/presentation/activation_input_screen.dart';
 import '../features/adapter/presentation/omapi_probe_screen.dart';
 import '../features/compatibility/presentation/supported_devices_screen.dart';
 import '../features/esims/presentation/esim_detail_screen.dart';
@@ -68,6 +69,9 @@ final appRouter = GoRouter(
     GoRoute(
         path: '/adapter/omapi-probe',
         builder: (context, state) => const OmapiProbeScreen()),
+    GoRoute(
+        path: '/adapter/activation-input',
+        builder: (context, state) => const ActivationInputScreen()),
     GoRoute(
       path: '/explore/:slug',
       builder: (context, state) =>
