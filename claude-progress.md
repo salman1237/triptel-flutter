@@ -1,6 +1,28 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-C903 passing: share an order or package
+A picker (`share_picker_sheet.dart`) over the user's own orders or
+`GET /catalog/featured`'s curated packages, wired into the ticket
+thread's reply row: share button, pending-share chip, send includes
+`shared_order_id`/`shared_product_id`, rich card rendering for
+ORDER_SHARE/PRODUCT_SHARE messages. New `SharedOrder`/`SharedProduct`
+models (EUR-always, per CLAUDE.md). `MyEsim` gained a nullable
+`orderId`. 27 new/changed tests; non-vacuousness proven for the
+shared-id wiring and ORDER_SHARE rendering. `bash harness.sh verify`
+green, 791/791. Reviewer: **FAIL then PASS** -- first pass caught the
+verification command was inherited unchanged from FR-C901/C902 and
+couldn't fail on revert (confirmed via `git stash -u`); fixed to
+`flutter test test/features/support test/features/support_chat`,
+reconfirmed it fails. Two scope calls recorded in DECISIONS.md (share
+only from an open thread, not ticket creation; Packages tab = featured
+list only). Real on-device evidence: created a real order-share in a
+real ticket against the live beta backend -- real order, real
+converted price (৳376.47) in the rendered card. No personal info in
+the screenshots. Commits: `d4bae73` (feature), state commit next.
+**Next step:** FR-C904 (Home "Chat with Support" button) -- the last
+`not_started` item in the chat FR set.
+
 ## 2026-11-19 — FR-C902 passing: live thread screen, avatars, typing indicator
 `TicketThreadScreen` now wires FR-C901's `SupportSocket`: live message
 merge (dedup by id vs REST), a "Support is typing" bounce-dot indicator

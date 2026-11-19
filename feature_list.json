@@ -1089,9 +1089,13 @@
     {
       "id": "FR-C903",
       "behavior": "Chat support: share an order or package in a message",
-      "verification": "flutter test test/features/support_chat",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/support test/features/support_chat",
+      "state": "passing",
+      "evidence": {
+        "commit": "d4bae73",
+        "screens": ["artifacts/fr-c903-picker.png", "artifacts/fr-c903-pending-share.png", "artifacts/fr-c903-sent-card.png"],
+        "notes": "A picker (SegmentedPill bottom sheet, lib/features/support_chat/presentation/share_picker_sheet.dart) over the user's own GET /orders/my-esims-backed orders or GET /catalog/featured's curated packages, wired into the ticket thread's reply row (lib/features/support/presentation/ticket_thread_screen.dart): a share icon button opens it, picking one shows a clearable pending-share chip, sending passes shared_order_id/shared_product_id (mutually exclusive, structurally enforced -- a single nullable ShareSelection field) and allows a genuinely empty-text send when a share is pending (API.md section 12's documented empty-body behavior). SupportMessage gained messageType/sharedOrder/sharedProduct (new SharedOrder/SharedProduct models, amounts parsed EUR-always via Money.parseEur regardless of the API's own currency label -- CLAUDE.md hard constraint). _MessageBubble renders a rich card for ORDER_SHARE/PRODUCT_SHARE, with a readable placeholder when the shared row was since deleted (ON DELETE SET NULL). MyEsim gained a nullable orderId (API.md section 7, distinct from the eSIM profile id) -- optional so unrelated pre-existing test call sites didn't need touching. 27 new/changed tests (model parsing, the real multipart fields sent, and a 9-test FR-C903 screen group covering the picker/chip/send/rich-cards/deleted-placeholder). Non-vacuousness proven for the shared_order_id wiring and the ORDER_SHARE rendering path. flutter analyze clean, full suite 791/791 pass, bash harness.sh verify green. Reviewer: FAIL then PASS -- first pass caught that this FR's verification command was inherited unchanged from FR-C901/C902 and couldn't actually fail when FR-C903 was reverted (proven via git stash -u); fixed to 'flutter test test/features/support test/features/support_chat' and reconfirmed it fails on revert (86 tests, 2 fail when the shared_order_id wiring is broken). Two scope calls (sharing only from an open thread's reply, not ticket creation; Packages tab = featured list only, not full catalog search) recorded in DECISIONS.md's 2026-11-19 'FR-C903: two scope calls' entry per the reviewer's note. Real on-device evidence: created a real order-share in a real ticket (TKT-261119-C016E) on the connected device's signed-in account against the real beta backend -- picker shows the real order ('Bangladesh 1GB 7Days'), sent, and the resulting message renders the real rich card with the real converted price (৳376.47), confirming the Money/currency pipeline end-to-end. No personal info in these screenshots (no profile photo/balance visible)."
+      }
     },
     {
       "id": "FR-C904",
