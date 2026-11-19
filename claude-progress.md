@@ -1,6 +1,29 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-C904 passing: Home "Chat with Support" button -- chat FR set complete
+A `PillButton` in `HomeScreen`'s body (outside either hero variant,
+gated on signed-in), opening the most recently active non-CLOSED
+ticket or starting a new one if none qualify. Guarded against a rapid
+double-tap via a `StateProvider` busy flag (disabled button + an
+internal early-return) -- the reviewer's one real catch: without it, a
+double-tap with zero tickets would create two duplicates. 7 new tests;
+non-vacuousness proven for both the ticket-selection logic and the
+double-tap guard (needed both broken simultaneously to see a real
+failure -- confirmed they're independently sufficient). `bash
+harness.sh verify` green, 798/798. Reviewer: PASS after the double-tap
+fix. Real on-device evidence: tapped the real button, it opened a real
+pre-existing OPEN ticket (not a new one), which also showed a real
+PRODUCT_SHARE card from earlier use. Commits: `99553b7` (feature),
+state commit next.
+
+**FR-C901–C904 (real-time support chat) are all passing.** This closes
+the chat FR set added 2026-11-18 and unblocked 2026-11-19 once web
+shipped and confirmed its own backend live. Every item in
+`feature_list.json` is now `passing` or `blocked` with a reason.
+**Next step:** none queued -- read `feature_list.json` fresh at the
+start of the next session for anything newly added.
+
 ## 2026-11-19 — FR-C903 passing: share an order or package
 A picker (`share_picker_sheet.dart`) over the user's own orders or
 `GET /catalog/featured`'s curated packages, wired into the ticket

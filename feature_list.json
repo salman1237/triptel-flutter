@@ -1100,9 +1100,13 @@
     {
       "id": "FR-C904",
       "behavior": "Home screen: Chat with Support button, opens the chat feature",
-      "verification": "flutter test test/features/support_chat",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/catalog test/features/support test/features/support_chat",
+      "state": "passing",
+      "evidence": {
+        "commit": "99553b7",
+        "screens": ["artifacts/fr-c904-home.png", "artifacts/fr-c904-home2.png", "artifacts/fr-c904-opened-thread.png"],
+        "notes": "A PillButton ('Chat with Support', key home-chat-with-support) in HomeScreen's body (lib/features/catalog/presentation/home_screen.dart), outside both hero variants so it shows regardless of which one is rendering, gated on authState is AuthAuthenticated. Tapping calls _openSupportChat: GET /support/tickets (newest-activity-first per API.md section 12), opens the first ticket whose status != 'CLOSED' (same rule TicketThreadScreen already uses for its own CLOSED-is-the-dead-end check), or POSTs a new empty ticket (subject 'Chat with Support') if every existing ticket is CLOSED or there are none, then navigates to /support/<id>. Guarded against a rapid double-tap via a small StateProvider busy flag (disables the button and early-returns inside the handler) -- added after the reviewer caught that two taps before the first getTickets()/createTicket() resolved would both see 'no open ticket' and both create a duplicate. 7 new tests (show/hide by auth state, opens an existing OPEN ticket without creating a new one, creates a new ticket when the only one is CLOSED, creates a new ticket with zero tickets, a real server error shows the real message, and the double-tap guard creates only one ticket). Non-vacuousness proven for both the open-ticket-detection logic and the double-tap guard (needed to break both the internal guard and the UI disable simultaneously to get a real failure -- confirmed they're independently sufficient, not redundant). flutter analyze clean, full suite 798/798 pass, bash harness.sh verify green. Reviewer: PASS after the double-tap fix (the only gap found; everything else -- tests, non-vacuousness, hero-independent placement, 'open' ticket semantics, error handling, scope, and a final sweep confirming FR-C901-C904 fully covers Functional_Requirements.md section O -- checked out clean on first pass). 'Open' ticket selection rule recorded in DECISIONS.md's 2026-11-19 FR-C904 entry. Real on-device evidence: tapped the real button on the connected device's real signed-in account -- it genuinely opened a real pre-existing OPEN ticket (not creating a new one), which incidentally also showed a real PRODUCT_SHARE card from earlier real usage, corroborating FR-C903. No personal info in the screenshots. This completes the real-time chat FR set (FR-C901-C904, all passing)."
+      }
     }
   ]
 }
