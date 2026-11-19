@@ -28,5 +28,6 @@ case "${1:-}" in
     sleep 5
     bash scripts/shot.sh launch ;;
   shot)   bash scripts/shot.sh "${2:-screen}" ;;
-  *) echo "usage: bash harness.sh <setup|run|test [path]|verify|build|device-check|shot NAME>"; exit 1 ;;
+  native-test) (cd android && ./gradlew :app:testDebugUnitTest) ;;
+  *) echo "usage: bash harness.sh <setup|run|test [path]|verify|build|device-check|shot NAME|native-test>"; exit 1 ;;
 esac

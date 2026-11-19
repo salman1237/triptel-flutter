@@ -129,7 +129,21 @@ Progress comes back through `ProfileDownloadCallback.onStatusUpdate(state): Bool
 (`DownloadWizardProgressFragment`). **Not portable** — the deepest,
 standards-heaviest part (TLS, CBOR/ASN.1 per SGP.22, cryptographic
 profile-package handling). Use `lpac`'s own C library (standalone open-source,
-not Android-specific) via a native plugin/FFI rather than reimplementing it.
+not Android-specific) via a native plugin/FFI rather than reimplementing it,
+subject to the licensing split below.
+
+> **License correction (2026-11-19, verified against lpac's `REUSE.toml`):**
+> lpac does **not** have one liberal license. `src/**`, `driver/**`,
+> `utils/**`, `tests/**` are **AGPL-3.0-only**; `euicc/**` (the SGP.22 core
+> library) is **LGPL-2.1-only OR `LicenseRef-ESTKME-Commercial`**;
+> `cjson-ext/**`, `dlfcn-win32/**`, `cmake/**` and the docs are MIT. lpac has no
+> root `LICENSE` file. OpenEUICC itself is **GPL-3.0-only** ("WITHOUT the 'or
+> later' clause"), except `libs/lpac-jni`, which is **LGPL-2.1**, and `art/`
+> (CC NC-SA 4.0). So OpenEUICC's Kotlin USB code can't be copied into this app
+> either: §1.3 is a description of the protocol to reimplement, not code to
+> reuse. The plan in `docs/Functional_Requirements.md` §P links only
+> `euicc/` and writes its own drivers. lpac documents a CMake build but no
+> Android/NDK build, so that has to be worked out (FR-L914 spike).
 
 ### 2.4 `lpa:` deep link
 `DeepLinkConfirmationActivity.kt`, documented in `docs/DEEP-LINK.md` of that
@@ -222,10 +236,11 @@ eSIM or a USB CCID reader" feature (the EasyEUICC model):
 1. **A native Android plugin** for USB CCID detection + the byte-level
    transceiver protocol (§1.3) — the real engineering work, no Flutter-native
    equivalent exists; needs raw `UsbManager`/`UsbDeviceConnection` access.
-2. Either bundle **`lpac`** itself (standalone, liberally-licensed C library,
-   not tied to the Android app) via FFI/native plugin for the actual SGP.22
-   ES9+ handshake + APDU profile-install sequence, or fork the relevant
-   `lpac-jni` bindings specifically.
+2. Bundle **only lpac's `euicc/` core library** (LGPL-2.1, or ESTKME
+   commercial; *not* the AGPL `src/`/`driver/` parts, see the license
+   correction in §2.3) as a separate `.so` via the NDK, with this app's own
+   APDU and HTTPS drivers, for the SGP.22 ES9+ handshake + APDU
+   profile-install sequence.
 3. **QR scanning + the `LPAString` parser** (§2.1–2.2) — trivial, fully
    reimplementable in pure Dart with any QR package (e.g. `mobile_scanner`).
 4. **Profile list/enable/disable/delete/nickname** (§3) and **notification
@@ -233,5 +248,6 @@ eSIM or a USB CCID reader" feature (the EasyEUICC model):
 5. **Internal eSIM management** (§1.1) and the system-level `EUICC_UI`
    integration — not achievable in this app, skip entirely.
 
-**Not yet scoped as an FR.** Revisit this doc and turn the wanted subset into
-`feature_list.json` items once a decision is made on which pieces to build.
+**Scoped 2026-11-19:** items 1–4 are now `docs/Functional_Requirements.md`
+§P (FR-L901–FR-L922), queued `blocked` in `feature_list.json` until the user
+gives the go-ahead and settles the license, hardware and test-profile gates.

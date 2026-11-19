@@ -5,7 +5,8 @@
     "States: not_started -> active -> passing | blocked (blocked needs 'blocked_reason'; the loop then moves on).",
     "Only a passing verification command (proven to fail when the feature is reverted) moves an item to passing; evidence = {commit, screens, notes}.",
     "Order = build order. Foundation first, then auth, then handset compatibility (checkout and install depend on it).",
-    "2026-11-18: FR-C9xx (real-time support chat) are intentionally blocked, not not_started - the autonomous loop stops when it runs out of not_started/active items rather than waiting on these. Unblock only once D:\\eSim/claude-progress.md confirms the web chat backend is live on beta."
+    "2026-11-18: FR-C9xx (real-time support chat) are intentionally blocked, not not_started - the autonomous loop stops when it runs out of not_started/active items rather than waiting on these. Unblock only once D:\\eSim/claude-progress.md confirms the web chat backend is live on beta.",
+    "2026-11-19: FR-L9xx (eSIM adapter, docs/Functional_Requirements.md section P) are intentionally blocked. Gate 1 (all items): the user's explicit go-ahead in conversation. Gate 2 (FR-L914 onward): the user confirms the lpac license plan (LGPL euicc/ only, see DECISIONS.md 2026-11-19 'eSIM adapter'). Gate 3 (FR-L910 onward, for device evidence): reader + removable eUICC + USB-host phone available. Gate 4 (FR-L917): a test activation code, or explicit OK to consume a real one. When unblocking, flip only the items whose gates are actually cleared."
   ],
   "features": [
     {
@@ -1107,6 +1108,126 @@
         "screens": ["artifacts/fr-c904-home.png", "artifacts/fr-c904-home2.png", "artifacts/fr-c904-opened-thread.png"],
         "notes": "A PillButton ('Chat with Support', key home-chat-with-support) in HomeScreen's body (lib/features/catalog/presentation/home_screen.dart), outside both hero variants so it shows regardless of which one is rendering, gated on authState is AuthAuthenticated. Tapping calls _openSupportChat: GET /support/tickets (newest-activity-first per API.md section 12), opens the first ticket whose status != 'CLOSED' (same rule TicketThreadScreen already uses for its own CLOSED-is-the-dead-end check), or POSTs a new empty ticket (subject 'Chat with Support') if every existing ticket is CLOSED or there are none, then navigates to /support/<id>. Guarded against a rapid double-tap via a small StateProvider busy flag (disables the button and early-returns inside the handler) -- added after the reviewer caught that two taps before the first getTickets()/createTicket() resolved would both see 'no open ticket' and both create a duplicate. 7 new tests (show/hide by auth state, opens an existing OPEN ticket without creating a new one, creates a new ticket when the only one is CLOSED, creates a new ticket with zero tickets, a real server error shows the real message, and the double-tap guard creates only one ticket). Non-vacuousness proven for both the open-ticket-detection logic and the double-tap guard (needed to break both the internal guard and the UI disable simultaneously to get a real failure -- confirmed they're independently sufficient, not redundant). flutter analyze clean, full suite 798/798 pass, bash harness.sh verify green. Reviewer: PASS after the double-tap fix (the only gap found; everything else -- tests, non-vacuousness, hero-independent placement, 'open' ticket semantics, error handling, scope, and a final sweep confirming FR-C901-C904 fully covers Functional_Requirements.md section O -- checked out clean on first pass). 'Open' ticket selection rule recorded in DECISIONS.md's 2026-11-19 FR-C904 entry. Real on-device evidence: tapped the real button on the connected device's real signed-in account -- it genuinely opened a real pre-existing OPEN ticket (not creating a new one), which incidentally also showed a real PRODUCT_SHARE card from earlier real usage, corroborating FR-C903. No personal info in the screenshots. This completes the real-time chat FR set (FR-C901-C904, all passing)."
       }
+    },
+    {
+      "id": "FR-L901",
+      "behavior": "eSIM adapter: parse/validate/round-trip SGP.22 activation codes (LPA:1$smdp$matchingId[$oid[$confFlag]], lpa: URI, URL-wrapped carddata) and build one from Triptel order data",
+      "verification": "flutter test test/features/adapter",
+      "state": "blocked",
+      "blocked_reason": "Gate 1: awaiting the user's go-ahead on section P (requested 2026-11-19). Pure Dart, no other gate.",
+      "evidence": null
+    },
+    {
+      "id": "FR-L902",
+      "behavior": "eSIM adapter: activation-code input screen (QR camera, QR from gallery image, clipboard paste, manual form) feeding FR-L901, with masked preview and confirmation-code hint",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L902",
+      "state": "blocked",
+      "blocked_reason": "Gate 1: awaiting the user's go-ahead on section P. Adds the mobile_scanner dependency (version pin recorded in DECISIONS.md when built).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L910",
+      "behavior": "eSIM adapter: detect USB CCID readers (interface class 0x0B) with live attach/detach while foregrounded, streamed to Dart; unsupported state on iOS / no USB host",
+      "verification": "flutter test test/features/adapter",
+      "state": "blocked",
+      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (a real CCID reader and a USB-host phone for device evidence).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L911",
+      "behavior": "eSIM adapter: USB permission request flow (granted / denied / detached-meanwhile), retryable, never crashes",
+      "verification": "flutter test test/features/adapter",
+      "state": "blocked",
+      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (real reader for device evidence).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L912",
+      "behavior": "eSIM adapter: USB-CCID transceiver (IccPowerOn with voltage fallback, ISO 7816-3 ATR parsing, T=0/T=1, XfrBlock framing with sequence numbers, TPDU quirk list), off the main thread",
+      "verification": "bash harness.sh native-test",
+      "state": "blocked",
+      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (a real reader+card session to record the test transcripts from).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L913",
+      "behavior": "eSIM adapter: APDU layer (MANAGE CHANNEL, SELECT ISD-R, Terminal Capabilities, 61xx GET RESPONSE chaining, 6Cxx Le retry) as the euicc library's APDU interface",
+      "verification": "bash harness.sh native-test",
+      "state": "blocked",
+      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (real recorded APDU transcripts).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L914",
+      "behavior": "eSIM adapter: vendor lpac euicc/ (LGPL only) as its own NDK shared library for arm64-v8a/armeabi-v7a/x86_64, with this app's own JNI APDU + HTTPS drivers; starts with an interface spike; done = a real EID read from a real card",
+      "verification": "bash harness.sh native-test && bash harness.sh verify",
+      "state": "blocked",
+      "blocked_reason": "Gate 1 (go-ahead) + Gate 2 (user confirms the license plan: LGPL euicc/ only as a separate .so, or the ESTKME commercial license) + Gate 3 (real reader+card).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L915",
+      "behavior": "eSIM adapter: Adapter screen (Account entry, Android only) showing reader, permission CTA, masked/copyable EID, EuiccInfo2 summary, with empty/error/unplugged states",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L915",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (depends on FR-L914).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L916",
+      "behavior": "eSIM adapter: list profiles on the card (masked ICCID, provider, name/nickname, enabled state, class), refreshed after every mutation",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L916",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (depends on FR-L914).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L917",
+      "behavior": "eSIM adapter: download a profile via SGP.22 ES9+ from an ActivationCode (+ confirmation code when required), with a use-it-up confirm step, live progress, keep-awake, and a pure-Dart error-mapping table",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L917",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 + Gate 4 (a free/test activation code, or the user's explicit OK to consume a real Triptel order's code -- real money).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L918",
+      "behavior": "eSIM adapter: enable / disable a profile on the card (one enabled at a time, confirm before disabling the active one), list re-read afterwards",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L918",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (needs a profile on the card, i.e. FR-L917 or a pre-loaded test profile).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L919",
+      "behavior": "eSIM adapter: delete a profile from the card behind a typed confirmation; enabled profiles must be disabled first",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L919",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (needs a disposable test profile on the card).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L920",
+      "behavior": "eSIM adapter: set a profile nickname (local on-card metadata, length-validated, never sent to Triptel)",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L920",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (needs a profile on the card).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L921",
+      "behavior": "eSIM adapter: SGP.22 notifications (list pending, send one/all, discard with confirmation, auto-send after download/enable/disable/delete, queued badge when offline)",
+      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L921",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-3 (needs real pending notifications from a real card operation).",
+      "evidence": null
+    },
+    {
+      "id": "FR-L922",
+      "behavior": "eSIM adapter: 'Install to USB adapter' on My eSIM detail when a reader is connected and the lifecycle allows install, pre-filling FR-L917 with that eSIM's real activation code",
+      "verification": "flutter test test/features/adapter test/features/esims && bash harness.sh shot FR-L922",
+      "state": "blocked",
+      "blocked_reason": "Gates 1-4 (depends on FR-L917).",
+      "evidence": null
     }
   ]
 }

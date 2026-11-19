@@ -48,6 +48,32 @@ app, the RN app, or a backend guarantee. Don't relax one without reading why.
 - "Unknown" is not "not supported": say "We couldn't confirm" + manual check steps.
 - Device identifiers stay on the device; don't send them to any API.
 
+## eSIM adapter (FR §P)
+- Unprivileged only (EasyEUICC model). Never request or declare
+  `WRITE_EMBEDDED_SUBSCRIPTIONS`, `MODIFY_PHONE_STATE`,
+  `READ_PRIVILEGED_PHONE_STATE`, `SECURE_ELEMENT_PRIVILEGED_OPERATION`;
+  never try to touch the phone's internal eSIM.
+- Android only. iOS shows no adapter entry points at all.
+- License boundary: link only lpac's LGPL `euicc/` library as its own `.so`.
+  No AGPL lpac code (`src/`, `driver/`) in this repo, copied or adapted.
+- Activation codes, matching IDs and confirmation codes are bearer secrets:
+  never log them, never put them in analytics or crash reports, mask them in
+  UI by default. The same goes for EIDs and ICCIDs read off the card.
+- EID, ICCIDs and card info stay on the device. No Triptel endpoint takes
+  them, so they are never sent anywhere.
+- A download uses up the activation code. Always confirm first, and say so.
+  Never auto-retry a download that reached the SM-DP+: a retry can fail as
+  "already used," or worse.
+- Delete is irreversible and disable switches off connectivity: both need
+  explicit confirmation. Nothing in the app ever deletes or disables on its own.
+- SGP.22 notifications are part of a correct operation: send them after
+  download/enable/disable/delete, or queue them visibly. Never drop them
+  silently.
+- All USB I/O runs on one worker thread off the main thread. One card,
+  one in-flight APDU exchange at a time.
+- Protocol tests use real recorded transcripts or cited spec examples, never
+  invented byte sequences presented as real.
+
 ## Design
 - Use theme tokens and shared components only (`Design_System.md`). No raw hex in features.
 - Follow Eskimo's patterns, never copy its assets, copy text, or brand colours.

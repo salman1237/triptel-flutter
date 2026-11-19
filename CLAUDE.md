@@ -99,6 +99,7 @@ Context: when the context is getting long, finish the current feature, commit, u
 - **Rules** (`docs/Rules.md`) — required reading when writing any code.
 - **Technical Requirements** (`docs/Technical_Requirements.md`) — when adding a dependency or touching build/test/device/MCP setup.
 - **Non-Functional Requirements** (`docs/Non_Functional_Requirements.md`) — performance, offline, security, accessibility bars.
+- **OpenEUICC Reference** (`docs/OpenEUICC_Reference.md`) — required before any FR-L9xx (eSIM adapter / USB CCID, Functional_Requirements §P); includes the lpac license split.
 
 ## Tools in this harness
 - Skills: `.claude/skills/new-screen`, `new-api-call`, `verify-on-device`.

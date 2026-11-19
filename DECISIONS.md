@@ -1,6 +1,55 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — eSIM adapter (FR §P) scoped and queued `blocked`; license plan is ASK BEFORE DECIDING
+**What:** the user picked two tiers from `docs/OpenEUICC_Reference.md`
+("Easy, pure Dart" and "Hard but buildable") and asked for harness docs +
+FRs first, then a pause for confirmation. Added
+`docs/Functional_Requirements.md` §P (FR-L901–FR-L922, 15 items),
+matching sections in Architecture/Technical/Rules/NFR, and queued all 15
+in `feature_list.json` as `blocked` with gate-specific reasons. They stay
+`blocked`, not `not_started`, so no future session starts them before the
+user's go-ahead (the same precedent as FR-C9xx on 2026-11-18).
+
+**Build order is dependency order, not tier order.** The "easy" profile
+operations (list/enable/disable/delete/nickname/notifications) are thin
+only *after* the native engine exists, so they come after FR-L914, not
+before. Only FR-L901 (parser) and FR-L902 (input screen) are truly
+independent and can be built today with no hardware.
+
+**License: ASK BEFORE DECIDING.** The reference doc called lpac
+"liberally-licensed," which was wrong (now corrected there). Verified from
+lpac's `REUSE.toml`: `src/`, `driver/`, `utils/`, `tests/` are
+**AGPL-3.0-only**; `euicc/` is **LGPL-2.1-only OR an ESTKME commercial
+license**; build files/docs are MIT. OpenEUICC is GPL-3.0-only (its
+`lpac-jni` is LGPL-2.1). **Proposed plan:** vendor and link only `euicc/`
+as a separate shared library, ship its license and source notice, and write
+this app's own APDU + HTTPS drivers and JNI glue (no AGPL or GPL code
+copied or adapted; OpenEUICC's Kotlin is a protocol description to
+reimplement, not code to reuse). This is the user's call because it puts
+LGPL obligations on how the app is distributed. The alternative is
+ESTKME's commercial license. FR-L914 stays blocked until the user
+confirms one of these.
+
+**Other calls made here (revisit freely):**
+- *Android only.* iOS shows no adapter UI.
+- *In the app module, not a separate plugin package,* following the
+  existing `co.triptel.app/esim` channel precedent. Revisit if the native
+  code gets big enough to want its own package.
+- *Catalog of excluded items* (internal eSIM, in-tray removable SE via
+  OMAPI/ARA-M, `EUICC_UI`, multi-chip, memory reset, `lpa:` handler)
+  is listed in §P so it isn't re-proposed.
+- *Hardware:* the Pinehurst test phone has USB host (verified). A CCID
+  reader + removable eUICC card are still needed; record their models here
+  once known (the TPDU quirk list in FR-L912 depends on the reader).
+- *Real money:* FR-L917's device evidence needs a free/test activation
+  code. Downloading a real Triptel order uses up its code, so it needs the
+  user's explicit OK per CLAUDE.md.
+
+**Revisit if:** the user picks the commercial license, or wants iOS,
+or a reader that isn't CCID-class (e.g. a vendor-specific USB eSIM
+dongle), which would need its own transport.
+
 ## 2026-11-19 — FR-C904: "open" ticket means anything but CLOSED, newest match wins
 The FR text ("opens FR-C902's thread (new ticket if none open)") didn't
 define "open." **Decision:** any ticket whose status isn't `CLOSED`

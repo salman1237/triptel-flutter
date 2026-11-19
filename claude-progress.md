@@ -1,6 +1,28 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — eSIM adapter (USB CCID) scoped: FR-L901–L922 queued `blocked`, awaiting go-ahead
+The user picked the "pure Dart" and "native engine" tiers from
+`docs/OpenEUICC_Reference.md` and asked for docs + FRs first, then a pause.
+**Nothing was built.** Added `docs/Functional_Requirements.md` §P (15 FRs),
+plus matching sections in Architecture (layout + data flow),
+Technical_Requirements (NDK/CMake present, planned deps, hardware list,
+`native-test` command, verification layer 4), Rules (eSIM adapter rules),
+NFRs (timeouts, secrets), and a CLAUDE.md topic-doc pointer. New harness
+command: `bash harness.sh native-test` (Android JVM unit tests).
+**Found and corrected a wrong claim** in the reference doc: lpac isn't
+"liberally-licensed". Its `src/`/`driver/` are AGPL-3.0-only and only
+`euicc/` is LGPL-2.1 (or commercial). See DECISIONS.md's 2026-11-19
+"eSIM adapter" entry, which marks the license plan **ask before deciding**.
+Verified: the Pinehurst test phone has USB host.
+**Gates before the loop can start §P** (feature_list.json `_rules`):
+1. the user's go-ahead (all items); 2. license-plan confirmation (FR-L914+);
+3. a CCID reader + removable eUICC card (device evidence, FR-L910+);
+4. a test activation code or an explicit OK to use up a real one (FR-L917).
+**Next step:** wait for the user. On go-ahead, flip FR-L901 and FR-L902 to
+`not_started` (no hardware or license needed) and run the loop. Flip the rest
+only as their gates clear.
+
 ## 2026-11-19 — Fix: shared order/package cards weren't tappable (user-reported)
 FR-C903's `_SharedOrderCard`/`_SharedProductCard` rendered as inert
 `Container`s -- no `onTap` was ever wired. Fixed: a product card opens
@@ -3088,5 +3110,9 @@ rather than touching these.
    to investigate the eSIM Access polling/webhook integration.
 
 ## User actions pending
+- eSIM adapter (§P): go-ahead; confirm the lpac license plan (LGPL `euicc/`
+  only, or the ESTKME commercial license); provide a CCID USB reader + a
+  removable eUICC card (and note their models); provide a test activation
+  code, or OK using up a real order's code.
 - Register an Android OAuth client (`co.triptel.app` + debug SHA-1) for Google Sign-In.
 - Optional: `flutter upgrade` (≥ 3.35) to enable the Dart MCP server.

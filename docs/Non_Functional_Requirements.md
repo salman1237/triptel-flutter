@@ -14,6 +14,12 @@ A feature is not `passing` until it clears the bars that apply to it.
 - Network timeouts: connect 10 s, receive 30 s (checkout/top-up 45 s).
 - Checkout poll survives app backgrounding: on resume, re-read the order.
 
+- eSIM adapter (FR §P): reader hot-plug reflected in the UI within 1 s; a
+  reader unplugged mid-operation ends that operation with a typed error and
+  a recoverable screen, never a crash or a hung spinner. Card reads (EID,
+  profile list) time out after 15 s; a profile download is allowed up to
+  120 s with the screen kept awake and visible progress throughout.
+
 ## Offline
 - Cached public settings + last My eSIMs list + last status snapshot (with
   "last updated" time) are shown offline. The QR/LPA must be viewable offline once
@@ -24,6 +30,9 @@ A feature is not `passing` until it clears the bars that apply to it.
 - JWT only in secure storage; logs never contain tokens, LPA strings, ICCIDs, NID numbers.
 - HTTPS only; no cleartext traffic.
 - Device compatibility data never leaves the device.
+- eSIM adapter: activation codes, confirmation codes, EIDs and card ICCIDs
+  are never logged or transmitted (the only network traffic is the SGP.22
+  exchange with the SM-DP+ named in the activation code, over TLS).
 - KYC images are uploaded and not kept in app storage afterwards.
 - Screens showing QR/LPA may opt out of screenshots on Android only if the user asks (not default — users legitimately screenshot QRs).
 

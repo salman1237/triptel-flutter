@@ -18,6 +18,7 @@
 | Files | `image_picker` (KYC, attachments) |
 | Fonts | `google_fonts` (Plus Jakarta Sans) |
 | Native | MethodChannel `co.triptel.app/esim` — Android `MainActivity.kt`, iOS `AppDelegate.swift` |
+| eSIM adapter (§P, planned) | Kotlin USB CCID transport + lpac's `euicc/` (LGPL, NDK shared lib) behind channels `co.triptel.app/ccid/*` and `co.triptel.app/lpa` — Android only |
 
 ## Folder layout
 ```
@@ -40,7 +41,24 @@ test/                          # mirrors lib/
 integration_test/              # on-device journeys
 ```
 Features: `bootstrap, auth, catalog, checkout, esims, tracking, wallet,
-withdrawals, referrals, compatibility, guides, account, kyc, support, legal`.
+withdrawals, referrals, compatibility, guides, account, kyc, support, legal,
+support_chat, adapter` (`adapter` = FR §P, planned).
+
+### eSIM adapter native layout (FR §P, planned)
+```
+lib/features/adapter/
+  data/          ccid_channel.dart (EventChannel/MethodChannel), lpa_channel.dart
+  application/   activation_code.dart (FR-L901, pure), lpa_error_messages.dart (pure),
+                 providers (readers, chip info, profiles, notifications, download)
+  presentation/  activation_input_screen.dart, adapter_screen.dart, download_screen.dart
+android/app/src/main/kotlin/co/triptel/app/
+  ccid/          UsbCcidReaders.kt (detect/hot-plug/permission), CcidTransceiver.kt,
+                 Atr.kt, ApduChannel.kt (MANAGE CHANNEL, SELECT ISD-R, chaining)
+  lpa/           LpaBridge.kt (JNI to euicc), HttpsDriver.kt
+android/app/src/main/cpp/   CMakeLists.txt + lpa_jni.c (APDU/HTTP driver glue)
+third_party/lpac-euicc/     vendored lpac euicc/ only, with its LICENSES (LGPL-2.1)
+android/app/src/test/kotlin/  JVM unit tests (framing, ATR, APDU chaining transcripts)
+```
 
 ## Layering rule
 `presentation → application (providers) → data (api) → ApiClient → backend`.
@@ -67,6 +85,22 @@ After interception always re-read server state.
 returns `EsimVerdict{supported|notSupported|unknown, deviceLabel, reason}` →
 `esimVerdictProvider` (cached for the session) → used by compatibility screen,
 checkout gate, install buttons, home promo.
+
+### eSIM adapter (FR §P, planned)
+```
+Dart UI ─ providers ─ lpa_channel / ccid_channel  (platform channels; Android only)
+   │                         │
+   │                   LpaBridge.kt ── JNI ── lpac euicc/ (LGPL .so)
+   │                                              │ APDU driver   │ HTTP driver
+   │                                     ApduChannel.kt      HttpsDriver.kt ── SM-DP+ (ES9+)
+   │                                              │
+   │                                     CcidTransceiver.kt ── UsbDeviceConnection ── reader ── eUICC
+   └─ activation_code.dart (pure)  ◄── QR / gallery / clipboard / manual / Triptel order data
+```
+One worker thread owns the USB connection and serialises every APDU (the
+card is a single-threaded device). Long operations (download: tens of
+seconds) report progress over an EventChannel; Dart never blocks on them.
+A reader unplugged mid-operation surfaces as a typed error, never a crash.
 
 ### Money
 API amounts are EUR strings → parse into an integer-cents/`Decimal` type at the

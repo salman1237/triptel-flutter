@@ -220,6 +220,142 @@ not this paragraph. Replaces FR-1101–1103 above with a live version
 - **FR-C904 Home "Chat with Support" button.** Visible on Home (FR-201),
   opens FR-C902's thread (new ticket if none open).
 
+## P. eSIM adapter — write a profile to a USB CCID reader (added 2026-11-19, awaiting go-ahead)
+**Why:** a traveller whose phone has no eUICC (e.g. the vivo test device)
+can still use a Triptel plan by writing the profile to a **removable eSIM
+card inside a USB smart-card (CCID) reader/adapter**. The user asked for
+two tiers from `docs/OpenEUICC_Reference.md`: the pure-Dart pieces and the
+native USB + profile-download engine. Read that reference doc and
+`DECISIONS.md`'s 2026-11-19 "eSIM adapter" entry before any FR here.
+
+**The model is EasyEUICC (unprivileged), never OpenEUICC.** This app can't
+manage the phone's *internal* eSIM (privileged permissions Google never
+grants a normal app), so every FR below talks only to a chip behind a USB
+CCID reader. **Android only**: iOS hides every entry point (no USB CCID
+access for a third-party Flutter app). **No backend changes needed**: the
+activation code comes from data this app already gets (`lpa_string`,
+`smdp_address`, `matching_id`, API.md §7–8).
+
+**Gates (all must be cleared by the user before the loop starts this
+section; tracked as `blocked` in `feature_list.json`):**
+1. **Go-ahead.** The user asked to review this scoping first.
+2. **License (ask before deciding).** lpac isn't one license: its `src/`
+   and `driver/` are **AGPL-3.0-only**; only its `euicc/` core library is
+   **LGPL-2.1-only OR a commercial ESTKME license** (per lpac's
+   `REUSE.toml`). The plan links **only `euicc/`** as a separate shared
+   library, with this app's own APDU and HTTP drivers (no AGPL code). The
+   user confirms this, or chooses the commercial license.
+3. **Hardware** (FR-L910 onward): a CCID USB reader, a removable eUICC
+   card (e.g. 9eSIM/eSTK.me class), and a test phone with USB host/OTG
+   (`pm has-feature android.hardware.usb.host`). The phone is covered: the
+   Pinehurst test device reports USB host = true (2026-11-19). Still needed:
+   the reader and the card.
+4. **Test profile** (FR-L917): a free/test activation code. Downloading a
+   real Triptel order's profile uses up that code (real money), so it
+   needs an explicit OK per CLAUDE.md.
+
+### P1. Pure Dart, no native work, testable now
+- **FR-L901 Activation-code parser.** Pure Dart `ActivationCode` value type
+  + `parseActivationCode(String)` for SGP.22's
+  `LPA:1$<smdp-address>$<matching-id>[$<smdp-oid>[$<conf-code-required>]]`
+  (`$`-delimited; `1` = format version; empty matching ID allowed; flag
+  `1` means a confirmation code is required). Also accepts the
+  lowercase `lpa:` URI form, the string wrapped in a URL query parameter
+  (e.g. Android's `esimsetup.android.com/...?carddata=<urlencoded>`),
+  and surrounding whitespace. Returns a typed error (not a throw) for
+  wrong prefix/version, a missing/invalid SM-DP+ host, or too many fields.
+  `toLpaString()` round-trips. Also builds one from this app's own data
+  (`lpa_string`, else `smdp_address` + `matching_id`). Unit tests only.
+- **FR-L902 Activation-code input.** One screen, four sources, all feeding
+  FR-L901's parser: (a) live QR camera scan, (b) decode a QR from a
+  gallery image (existing `image_picker`), (c) paste from clipboard,
+  (d) manual form (SM-DP+ address, matching ID, optional confirmation
+  code). Shows a parsed, masked preview ("smdp.io · ABC…") and the
+  "confirmation code required" hint. New dependency `mobile_scanner`
+  (camera + image decode), pinned to a version supporting Flutter 3.27 /
+  Dart 3.6 and recorded in DECISIONS.md. Camera permission denial is a
+  normal state with a path to the other three sources. Widget tests with
+  a faked scanner seam; device screenshot of the screen.
+
+### P2. Native engine (Android): USB CCID transport + profile operations
+- **FR-L910 Reader detection & hot-plug.** Kotlin in the app module:
+  enumerate `UsbManager.deviceList`, keep devices with an interface of
+  class `USB_CLASS_CSCID` (0x0B); register attach/detach receivers while
+  the app is foregrounded (no manifest auto-launch). EventChannel
+  `co.triptel.app/ccid/readers` streams `[{id, name, vendorId, productId,
+  hasPermission}]`. Dart: `CcidReader` model, `ccidReadersProvider`
+  (stream), empty/unsupported states (iOS, or no USB host feature).
+  Dart tests via a faked channel; device evidence needs a real reader.
+- **FR-L911 USB permission.** `requestPermission(device, PendingIntent)`
+  with an app-private broadcast action; the Dart result is
+  granted | denied | detached-meanwhile. A denial can be retried and
+  never crashes.
+- **FR-L912 CCID transceiver.** USB-CCID (rev 1.0) over bulk endpoints:
+  `PC_to_RDR_IccPowerOn` (voltage fallback 5V → 3V → 1.8V),
+  ISO/IEC 7816-3 ATR parsing, T=0/T=1 selection
+  (`PC_to_RDR_SetParameters`), `PC_to_RDR_XfrBlock` with sequence
+  numbers, slot-status/error mapping, and a TPDU-mode quirk list. All
+  bulk I/O off the main thread. JVM unit tests on the framing and ATR
+  parser with recorded byte transcripts (no hardware needed).
+- **FR-L913 APDU layer.** `MANAGE CHANNEL` open/close, `SELECT` ISD-R by
+  AID, Terminal Capabilities, response chaining (`61xx` → `GET
+  RESPONSE`; `6Cxx` → resend with corrected Le). Exposed to the euicc
+  library as its APDU interface (FR-L914). JVM unit tests with recorded
+  transcripts.
+- **FR-L914 euicc library integration.** Vendor lpac's `euicc/` (LGPL)
+  under `third_party/lpac-euicc/` with its license files, build it with
+  the NDK + CMake as a separate shared library for `arm64-v8a`,
+  `armeabi-v7a` and `x86_64`, and write the app's own JNI glue for
+  **its own** APDU driver (→ FR-L913) and HTTPS driver (Kotlin
+  `HttpsURLConnection`; TLS validated, no cleartext). No AGPL `src/` or
+  `driver/` code. **The first step is a spike** that confirms the
+  library's real driver-interface shape and API from its headers before
+  any glue is written. Done = a real EID read from a real card.
+- **FR-L915 Adapter screen + chip info.** New screen (Account → "eSIM
+  adapter (USB)", Android only): connected reader, permission CTA, EID
+  (masked, tap to reveal/copy; never sent to any API), EuiccInfo2
+  summary (free memory, SGP.22 version), with empty, error and
+  "unplugged mid-read" states.
+- **FR-L916 List profiles on the card.** ICCID (masked), provider,
+  profile name/nickname, enabled/disabled, profile class. Refreshes
+  after every mutation (FR-L917–L920).
+- **FR-L917 Download a profile (SGP.22 ES9+).** Input = an
+  `ActivationCode` from FR-L902, plus a confirmation code when the flag
+  requires it. An explicit "This uses up the activation code" confirm
+  step, then a progress screen driven by the library's download states,
+  with the screen kept awake and a cancel option only before the
+  point of no return. Failures go through a pure-Dart error-mapping table
+  (raw SGP.22/library code → plain message; unknown codes fall back to a
+  generic message + the raw code for support). IMEI is not sent. Tested
+  with a faked engine; real-card evidence uses a test profile (gate 4).
+- **FR-L918 Enable / disable a profile.** One enabled profile at a time,
+  per SGP.22; disabling the active one asks for confirmation. Uses the
+  library's refresh flag; the list re-reads afterwards.
+- **FR-L919 Delete a profile.** Destructive and irreversible, so a typed
+  confirmation; an enabled profile has to be disabled first (or the
+  library's own error is shown verbatim through the mapping table).
+- **FR-L920 Nickname a profile.** Local on-card metadata only, length-
+  validated; never sent to Triptel.
+- **FR-L921 SGP.22 notifications.** List pending notifications (seq
+  number, operation, SM-DP+), send one or all, discard with confirmation.
+  Auto-send right after FR-L917–L919 operations when online; queue
+  otherwise and show a badge on the adapter screen. Required for spec
+  correctness: carriers use them to confirm provisioning.
+- **FR-L922 Triptel integration.** On My eSIM detail (FR-403/404), an
+  "Install to USB adapter" action appears only when a reader is
+  connected and the eSIM's lifecycle allows install (Rules.md: not
+  SUSPENDED/REVOKED/CANCELLED/EXPIRED). It pre-fills FR-L917 with that
+  eSIM's real activation code (FR-L901's builder) and the same
+  use-it-up confirmation.
+
+**Out of scope for P (documented so it isn't re-proposed):** the phone's
+internal eSIM (OMAPI, privileged); removable eSIMs in the phone's own SIM
+tray (only works if the chip vendor allowlists this app's certificate —
+not plannable); registering as Android's `EUICC_UI`/`EuiccService`;
+multiple chips/ISD-Rs at once; eUICC memory reset (destructive, test-lab
+only); iOS; the `lpa:` deep-link handler (Android's own LPA owns that
+scheme).
+
 ---
 
 ## Traceability: web customer routes → FRs (nothing left out)
@@ -243,6 +379,7 @@ not this paragraph. Replaces FR-1101–1103 above with a live version
 | `/legal/[slug]` | FR-1201 |
 | `MaintenanceGate`, currency/language switchers | FR-003, FR-005, FR-006 |
 | `/partners`, `/reseller`, `/agent`, `/admin`, `/api-docs` | **Out of scope** |
+| *(no web equivalent: app-only, Android-only)* eSIM adapter / USB CCID | FR-L901–FR-L922 (§P) |
 
 ## Explicitly out of scope
 Merchant "buy for a customer" (`is_buy_for_user`), merchant/agent applications,
