@@ -1,6 +1,38 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-L902 passing: activation-code input screen, confirmed live
+Built "Add activation code" (Account -> "Add eSIM via adapter", Android
+only): live QR camera scan, gallery QR decode, clipboard paste, and a
+manual form, all feeding FR-L901's parser. Added `mobile_scanner`
+(camera/gallery QR), recorded in DECISIONS.md along with the scope call
+on the manual form's "confirmation code" field (a requirement checkbox,
+not a secret-code field -- `ActivationCode` has no slot for the latter).
+10 new widget tests + an Android-gate test on the account row, all
+following the existing seam pattern (`urlLauncherProvider`-style
+`Provider<Function>` overrides).
+
+Hit and fixed a real build bug along the way: adding `mobile_scanner`
+triggered a Kotlin incremental-compiler crash ("this and base files
+have different roots") because the pub cache lives on `C:` and this
+project on `D:` -- a Windows cross-drive relativization bug in Kotlin's
+Gradle plugin. Fixed with `kotlin.incremental=false` in
+`android/gradle.properties` (build-speed only, documented inline).
+Also caught a second real bug before it reached CI: an XML comment in
+`AndroidManifest.xml` used `--`, which XML forbids inside comments --
+broke the manifest merger with a cryptic "Error parsing
+AndroidManifest.xml"; fixed by rewording the comment.
+
+**Confirmed live** on device `BS88823AA14C0601334`: the real Android
+camera-permission prompt appears, the live camera session starts
+(status-bar indicator), and manual-entry -> parse -> masked-preview
+works end to end with real typed input. Reviewer: PASS. FR-L902
+passing, commit `637973d`.
+**Next step:** FR-L910+ (USB-CCID native engine) remain `blocked` on
+gate 3 (a real USB CCID reader) -- the eSIM adapter feature's pure-Dart
+tier (FR-L901, FR-L902) and its zero-native-code shipped path (FR-L906)
+are now both done; no more work is possible here without new hardware.
+
 ## 2026-11-19 — FR-L906 passing: `lpa:` deep-link handoff, confirmed live
 Following FR-L905's `ara_m_denied` dead end and the jmp-sim-manager/ARA-M
 research (DECISIONS.md), found a materially better path than "sign with

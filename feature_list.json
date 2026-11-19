@@ -1123,9 +1123,13 @@
     {
       "id": "FR-L902",
       "behavior": "eSIM adapter: activation-code input screen (QR camera, QR from gallery image, clipboard paste, manual form) feeding FR-L901, with masked preview and confirmation-code hint",
-      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L902",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/adapter test/features/account/account_screen_test.dart",
+      "state": "passing",
+      "evidence": {
+        "commit": "637973d",
+        "screens": ["artifacts/fr-l902-4.png", "artifacts/fr-l902-5.png", "artifacts/fr-l902-6.png"],
+        "notes": "Confirmed live on BS88823AA14C0601334 via Account -> 'Add eSIM via adapter': real camera permission prompt, live camera session (status-bar indicator), and the manual-entry -> parse -> masked-preview pipeline all work end to end with real typed input. Reviewer: PASS (31/31 tests, flutter analyze clean, harness.sh verify green)."
+      }
     },
     {
       "id": "FR-L905",
