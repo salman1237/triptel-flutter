@@ -16,6 +16,16 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        // FR-L905: a one-shot OMAPI probe, separate channel so it doesn't
+        // get mixed up with the esimSupport() signals above (different
+        // concern: "can this app reach the in-tray card at all", not "does
+        // the phone have its own eUICC").
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OMAPI_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "probeUiccSecureElement" -> OmapiProbe(applicationContext).probe(result)
+                else -> result.notImplemented()
+            }
+        }
     }
 
     // Raw signals only; the verdict (supported / not / unknown) is decided in Dart
@@ -47,5 +57,6 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "co.triptel.app/esim"
+        private const val OMAPI_CHANNEL = "co.triptel.app/omapi"
     }
 }

@@ -277,7 +277,49 @@ section; tracked as `blocked` in `feature_list.json`):**
   normal state with a path to the other three sources. Widget tests with
   a faked scanner seam; device screenshot of the screen.
 
+### P0. OMAPI removable-SE spike (added 2026-11-19, pivot — see DECISIONS.md)
+- **FR-L905 OMAPI ARA-M access probe.** The user has a removable eUICC card
+  already in a test phone's physical SIM tray (not a USB CCID reader) and
+  asked to proceed on that path. §1.2 of `docs/OpenEUICC_Reference.md` is
+  explicit that this only works if the *card's own* ARA-M access-control
+  list grants *this app's* signing certificate hash — not something
+  configurable from this repo, and not guessable without a real device.
+  FR-L905 is the cheap, reversible way to get a real answer: a minimal
+  Kotlin `OmapiProbe` (new `android.se.omapi.SEService` → list readers →
+  the UICC reader → `openSession()` → `openLogicalChannel(ISD-R AID)`)
+  behind a new MethodChannel `co.triptel.app/omapi`, with a tiny Dart
+  diagnostic screen that shows the raw result (API available?, reader
+  names, channel opened or denied, raw error). API 28+ only (guarded);
+  below that, reports `omapi_requires_api28` rather than crashing. No
+  permission needed beyond what OMAPI itself requires on stock Android.
+  **This FR's own result decides what happens next**, not a judgment call:
+  - **Channel opens** → the ARA-M allows us. FR-L910–L913 get rewritten
+    from USB-CCID framing to OMAPI (`Reader`/`Session`/`Channel` replace
+    `UsbManager`/`UsbDeviceConnection`; no CCID bulk-transfer protocol
+    needed at all — OMAPI already speaks APDU). FR-L914 onward (lpac
+    `euicc/`, profile list/download/manage) are transport-agnostic per
+    the reference doc's §1.4 `EuiccChannel` abstraction and apply either
+    way with no changes.
+  - **`ara_m_denied`/`SecurityException`** → confirmed dead end for *this*
+    card with *this* app's certificate. Falls back to the originally
+    scoped USB-CCID path (gate 3: still needs an actual reader).
+  - **No UICC reader / no SE present** → this phone+slot combination
+    doesn't expose what was expected; report findings, no silent retry.
+  Device evidence (the raw probe result, screenshotted) is the whole
+  point of this FR — there's nothing to unit-test beyond the Dart
+  result-parsing, which still gets a test with a faked channel.
+  **Result, confirmed live 2026-11-19: `ara_m_denied`** (real
+  `AccessControlException`, see DECISIONS.md) — the Pinehurst test
+  phone's in-tray card's ARA-M does not list this app's certificate.
+  The in-tray path is a confirmed dead end for this specific card; P2
+  (USB-CCID) is the live path again, still gated on a real reader.
+
 ### P2. Native engine (Android): USB CCID transport + profile operations
+**Confirmed live (2026-11-19): FR-L905 came back `ara_m_denied`** — the
+in-tray card doesn't grant this app access, so FR-L910–FR-L913 stay as
+written below (USB CCID, not OMAPI) and remain gated on gate 3: an
+actual USB CCID reader, which the Pinehurst test phone's SIM tray does
+not substitute for.
 - **FR-L910 Reader detection & hot-plug.** Kotlin in the app module:
   enumerate `UsbManager.deviceList`, keep devices with an interface of
   class `USB_CLASS_CSCID` (0x0B); register attach/detach receivers while

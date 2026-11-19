@@ -1115,7 +1115,7 @@
       "verification": "flutter test test/features/adapter/activation_code_test.dart",
       "state": "passing",
       "evidence": {
-        "commit": "pending",
+        "commit": "e764f2a",
         "screens": [],
         "notes": "Pure Dart lib/features/adapter/application/activation_code.dart: ActivationCode (smdpAddress, matchingId, smdpOid nullable, confirmationCodeRequired), toLpaString() round-trip, maskedLabel() for a pre-download preview. Sealed ActivationCodeResult (ActivationCodeParsed | ActivationCodeInvalid with a typed ActivationCodeError enum) -- parseActivationCode(String) never throws. Accepts the documented LPA:1$smdp$matchingId[$oid[$confFlag]] grammar, the lowercase lpa: scheme, and a URL-wrapped carddata query param (API.md's install-link shape); trims whitespace; rejects wrong prefix/version/too-few/too-many fields, a missing smdp-address, and an invalid (non-0/1) confirmation flag. buildActivationCodeFromOrderData(lpaString, smdpAddress, matchingId) for FR-L922 to call later, checked against both real API shapes (API.md section 6's my-esims/orders, which lack a separate matching_id -- covered by the lpaString-first preference -- and section 7's /esims/{id}/status, which has all three). 24 tests, including an explicit-but-empty-4th-field edge case added after review. Non-vacuousness proven for the confirmation-flag read and the toLpaString round-trip. flutter analyze/dart format clean. Reviewer: PASS -- independently reran the suite, redid a non-vacuousness proof, and hand-checked several edge cases not in the original 23 tests (all correct; one, the empty-oid-field case, was added as a 24th test per its note). Scope note from the reviewer: FR-L901's own two files were clean/isolated even though FR-L905 (OMAPI spike, see DECISIONS.md) was being built concurrently in the same working tree -- committed separately, scoped to just these two files plus this state entry."
       }
@@ -1130,16 +1130,20 @@
     {
       "id": "FR-L905",
       "behavior": "eSIM adapter: OMAPI ARA-M access probe -- real test of whether the in-tray removable eUICC's access-control list grants this app's cert, before committing to the USB-CCID path",
-      "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L905",
-      "state": "not_started",
-      "evidence": null
+      "verification": "flutter test test/features/adapter",
+      "state": "passing",
+      "evidence": {
+        "commit": "pending",
+        "screens": ["artifacts/fr-l905-v2-result.png"],
+        "notes": "Native OmapiProbe.kt (android.se.omapi.SEService -> list readers -> UICC reader -> openSession() -> openLogicalChannel(ISD-R AID)) behind MethodChannel co.triptel.app/omapi, wrapped by lib/features/adapter/data/omapi_channel.dart + application/omapi_probe_result.dart (typed OmapiProbeResult/OmapiProbeReason, 12 unit tests with a faked raw map) + presentation/omapi_probe_screen.dart (Account -> 'eSIM adapter diagnostic', Android-only row gated by Platform.isAndroid). REAL BUG FOUND AND FIXED on-device: the first version blocked the MethodChannel's calling thread (the main/UI thread, Flutter's default dispatch) with CountDownLatch.await(), which starved SEService's own connection-callback dispatch on that same thread -- every real attempt logged 'bindService successful' at the OS level while the app falsely reported service_connect_timeout. Fixed by making probe() fully non-blocking (Handler(Looper.getMainLooper()) + MethodChannel.Result.success() called from the listener itself). Documented in DECISIONS.md's 2026-11-19 entry as a general lesson for any future OMAPI/system-service platform-channel code in this app. CONFIRMED REAL RESULT on the connected device (BS88823AA14C0601334, real removable eUICC card in the SIM tray): ara_m_denied -- a real java.security.AccessControlException ('SecureElementAccessControlEnforcer no APDU access allowed!'). The SIM1 reader exists and the card responds, but its ARA-M rules do not list this app's certificate -- a genuine, confirmed-not-guessed dead end for this specific card via the in-tray path, matching the prediction in DECISIONS.md (a commercial card's ARA-M most likely allows OpenEUICC/EasyEUICC's own cert, not an arbitrary third-party app's). Per section P0's own documented decision rule, FR-L910 onward fall back to the originally-scoped USB-CCID reader path (still gated on gate 3: a real reader). flutter analyze/dart format clean, full suite green, bash harness.sh verify green (Kotlin compiles). This FR did exactly its job: got a real, conclusive, non-guessed answer instead of assuming one either way."
+      }
     },
     {
       "id": "FR-L910",
       "behavior": "eSIM adapter: detect USB CCID readers (interface class 0x0B) with live attach/detach while foregrounded, streamed to Dart; unsupported state on iOS / no USB host",
       "verification": "flutter test test/features/adapter",
       "state": "blocked",
-      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (a real CCID reader and a USB-host phone for device evidence).",
+      "blocked_reason": "Gate 1 cleared. Gate 3 still open: FR-L905 confirmed (2026-11-19, ara_m_denied) the in-tray card does not substitute for a real USB CCID reader -- still needed for device evidence.",
       "evidence": null
     },
     {
@@ -1147,7 +1151,7 @@
       "behavior": "eSIM adapter: USB permission request flow (granted / denied / detached-meanwhile), retryable, never crashes",
       "verification": "flutter test test/features/adapter",
       "state": "blocked",
-      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (real reader for device evidence).",
+      "blocked_reason": "Gate 1 cleared. Gate 3 still open: needs a real USB CCID reader (FR-L905 confirmed the in-tray card doesn't substitute for one).",
       "evidence": null
     },
     {
@@ -1155,7 +1159,7 @@
       "behavior": "eSIM adapter: USB-CCID transceiver (IccPowerOn with voltage fallback, ISO 7816-3 ATR parsing, T=0/T=1, XfrBlock framing with sequence numbers, TPDU quirk list), off the main thread",
       "verification": "bash harness.sh native-test",
       "state": "blocked",
-      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (a real reader+card session to record the test transcripts from).",
+      "blocked_reason": "Gate 1 cleared. Gate 3 still open: needs a real reader+card session to record test transcripts from.",
       "evidence": null
     },
     {
@@ -1163,7 +1167,7 @@
       "behavior": "eSIM adapter: APDU layer (MANAGE CHANNEL, SELECT ISD-R, Terminal Capabilities, 61xx GET RESPONSE chaining, 6Cxx Le retry) as the euicc library's APDU interface",
       "verification": "bash harness.sh native-test",
       "state": "blocked",
-      "blocked_reason": "Gate 1 (go-ahead) + Gate 3 (real recorded APDU transcripts).",
+      "blocked_reason": "Gate 1 cleared. Gate 3 still open: needs real recorded APDU transcripts from a USB CCID reader session.",
       "evidence": null
     },
     {

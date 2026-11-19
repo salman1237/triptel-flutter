@@ -427,4 +427,16 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Account', skipOffstage: false), findsNothing);
   });
+
+  testWidgets(
+      'FR-L905: the eSIM adapter diagnostic row is gated to Platform.isAndroid '
+      '-- not shown on this (non-Android) test host, confirming the gate '
+      'exists; the Android-visible case needs real device evidence, not a '
+      'host-platform-faked test', (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('account-adapter-diagnostic-row')),
+        findsNothing);
+  });
 }

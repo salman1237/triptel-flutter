@@ -1,6 +1,78 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — eSIM adapter: pivoted from "USB CCID reader" to "probe the in-tray card's OMAPI access" first
+When asked to clear gate 3 (hardware), the user said the removable eUICC
+card is already in the test phone's physical SIM tray, not behind a USB
+CCID reader — a different transport than section P was scoped for.
+**Why this isn't a small detail:** `docs/OpenEUICC_Reference.md` §1.2 is
+explicit that in-tray removable-SE access only works if the *card's own*
+ARA-M access-control list grants *this app's* signing certificate hash —
+the hash OpenEUICC/EasyEUICC itself checks for
+(`2A2FA878BC7C3354C2CF82935A5945A3EDAE4AFA`) is *their* key, not Triptel's.
+A commercial card marketed as "EasyEUICC-compatible" most likely allows
+their cert, not ours, unless it's an open/test card with no ARA-M
+restriction. This can't be verified by reading docs or guessing — only a
+real device, real card, real `openLogicalChannel()` call settles it.
+
+**Decision:** added FR-L905 (section P0) as a cheap, reversible spike — an
+OMAPI probe via `android.se.omapi.SEService` that genuinely attempts to
+open a channel to the card and reports what actually happens
+(`channel_opened` / `ara_m_denied` / `no_uicc_reader` / etc.), with a
+tiny diagnostic screen so the real result is visible and screenshot-able,
+not just logged. This directly answers the open question instead of
+either (a) building the originally-scoped USB-CCID stack against
+hardware the user doesn't currently have, or (b) assuming either outcome.
+
+**Already confirmed on the connected device** (BS88823AA14C0601334,
+Pinehurst, SDK 36) before writing any native code:
+`pm has-feature android.hardware.se.omapi.uicc` = **true** — the OMAPI
+UICC reader exists and is exposed to apps on this device. That's a
+necessary precondition for FR-L905 to even attempt the probe; it says
+nothing about whether the *specific card's* ARA-M will grant access.
+
+**Revisit if:** FR-L905's real result comes back `ara_m_denied` — then
+fall back to the originally-scoped USB-CCID path (FR-L910 onward as
+written), which still needs an actual reader (gate 3 remains partially
+open). If it comes back `channel_opened`, FR-L910–L913 get rewritten to
+use OMAPI's `Reader`/`Session`/`Channel` instead of
+`UsbManager`/`UsbDeviceConnection` + CCID framing — significantly less
+native work, since OMAPI already speaks APDU and needs no USB
+bulk-transfer protocol implementation at all.
+
+**Result, confirmed live on-device (2026-11-19):** `ara_m_denied`.
+`openLogicalChannel()` to the ISD-R AID threw a real
+`java.security.AccessControlException: Exception in setUpChannelAccess()
+... SecureElementAccessControlEnforcer no APDU access allowed!` — the
+`SIM1` reader exists and the card responds, but its ARA-M rules don't
+list this app's certificate. Exactly the outcome predicted above: a
+commercial removable-eSIM card's ARA-M most likely allows
+OpenEUICC/EasyEUICC's own cert hash, not an arbitrary third-party app's.
+**This specific card, with this app's current certificate, is a
+confirmed dead end for the in-tray path.** Per the revisit rule above,
+FR-L910 onward fall back to the originally-scoped USB-CCID reader path
+— gate 3 is still open (a real USB CCID reader is needed; the in-tray
+card alone doesn't clear it). The only way to unblock the in-tray path
+instead would be the card issuer adding Triptel's own cert hash to the
+card's ARA-M rules, which isn't realistic to pursue for a travel-eSIM
+app and isn't being chased.
+
+**A real bug was found and fixed while getting this answer**, not just
+the scoping pivot above: the first implementation blocked the calling
+thread with `CountDownLatch.await()` inside `OmapiProbe.probe()`.
+Flutter dispatches `MethodChannel` calls on the main/UI thread by
+default, and `SEService`'s own connection handshake needed that same
+main looper free to dispatch its callback — so every attempt logged
+`OMAPI.SEService: bindService successful` at the OS level while the
+probe still reported a false `service_connect_timeout`, because the
+`OnConnectedListener` callback could never actually run. Fixed by making
+`probe()` fully non-blocking (`Handler(Looper.getMainLooper())` +
+`MethodChannel.Result.success()` called from the listener itself, no
+`await()` on the caller's thread). Worth remembering for any other OMAPI
+or Android-system-service platform-channel code in this app: never block
+the thread `MethodChannel` calls arrive on if the system API's own
+callback needs that thread to proceed.
+
 ## 2026-11-19 — eSIM adapter (FR §P) scoped and queued `blocked`; license plan is ASK BEFORE DECIDING
 **What:** the user picked two tiers from `docs/OpenEUICC_Reference.md`
 ("Easy, pure Dart" and "Hard but buildable") and asked for harness docs +

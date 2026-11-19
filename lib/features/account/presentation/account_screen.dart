@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -245,6 +247,15 @@ class _AuthedBody extends ConsumerWidget {
                 title: 'Track an eSIM',
                 onTap: onTrack,
               ),
+              // FR-L905: Android-only diagnostic (OMAPI/USB adapter
+              // hardware doesn't exist on iOS) -- never shown there.
+              if (Platform.isAndroid)
+                ListRow(
+                  key: const ValueKey('account-adapter-diagnostic-row'),
+                  icon: Icons.sim_card_outlined,
+                  title: 'eSIM adapter diagnostic',
+                  onTap: () => context.push('/adapter/omapi-probe'),
+                ),
             ],
           ),
           const SizedBox(height: 24),
