@@ -1,6 +1,26 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — FR-L901, FR-L905 passing: adapter parser built, in-tray card access confirmed denied
+User gave the go-ahead gate; built FR-L901 (SGP.22 activation-code
+parser, pure Dart, 24 tests, reviewed PASS, commit `e764f2a`). When
+asked to clear gate 3, the user said the removable eUICC is already in
+the test phone's SIM tray, not a USB reader -- a different transport.
+Pivoted: added FR-L905 (OMAPI ARA-M probe) to get a real answer instead
+of guessing, per DECISIONS.md's 2026-11-19 "pivoted" entry.
+**Real on-device result: `ara_m_denied`** -- the card's own access
+rules don't list this app's certificate (confirmed via a real
+`AccessControlException`, not inferred). Found and fixed a real bug
+along the way: the first probe blocked Flutter's main thread, which
+starved OMAPI's own connection callback, producing a false "timeout" on
+every attempt until fixed (see DECISIONS.md for the full story).
+FR-L905 passing, commit `6ef36dd`. **Net effect: FR-L910 onward fall
+back to the originally-scoped USB-CCID path** (section P2 as written) --
+still blocked on gate 3, a real USB CCID reader (the in-tray card alone
+doesn't clear it). **Next step:** FR-L902 (activation-code input
+screen) is the only other item with no hardware/license gate -- or wait
+for a real USB CCID reader to unblock FR-L910+.
+
 ## 2026-11-19 — eSIM adapter (USB CCID) scoped: FR-L901–L922 queued `blocked`, awaiting go-ahead
 The user picked the "pure Dart" and "native engine" tiers from
 `docs/OpenEUICC_Reference.md` and asked for docs + FRs first, then a pause.
