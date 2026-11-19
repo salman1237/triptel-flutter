@@ -25,6 +25,32 @@ class _FakeAdapter implements HttpClientAdapter {
   }
 }
 
+/// Captures the real multipart fields `replyToTicket` sends, so FR-C903's
+/// `shared_order_id`/`shared_product_id` wiring is pinned against the
+/// actual request, not just the method signature.
+class _CapturingAdapter implements HttpClientAdapter {
+  FormData? seenData;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    seenData = options.data as FormData;
+    final bytes = utf8.encode(jsonEncode({
+      'id': 't1',
+      'reference': 'TKT-1',
+      'subject': 'Subject',
+      'category': 'OTHER',
+      'status': 'OPEN',
+    }));
+    return ResponseBody.fromBytes(bytes, 200, headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    });
+  }
+}
+
 class _FakeBytesAdapter implements HttpClientAdapter {
   _FakeBytesAdapter(this._bytes);
   final Uint8List _bytes;
@@ -91,5 +117,52 @@ void main() {
     expect(result, bytes);
     expect(adapter.seenUri.toString(),
         'https://beta.triptel.co/api/v1/support/attachments/att-1');
+  });
+
+  test(
+      'SupportApiImpl.replyToTicket sends shared_order_id when sharing an '
+      'order (FR-C903, API.md section 12)', () async {
+    final adapter = _CapturingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = SupportApiImpl(ApiClient(dio: dio));
+
+    await api.replyToTicket('t1', body: '', sharedOrderId: 'order-1');
+
+    final fields = adapter.seenData!.fields;
+    expect(
+        fields.any((f) => f.key == 'shared_order_id' && f.value == 'order-1'),
+        isTrue);
+    expect(fields.any((f) => f.key == 'shared_product_id'), isFalse);
+  });
+
+  test(
+      'SupportApiImpl.replyToTicket sends shared_product_id when sharing a '
+      'package, mutually exclusive with shared_order_id', () async {
+    final adapter = _CapturingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = SupportApiImpl(ApiClient(dio: dio));
+
+    await api.replyToTicket('t1', body: '', sharedProductId: 'product-1');
+
+    final fields = adapter.seenData!.fields;
+    expect(
+        fields
+            .any((f) => f.key == 'shared_product_id' && f.value == 'product-1'),
+        isTrue);
+    expect(fields.any((f) => f.key == 'shared_order_id'), isFalse);
+  });
+
+  test(
+      'SupportApiImpl.replyToTicket sends neither field for a plain text '
+      'reply', () async {
+    final adapter = _CapturingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final api = SupportApiImpl(ApiClient(dio: dio));
+
+    await api.replyToTicket('t1', body: 'Hello');
+
+    final fields = adapter.seenData!.fields;
+    expect(fields.any((f) => f.key == 'shared_order_id'), isFalse);
+    expect(fields.any((f) => f.key == 'shared_product_id'), isFalse);
   });
 }

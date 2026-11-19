@@ -4,6 +4,7 @@
 class MyEsim {
   const MyEsim({
     required this.id,
+    this.orderId,
     required this.orderNo,
     required this.productTitle,
     required this.dataAmountGb,
@@ -22,6 +23,12 @@ class MyEsim {
   });
 
   final String id;
+
+  /// Added 2026-11-18 for the chat "share an order" feature (FR-C903) --
+  /// the real order id `shared_order_id` expects, distinct from [id]
+  /// (the eSIM profile id). `null` only for responses captured before
+  /// this field existed; always present live (API.md section 7).
+  final String? orderId;
   final String orderNo;
   final String productTitle;
   final double dataAmountGb;
@@ -47,6 +54,7 @@ class MyEsim {
 
   factory MyEsim.fromJson(Map<String, dynamic> json) => MyEsim(
         id: json['id'] as String,
+        orderId: json['order_id'] as String?,
         orderNo: json['order_no'] as String? ?? '',
         productTitle: json['product_title'] as String? ?? '',
         dataAmountGb: (json['data_amount_gb'] as num?)?.toDouble() ?? 0,

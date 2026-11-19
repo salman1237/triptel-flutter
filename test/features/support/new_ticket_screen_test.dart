@@ -89,6 +89,8 @@ class _FakeSupportApi implements SupportApi {
     String id, {
     required String body,
     List<String> filePaths = const [],
+    String? sharedOrderId,
+    String? sharedProductId,
   }) =>
       throw UnimplementedError();
 

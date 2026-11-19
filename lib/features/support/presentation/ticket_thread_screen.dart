@@ -5,16 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/money/currency_format.dart';
+import '../../../core/money/currency_providers.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../support_chat/application/support_chat_providers.dart';
 import '../../support_chat/data/support_socket.dart';
+import '../../support_chat/presentation/share_picker_sheet.dart';
 import '../application/support_attachment_opener.dart';
 import '../application/support_image_picker.dart';
 import '../application/support_providers.dart';
 import '../application/ticket_status_chip.dart';
+import '../data/models/shared_order.dart';
+import '../data/models/shared_product.dart';
 import '../data/models/support_message.dart';
 import '../data/models/support_ticket.dart';
 
@@ -52,6 +57,7 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
   final _scrollController = ScrollController();
   final List<String> _attachmentPaths = [];
   final List<SupportMessage> _liveMessages = [];
+  ShareSelection? _pendingShare;
   bool _sending = false;
   bool _closing = false;
   String? _error;
@@ -136,8 +142,21 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
     setState(() => _attachmentPaths.removeAt(index));
   }
 
+  /// FR-C903: a picker over the user's own orders or the catalog --
+  /// `shared_order_id`/`shared_product_id` are mutually exclusive
+  /// (API.md section 12), so picking one always replaces the other.
+  Future<void> _pickShare() async {
+    final selection = await showSharePickerSheet(context);
+    if (selection != null) setState(() => _pendingShare = selection);
+  }
+
+  void _clearShare() => setState(() => _pendingShare = null);
+
   Future<void> _reply() async {
-    if (_replyController.text.trim().isEmpty) {
+    // A share-only message with no extra text is valid (API.md section
+    // 12's documented empty-`body` fix) -- only block a genuinely empty
+    // send (no text, no share).
+    if (_replyController.text.trim().isEmpty && _pendingShare == null) {
       setState(() => _error = 'Write a reply first.');
       return;
     }
@@ -146,16 +165,24 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
       _error = null;
     });
     try {
+      final share = _pendingShare;
       await ref.read(supportApiProvider).replyToTicket(
             widget.ticketId,
             body: _replyController.text.trim(),
             filePaths: List.of(_attachmentPaths),
+            sharedOrderId:
+                share is ShareOrderSelection ? share.esim.orderId : null,
+            sharedProductId:
+                share is ShareProductSelection ? share.package.productId : null,
           );
       ref.invalidate(supportTicketsProvider);
       ref.invalidate(supportTicketProvider(widget.ticketId));
       if (!mounted) return;
       _replyController.clear();
-      setState(() => _attachmentPaths.clear());
+      setState(() {
+        _attachmentPaths.clear();
+        _pendingShare = null;
+      });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
@@ -197,11 +224,14 @@ class _TicketThreadScreenState extends ConsumerState<TicketThreadScreen> {
             scrollController: _scrollController,
             replyController: _replyController,
             attachmentPaths: _attachmentPaths,
+            pendingShare: _pendingShare,
             sending: _sending,
             closing: _closing,
             error: _error,
             onAddAttachment: _addAttachment,
             onRemoveAttachment: _removeAttachment,
+            onPickShare: _pickShare,
+            onClearShare: _clearShare,
             onReply: _reply,
             onClose: _close,
           ),
@@ -226,11 +256,14 @@ class _Thread extends StatelessWidget {
     required this.scrollController,
     required this.replyController,
     required this.attachmentPaths,
+    required this.pendingShare,
     required this.sending,
     required this.closing,
     required this.error,
     required this.onAddAttachment,
     required this.onRemoveAttachment,
+    required this.onPickShare,
+    required this.onClearShare,
     required this.onReply,
     required this.onClose,
   });
@@ -241,11 +274,14 @@ class _Thread extends StatelessWidget {
   final ScrollController scrollController;
   final TextEditingController replyController;
   final List<String> attachmentPaths;
+  final ShareSelection? pendingShare;
   final bool sending;
   final bool closing;
   final String? error;
   final VoidCallback onAddAttachment;
   final void Function(int) onRemoveAttachment;
+  final VoidCallback onPickShare;
+  final VoidCallback onClearShare;
   final VoidCallback onReply;
   final VoidCallback onClose;
 
@@ -359,6 +395,31 @@ class _Thread extends StatelessWidget {
                 ],
               ),
             ),
+          if (pendingShare != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      key: const ValueKey('ticket-pending-share-label'),
+                      switch (pendingShare!) {
+                        ShareOrderSelection(:final esim) =>
+                          'Sharing order: ${esim.productTitle}',
+                        ShareProductSelection(:final package) =>
+                          'Sharing package: ${package.title}',
+                      },
+                      style: AppTypography.caption(),
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('ticket-reply-remove-share'),
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: onClearShare,
+                  ),
+                ],
+              ),
+            ),
           Row(
             children: [
               Expanded(
@@ -376,6 +437,11 @@ class _Thread extends StatelessWidget {
                   icon: const Icon(Icons.attach_file),
                   onPressed: onAddAttachment,
                 ),
+              IconButton(
+                key: const ValueKey('ticket-reply-share-button'),
+                icon: const Icon(Icons.share_outlined),
+                onPressed: pendingShare == null ? onPickShare : null,
+              ),
               IconButton(
                 key: const ValueKey('ticket-reply-send-button'),
                 icon: sending
@@ -516,14 +582,31 @@ class _MessageBubble extends ConsumerWidget {
                   ],
           ),
           const SizedBox(height: 2),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: message.isStaff ? AppColors.surface : AppColors.lilac100,
-              borderRadius: BorderRadius.circular(AppRadius.smallTag),
+          if (message.body.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: message.isStaff ? AppColors.surface : AppColors.lilac100,
+                borderRadius: BorderRadius.circular(AppRadius.smallTag),
+              ),
+              child: Text(message.body, style: AppTypography.body()),
             ),
-            child: Text(message.body, style: AppTypography.body()),
-          ),
+          if (message.messageType == 'ORDER_SHARE')
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _SharedOrderCard(
+                key: ValueKey('ticket-shared-order-${message.id}'),
+                sharedOrder: message.sharedOrder,
+              ),
+            ),
+          if (message.messageType == 'PRODUCT_SHARE')
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _SharedProductCard(
+                key: ValueKey('ticket-shared-product-${message.id}'),
+                sharedProduct: message.sharedProduct,
+              ),
+            ),
           for (final attachment in message.attachments)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -548,6 +631,131 @@ class _MessageBubble extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// FR-C903: an `ORDER_SHARE` message's rich card. [sharedOrder] is `null`
+/// when the shared order was since deleted (API.md section 12,
+/// `ON DELETE SET NULL`) -- still a readable message, just a placeholder
+/// instead of a card.
+class _SharedOrderCard extends ConsumerWidget {
+  const _SharedOrderCard({super.key, required this.sharedOrder});
+
+  final SharedOrder? sharedOrder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final order = sharedOrder;
+    if (order == null) {
+      return _DeletedShareNotice(
+          label: 'This shared order is no longer available.');
+    }
+    final rateAsync = ref.watch(selectedCurrencyRateProvider);
+    final currencyAsync = ref.watch(currencyPreferenceProvider);
+    final priceText = switch ((rateAsync, currencyAsync)) {
+      (AsyncData(value: final rate), AsyncData(value: final code)) =>
+        formatMoney(order.totalAmount, currencyCode: code, rateToBase: rate),
+      _ => '',
+    };
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.smallTag),
+        border: Border.all(color: AppColors.lilac200),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(order.productTitle, style: AppTypography.body()),
+                Text('${order.orderNo} · ${order.status}',
+                    style: AppTypography.caption(color: AppColors.inkMuted)),
+              ],
+            ),
+          ),
+          if (priceText.isNotEmpty)
+            Text(priceText, style: AppTypography.body()),
+        ],
+      ),
+    );
+  }
+}
+
+/// FR-C903: a `PRODUCT_SHARE` message's rich card. [sharedProduct] is
+/// `null` when the shared product was since deleted (same reasoning as
+/// [_SharedOrderCard]).
+class _SharedProductCard extends ConsumerWidget {
+  const _SharedProductCard({super.key, required this.sharedProduct});
+
+  final SharedProduct? sharedProduct;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final product = sharedProduct;
+    if (product == null) {
+      return _DeletedShareNotice(
+          label: 'This shared package is no longer available.');
+    }
+    final rateAsync = ref.watch(selectedCurrencyRateProvider);
+    final currencyAsync = ref.watch(currencyPreferenceProvider);
+    final priceText = switch ((rateAsync, currencyAsync)) {
+      (AsyncData(value: final rate), AsyncData(value: final code)) =>
+        formatMoney(product.retailPrice, currencyCode: code, rateToBase: rate),
+      _ => '',
+    };
+    final dataLabel = product.isUnlimited
+        ? 'Unlimited'
+        : '${product.dataAmountGb.toStringAsFixed(product.dataAmountGb % 1 == 0 ? 0 : 1)} GB';
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.smallTag),
+        border: Border.all(color: AppColors.lilac200),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.sim_card_outlined, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(product.title, style: AppTypography.body()),
+                Text('$dataLabel · ${product.validityDays} days',
+                    style: AppTypography.caption(color: AppColors.inkMuted)),
+              ],
+            ),
+          ),
+          if (priceText.isNotEmpty)
+            Text(priceText, style: AppTypography.body()),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeletedShareNotice extends StatelessWidget {
+  const _DeletedShareNotice({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.lilac100,
+        borderRadius: BorderRadius.circular(AppRadius.smallTag),
+      ),
+      child:
+          Text(label, style: AppTypography.caption(color: AppColors.inkMuted)),
     );
   }
 }

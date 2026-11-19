@@ -60,7 +60,10 @@ class _FakeSupportApi implements SupportApi {
 
   @override
   Future<SupportTicket> replyToTicket(String id,
-          {required String body, List<String> filePaths = const []}) =>
+          {required String body,
+          List<String> filePaths = const [],
+          String? sharedOrderId,
+          String? sharedProductId}) =>
       throw UnimplementedError();
 
   @override

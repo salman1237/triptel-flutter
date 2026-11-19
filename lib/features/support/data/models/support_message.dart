@@ -1,3 +1,5 @@
+import 'shared_order.dart';
+import 'shared_product.dart';
 import 'support_attachment.dart';
 
 /// A message in `GET /support/tickets/{id}`'s `messages[]` (API.md section
@@ -12,6 +14,9 @@ class SupportMessage {
     required this.createdAt,
     required this.attachments,
     this.authorAvatarUrl,
+    this.messageType = 'TEXT',
+    this.sharedOrder,
+    this.sharedProduct,
   });
 
   final String id;
@@ -25,6 +30,15 @@ class SupportMessage {
   /// (API.md section 12) or when the author has no avatar set.
   final String? authorAvatarUrl;
 
+  /// `TEXT`|`ORDER_SHARE`|`PRODUCT_SHARE` (API.md section 12) -- always
+  /// explicit, never inferred from whether [sharedOrder]/[sharedProduct]
+  /// is non-null (e.g. a deleted shared order leaves this as
+  /// `ORDER_SHARE` with a null [sharedOrder] -- still a share message,
+  /// just with nothing left to link to).
+  final String messageType;
+  final SharedOrder? sharedOrder;
+  final SharedProduct? sharedProduct;
+
   factory SupportMessage.fromJson(Map<String, dynamic> json) => SupportMessage(
         id: json['id'] as String,
         body: json['body'] as String,
@@ -36,5 +50,14 @@ class SupportMessage {
             SupportAttachment.fromJson(a as Map<String, dynamic>),
         ],
         authorAvatarUrl: json['author_avatar_url'] as String?,
+        messageType: json['message_type'] as String? ?? 'TEXT',
+        sharedOrder: json['shared_order'] == null
+            ? null
+            : SharedOrder.fromJson(
+                json['shared_order'] as Map<String, dynamic>),
+        sharedProduct: json['shared_product'] == null
+            ? null
+            : SharedProduct.fromJson(
+                json['shared_product'] as Map<String, dynamic>),
       );
 }

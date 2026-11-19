@@ -1,6 +1,29 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-19 — FR-C903: two scope calls for "share an order or package"
+The FR text ("Picker over the user's own `GET /orders/my-esims`-backed
+orders or the catalog") left two things underspecified; both resolved
+narrowly rather than building more than asked. **1) Sharing only works
+from a reply inside an already-open ticket thread, not from ticket
+creation.** `SupportApi.createTicket` was deliberately NOT given
+`sharedOrderId`/`sharedProductId` params even though the backend's
+`POST /support/tickets` also accepts them (API.md section 12) --
+the live chat surface FR-C902 built is the natural place a user picks
+something to show support mid-conversation; starting a brand-new
+ticket with a share already attached isn't a flow this app's design
+reference shows anywhere. **2) The "Packages" tab of the share picker
+only lists `GET /catalog/featured`'s curated global packages** (the
+same list FR-202b's explore sheet already fetches), not a full
+catalog/country search. Building a real search flow just for this
+picker would be new scope disguised as this FR; the featured list is
+real, live data, just narrower than "the whole catalog." **Revisit
+if:** a real user need surfaces for sharing a *specific* non-featured
+country's package (not just the curated global list), or for starting
+a ticket with a share pre-attached -- then extend the picker's second
+tab to a real catalog search, or add the two params to `createTicket`,
+respectively; neither is needed to satisfy the FR as written today.
+
 ## 2026-11-19 — FR-C902: `_liveMessages` is never pruned once the REST list catches up
 Reviewer (independent re-review, PASS) noted while checking FR-C902's
 live-message dedup: `TicketThreadScreen`'s `_liveMessages` list (socket-

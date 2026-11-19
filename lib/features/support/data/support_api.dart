@@ -31,11 +31,15 @@ abstract class SupportApi {
   /// `POST /support/tickets/{id}/messages` (auth, multipart). Replying to
   /// a RESOLVED ticket reopens it; a CLOSED ticket rejects this with a 400
   /// (API.md section 12) -- surfaced to the caller as the real
-  /// [ApiException] message, not guessed client-side.
+  /// [ApiException] message, not guessed client-side. [sharedOrderId]/
+  /// [sharedProductId] are mutually exclusive (FR-C903) -- the caller is
+  /// responsible for never setting both.
   Future<SupportTicket> replyToTicket(
     String id, {
     required String body,
     List<String> filePaths = const [],
+    String? sharedOrderId,
+    String? sharedProductId,
   });
 
   /// `POST /support/tickets/{id}/close` (auth).
@@ -95,11 +99,15 @@ class SupportApiImpl implements SupportApi {
     String id, {
     required String body,
     List<String> filePaths = const [],
+    String? sharedOrderId,
+    String? sharedProductId,
   }) async {
     final response = await _client.post(
       '/support/tickets/$id/messages',
       data: FormData.fromMap({
         'body': body,
+        if (sharedOrderId != null) 'shared_order_id': sharedOrderId,
+        if (sharedProductId != null) 'shared_product_id': sharedProductId,
         if (filePaths.isNotEmpty)
           'files': [
             for (final path in filePaths) await MultipartFile.fromFile(path),

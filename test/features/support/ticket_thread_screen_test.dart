@@ -14,6 +14,13 @@ import 'package:triptel/features/support/data/models/support_message.dart';
 import 'package:triptel/features/support/data/models/support_ticket.dart';
 import 'package:triptel/features/support/data/support_api.dart';
 import 'package:triptel/features/support/presentation/ticket_thread_screen.dart';
+import 'package:triptel/core/money/money.dart';
+import 'package:triptel/features/catalog/application/catalog_providers.dart';
+import 'package:triptel/features/catalog/data/models/featured_package.dart';
+import 'package:triptel/features/esims/application/my_esims_providers.dart';
+import 'package:triptel/features/esims/data/models/my_esim.dart';
+import 'package:triptel/features/support/data/models/shared_order.dart';
+import 'package:triptel/features/support/data/models/shared_product.dart';
 
 import '../auth/secure_storage_test_mock.dart';
 
@@ -39,6 +46,8 @@ class _FakeSupportApi implements SupportApi {
   final ApiException? replyError;
   String? lastReplyBody;
   List<String>? lastReplyFiles;
+  String? lastReplySharedOrderId;
+  String? lastReplySharedProductId;
   bool closeCalled = false;
 
   @override
@@ -49,10 +58,14 @@ class _FakeSupportApi implements SupportApi {
     String id, {
     required String body,
     List<String> filePaths = const [],
+    String? sharedOrderId,
+    String? sharedProductId,
   }) async {
     if (replyError != null) throw replyError!;
     lastReplyBody = body;
     lastReplyFiles = filePaths;
+    lastReplySharedOrderId = sharedOrderId;
+    lastReplySharedProductId = sharedProductId;
     ticket = SupportTicket(
       id: ticket.id,
       reference: ticket.reference,
@@ -68,6 +81,11 @@ class _FakeSupportApi implements SupportApi {
           author: 'You',
           createdAt: DateTime.utc(2026, 11, 18),
           attachments: const [],
+          messageType: sharedOrderId != null
+              ? 'ORDER_SHARE'
+              : sharedProductId != null
+                  ? 'PRODUCT_SHARE'
+                  : 'TEXT',
         ),
       ],
     );
@@ -111,6 +129,8 @@ Widget _app(
   _FakeSupportApi api, {
   SupportImagePicker? picker,
   SupportAttachmentOpener? opener,
+  List<MyEsim>? myEsims,
+  List<FeaturedPackage>? featuredPackages,
 }) =>
     ProviderScope(
       overrides: [
@@ -119,6 +139,9 @@ Widget _app(
           supportImagePickerProvider.overrideWithValue(picker),
         if (opener != null)
           supportAttachmentOpenerProvider.overrideWithValue(opener),
+        myEsimsProvider.overrideWith((ref) async => myEsims ?? const []),
+        featuredPackagesProvider
+            .overrideWith((ref) async => featuredPackages ?? const []),
       ],
       child: const MaterialApp(home: TicketThreadScreen(ticketId: _ticketId)),
     );
@@ -339,5 +362,235 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ErrorState), findsOneWidget);
+  });
+
+  group('FR-C903: share an order or package', () {
+    final esim = MyEsim(
+      id: 'esim-1',
+      orderId: 'order-1',
+      orderNo: 'ORD-1',
+      productTitle: 'Bangladesh 1GB 7Days',
+      dataAmountGb: 1,
+      isUnlimited: false,
+      validityDays: 7,
+      iccid: '',
+      lpaString: '',
+      qrCodeData: '',
+      smdpAddress: '',
+      status: 'ACTIVE',
+      isMockFallback: false,
+      createdAt: DateTime.utc(2026, 11, 1),
+      activatedAt: null,
+      expiresAt: null,
+      isBeneficiary: false,
+    );
+    final package = FeaturedPackage(
+      productId: 'product-1',
+      title: 'Japan 3GB 15Days',
+      retailPrice: Money.parseEur('18.99'),
+      dataAmountGb: 3,
+      validityDays: 15,
+      isUnlimited: false,
+      countryCount: 1,
+      countryIso2: 'JP',
+      countryName: 'Japan',
+      countrySlug: 'japan',
+      flagUrl: null,
+    );
+
+    testWidgets(
+        'tapping the share button opens the picker with My orders and '
+        'Packages tabs', (tester) async {
+      final api = _FakeSupportApi(ticket: _ticket());
+      await tester.pumpWidget(_app(api, myEsims: [esim]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-share-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('share-picker-tabs')), findsOneWidget);
+      expect(find.byKey(ValueKey('share-order-${esim.id}')), findsOneWidget);
+    });
+
+    testWidgets(
+        'picking an order shows the pending-share chip, and sending '
+        'includes the real shared_order_id', (tester) async {
+      final api = _FakeSupportApi(ticket: _ticket());
+      await tester.pumpWidget(_app(api, myEsims: [esim]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-share-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('share-order-${esim.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ticket-pending-share-label')),
+          findsOneWidget);
+      expect(find.textContaining('Bangladesh 1GB 7Days'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-send-button')));
+      await tester.pumpAndSettle();
+
+      expect(api.lastReplySharedOrderId, 'order-1');
+      expect(api.lastReplySharedProductId, isNull);
+      // The chip clears after a successful send.
+      expect(find.byKey(const ValueKey('ticket-pending-share-label')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'picking a package shows the pending-share chip, and sending '
+        'includes the real shared_product_id', (tester) async {
+      final api = _FakeSupportApi(ticket: _ticket());
+      await tester.pumpWidget(_app(api, featuredPackages: [package]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-share-button')));
+      await tester.pumpAndSettle();
+      // Switch to the "Packages" tab of the segmented pill.
+      await tester.tap(find.text('Packages'));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(ValueKey('share-product-${package.productId}')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ticket-pending-share-label')),
+          findsOneWidget);
+      expect(find.textContaining('Japan 3GB 15Days'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-send-button')));
+      await tester.pumpAndSettle();
+
+      expect(api.lastReplySharedProductId, 'product-1');
+      expect(api.lastReplySharedOrderId, isNull);
+    });
+
+    testWidgets('the X button clears a pending share before sending',
+        (tester) async {
+      final api = _FakeSupportApi(ticket: _ticket());
+      await tester.pumpWidget(_app(api, myEsims: [esim]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-share-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('share-order-${esim.id}')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('ticket-pending-share-label')),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-remove-share')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ticket-pending-share-label')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'a share-only reply (no text) is allowed to send, not blocked by '
+        'the "write a reply first" client-side check', (tester) async {
+      final api = _FakeSupportApi(ticket: _ticket());
+      await tester.pumpWidget(_app(api, myEsims: [esim]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-share-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('share-order-${esim.id}')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('ticket-reply-send-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Write a reply first.'), findsNothing);
+      expect(api.lastReplySharedOrderId, 'order-1');
+    });
+
+    testWidgets('an ORDER_SHARE message renders a rich order card',
+        (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: '',
+            isStaff: false,
+            author: 'You',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'ORDER_SHARE',
+            sharedOrder: const SharedOrder(
+              id: 'order-1',
+              orderNo: 'ORD-1',
+              status: 'COMPLETED',
+              totalAmount: Money(1250),
+              productTitle: 'Bangladesh 1GB 7Days',
+              esimProfileId: 'esim-1',
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('ticket-shared-order-m1')), findsOneWidget);
+      expect(find.textContaining('Bangladesh 1GB 7Days'), findsOneWidget);
+      expect(find.textContaining('ORD-1'), findsOneWidget);
+    });
+
+    testWidgets('a PRODUCT_SHARE message renders a rich product card',
+        (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: 'Check this one',
+            isStaff: true,
+            author: 'Support',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'PRODUCT_SHARE',
+            sharedProduct: const SharedProduct(
+              id: 'product-1',
+              title: 'Japan 3GB 15Days',
+              dataAmountGb: 3,
+              validityDays: 15,
+              isUnlimited: false,
+              retailPrice: Money(1899),
+              countrySlug: 'japan',
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('ticket-shared-product-m1')),
+          findsOneWidget);
+      expect(find.textContaining('Japan 3GB 15Days'), findsOneWidget);
+      expect(find.text('Check this one'), findsOneWidget);
+    });
+
+    testWidgets(
+        'an ORDER_SHARE message with a deleted shared order shows a '
+        'readable placeholder, not a crash', (tester) async {
+      final api = _FakeSupportApi(
+        ticket: _ticket(messages: [
+          SupportMessage(
+            id: 'm1',
+            body: '',
+            isStaff: false,
+            author: 'You',
+            createdAt: DateTime.utc(2026, 11, 19),
+            attachments: const [],
+            messageType: 'ORDER_SHARE',
+            sharedOrder: null,
+          ),
+        ]),
+      );
+      await tester.pumpWidget(_app(api));
+      await tester.pumpAndSettle();
+
+      expect(find.text('This shared order is no longer available.'),
+          findsOneWidget);
+    });
   });
 }
