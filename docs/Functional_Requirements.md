@@ -313,6 +313,38 @@ section; tracked as `blocked` in `feature_list.json`):**
   phone's in-tray card's ARA-M does not list this app's certificate.
   The in-tray path is a confirmed dead end for this specific card; P2
   (USB-CCID) is the live path again, still gated on a real reader.
+- **FR-L906 `lpa:` deep-link handoff.** No OMAPI/ARA-M access needed at
+  all — SGP.22's `lpa:` scheme (FR-L901 §2.2, FR-L902) is a standard
+  Android deep link; any LPA app (EasyEUICC, 9eSIM's NekokoLPA, JMP SIM
+  Manager, …) can register as its handler, and does. Triptel can build
+  the real activation-code URI from an order's own data
+  (`buildActivationCodeFromOrderData` + `ActivationCode.toLpaString()`,
+  both already built for FR-L901) and hand it to
+  `Intent.ACTION_VIEW` via the existing `urlLauncherProvider` seam
+  (same one FR-404's 1-tap install button already uses for
+  `esimsetup.{apple,android}.com` links) — the already-installed,
+  already-ARA-M-trusted app does the actual card write. One
+  `AndroidManifest.xml` change: a `<queries>` entry for the `lpa`
+  scheme (Android 11+ package-visibility rule — without it,
+  `launchUrl`/`canLaunchUrl` can't see a real handler even when one is
+  installed). No native Kotlin code, no NDK, no `lpac`, no license
+  question. **Confirmed live 2026-11-19** that this device's resolver
+  already points `lpa:` at an installed handler (`adb shell pm
+  resolve-activity -a android.intent.action.VIEW -d
+  'lpa:1$...'` → `isDefault=true`); both NekokoLPA and JMP SIM Manager
+  independently opened the same real card through it (DECISIONS.md).
+  On "My eSIM" detail (FR-404), a secondary button next to the 1-tap
+  install button ("Install to a removable eSIM adapter" or similar);
+  if `launchUrl` returns `false` (no handler installed), a clear
+  message explains that an eSIM-manager app is needed, not a silent
+  failure. This is a second, equally ARA-M-independent path alongside
+  P2's native USB-CCID engine below — much less engineering, but
+  depends on *some* compatible app being on the user's phone, and
+  Triptel doesn't own the install UX once handed off. Both may ship;
+  neither replaces the other. Widget tests with a faked
+  `urlLauncherProvider` (no real Intent in tests, same pattern as
+  FR-404's own install-button tests); device evidence on a real phone
+  with a real handler installed.
 
 ### P2. Native engine (Android): USB CCID transport + profile operations
 **Confirmed live (2026-11-19): FR-L905 came back `ara_m_denied`** — the

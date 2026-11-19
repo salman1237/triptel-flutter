@@ -499,6 +499,20 @@ void main() {
     });
   });
 
+  group('FR-L906: install to a removable eSIM adapter', () {
+    testWidgets(
+        'the adapter button is gated to Platform.isAndroid -- not shown on '
+        'this (non-Android) test host, confirming the gate exists; the '
+        'Android-visible/handoff case needs real device evidence, not a '
+        'host-platform-faked test', (tester) async {
+      await tester.pumpWidget(_app(_FakeEsimStatusApi(_status())));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('esim-install-to-adapter-button')),
+          findsNothing);
+    });
+  });
+
   group('FR-405: lifecycle banners', () {
     for (final status in ['SUSPENDED', 'REVOKED', 'CANCELLED', 'EXPIRED']) {
       testWidgets(

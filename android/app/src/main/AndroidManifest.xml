@@ -65,5 +65,13 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="tel" />
         </intent>
+        <!-- FR-L906: SGP.22's lpa: deep-link scheme, handled by any
+             installed LPA/eSIM-manager app (EasyEUICC, 9eSIM, JMP SIM
+             Manager, ...). Without this, launchUrl/canLaunchUrl can't
+             see a real handler on Android 11+ package visibility. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="lpa" />
+        </intent>
     </queries>
 </manifest>

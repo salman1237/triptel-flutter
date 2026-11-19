@@ -17,6 +17,7 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../adapter/application/activation_code.dart';
 import '../../compatibility/application/compatibility_providers.dart';
 import '../../compatibility/application/esim_verdict.dart';
 import '../../wallet/application/wallet_balance.dart';
@@ -114,6 +115,33 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
     if (!opened) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't open the install link.")));
+    }
+  }
+
+  /// FR-L906: hands the activation code off to a separately-installed
+  /// LPA/eSIM-manager app (EasyEUICC, 9eSIM, JMP SIM Manager, ...) via the
+  /// `lpa:` deep-link scheme, for a removable eSIM adapter in the phone's
+  /// own SIM tray/USB reader -- no OMAPI/ARA-M access needed from this app
+  /// (`docs/OpenEUICC_Reference.md`, `DECISIONS.md` 2026-11-19).
+  Future<void> _installToAdapter(EsimStatus status) async {
+    final result = buildActivationCodeFromOrderData(
+      lpaString: status.lpaString,
+      smdpAddress: status.smdpAddress,
+      matchingId: status.matchingId,
+    );
+    if (result is! ActivationCodeParsed) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Couldn't read this eSIM's activation code.")));
+      return;
+    }
+    final launch = ref.read(urlLauncherProvider);
+    final opened = await launch(Uri.parse(result.code.toLpaString()));
+    if (!mounted) return;
+    if (!opened) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No eSIM-manager app found on this device -- '
+              'install one to manage a removable eSIM adapter.')));
     }
   }
 
@@ -266,6 +294,7 @@ class _EsimDetailScreenState extends ConsumerState<EsimDetailScreen> {
                 const EsimVerdict(
                     kind: EsimVerdictKind.unknown, deviceLabel: '', reason: ''),
             onInstall: _install,
+            onInstallToAdapter: () => _installToAdapter(_override ?? value),
             onCopy: _copy,
             onOpenSetupGuide: _openSetupGuide,
             topupOptions: topupOptions,
@@ -292,6 +321,7 @@ class _Body extends StatelessWidget {
     required this.onRefresh,
     required this.verdict,
     required this.onInstall,
+    required this.onInstallToAdapter,
     required this.onCopy,
     required this.onOpenSetupGuide,
     required this.topupOptions,
@@ -305,6 +335,7 @@ class _Body extends StatelessWidget {
   final VoidCallback onRefresh;
   final EsimVerdict verdict;
   final ValueChanged<String> onInstall;
+  final VoidCallback onInstallToAdapter;
   final void Function(String label, String value) onCopy;
   final VoidCallback onOpenSetupGuide;
   final List<TopupOption> topupOptions;
@@ -370,6 +401,15 @@ class _Body extends StatelessWidget {
               lpaString: status.lpaString,
               onInstall: onInstall,
             ),
+            if (Platform.isAndroid) ...[
+              const SizedBox(height: 12),
+              PillButton(
+                key: const ValueKey('esim-install-to-adapter-button'),
+                label: 'Install to a removable eSIM adapter',
+                variant: PillButtonVariant.secondary,
+                onPressed: onInstallToAdapter,
+              ),
+            ],
             const SizedBox(height: 20),
             InfoBox(
               icon: Icons.warning_amber_outlined,
