@@ -1,6 +1,21 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-19 — Fix: shared order/package cards weren't tappable (user-reported)
+FR-C903's `_SharedOrderCard`/`_SharedProductCard` rendered as inert
+`Container`s -- no `onTap` was ever wired. Fixed: a product card opens
+`/explore/<country_slug>`; an order card opens
+`/my-esims/<esim_profile_id>`, only once the order has actually
+provisioned one (stays inertly unclickable, no chevron, otherwise --
+`esim_profile_id` is null until then, API.md section 12). Had to
+convert `ticket_thread_screen_test.dart`'s test harness from a bare
+`MaterialApp` to a real `GoRouter` for `context.push` to resolve in
+tests -- all 20 pre-existing tests still passed unmodified. 3 new
+tests; non-vacuousness proven. `bash harness.sh verify` green,
+801/801. Verified on a real device: tapped a real PRODUCT_SHARE card
+from an earlier real ticket, landed on the real Global139 plans
+screen. Commit: `1aa538f`.
+
 ## 2026-11-19 — FR-C904 passing: Home "Chat with Support" button -- chat FR set complete
 A `PillButton` in `HomeScreen`'s body (outside either hero variant,
 gated on signed-in), opening the most recently active non-CLOSED
