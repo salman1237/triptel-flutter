@@ -1,6 +1,34 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-21 — Gate 3 cleared: a real USB CCID reader connected; FR-L910 passing
+User acquired a real USB smart-card reader (an "EMV Smartcard Reader",
+vendor 0x2CE3/product 0x9563, USB-A via a USB-C OTG adapter) -- the
+hardware gate every FR-L910+ item has been blocked on since FR-L905's
+`ara_m_denied` result. Set up wireless adb (USB port was needed for the
+OTG dongle, not the PC) to inspect and test it live.
+
+Confirmed at the OS level first (`adb shell dumpsys usb`): real USB
+host mode, interface class `11` (0x0B = CCID) -- genuine hardware, not
+a guess. Then built and shipped FR-L910: `UsbCcidReaders.kt`
+(unprivileged `UsbManager` enumeration + hot-plug receiver tied to
+`MainActivity.onStart()/onStop()`, never a manifest auto-launch, per
+Rules.md), Dart data/application layers (`ccid_channel.dart`,
+`ccid_reader.dart`, `ccid_providers.dart`), and a new "eSIM adapter
+(USB)" screen (Account, Android-only). 15 new tests (79 total in
+`test/features/adapter` + the account-screen gate test), all passing;
+confirmed two fail when broken. `bash harness.sh verify` green
+(Kotlin compiles clean).
+
+**Confirmed live** on device (wireless adb): the screen showed the
+real reader's name/vendor/product ids, then a full hot-plug cycle --
+user unplugged it, the screen updated to "No reader connected" live
+with no restart; user replugged it, the reader reappeared -- proving
+the EventChannel stream and the foreground-only receiver lifecycle
+both work on real hardware. Reviewer: PASS. FR-L910 passing.
+**Next step:** FR-L911 (USB permission request) is the next item in
+the native-engine chain, now unblocked on this same reader.
+
 ## 2026-11-19 — FR-L902 passing: activation-code input screen, confirmed live
 Built "Add activation code" (Account -> "Add eSIM via adapter", Android
 only): live QR camera scan, gallery QR decode, clipboard paste, and a

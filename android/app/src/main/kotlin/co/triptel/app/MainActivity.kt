@@ -3,11 +3,15 @@ package co.triptel.app
 import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.euicc.EuiccManager
+import co.triptel.app.ccid.UsbCcidReaders
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private val usbCcidReaders by lazy { UsbCcidReaders(applicationContext) }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
@@ -26,6 +30,29 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        // FR-L910: USB CCID reader detection/hot-plug. A one-shot
+        // MethodChannel for the static "does this device even have USB
+        // host mode" check, plus a streaming EventChannel for the live
+        // reader list (attach/detach while foregrounded -- see
+        // onStart()/onStop() below, never a manifest auto-launch).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CCID_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "hasUsbHostFeature" -> result.success(usbCcidReaders.hasUsbHostFeature())
+                else -> result.notImplemented()
+            }
+        }
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, CCID_READERS_CHANNEL)
+            .setStreamHandler(usbCcidReaders)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        usbCcidReaders.registerReceiver()
+    }
+
+    override fun onStop() {
+        usbCcidReaders.unregisterReceiver()
+        super.onStop()
     }
 
     // Raw signals only; the verdict (supported / not / unknown) is decided in Dart
@@ -58,5 +85,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "co.triptel.app/esim"
         private const val OMAPI_CHANNEL = "co.triptel.app/omapi"
+        private const val CCID_CHANNEL = "co.triptel.app/ccid"
+        private const val CCID_READERS_CHANNEL = "co.triptel.app/ccid/readers"
     }
 }

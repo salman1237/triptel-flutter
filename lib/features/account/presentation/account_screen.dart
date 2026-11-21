@@ -262,6 +262,12 @@ class _AuthedBody extends ConsumerWidget {
                   title: 'Add eSIM via adapter',
                   onTap: () => context.push('/adapter/activation-input'),
                 ),
+                ListRow(
+                  key: const ValueKey('account-adapter-usb-row'),
+                  icon: Icons.usb,
+                  title: 'eSIM adapter (USB)',
+                  onTap: () => context.push('/adapter/usb'),
+                ),
               ],
             ],
           ),

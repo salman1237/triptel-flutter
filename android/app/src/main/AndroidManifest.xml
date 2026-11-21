@@ -5,6 +5,13 @@
          input sources (gallery, clipboard, manual) stay available. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- FR-L910: a removable eSIM adapter over a USB CCID smart-card
+         reader. No special permission beyond unprivileged UsbManager
+         (docs/Rules.md: never WRITE_EMBEDDED_SUBSCRIPTIONS or similar).
+         required=false: a phone with no USB host mode can still install
+         and simply never sees a reader (confirmed real-device shape via
+         android.hardware.usb.host, DECISIONS.md 2026-11-21). -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
     <application
         android:label="Triptel"

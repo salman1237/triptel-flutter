@@ -1,6 +1,35 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-21 — Gate 3 cleared; FR-L910 built against a real USB CCID reader, not a mock
+The user bought and connected a real USB smart-card reader (an "EMV
+Smartcard Reader", vendor 0x2CE3/product 0x9563) via a USB-C OTG
+adapter. Verified it at the OS level first (`adb shell dumpsys usb`
+showed `host_connected=true` and a real `host_manager.devices` entry
+with interface `class=11` i.e. 0x0B/CCID) before writing any app code
+against it -- same "confirmed, not guessed" discipline as FR-L905's
+ARA-M research. Only after that did FR-L910 get built and verified
+live on the real device.
+
+**Receiver lifecycle choice:** hot-plug registration is tied to
+`MainActivity.onStart()`/`onStop()`, not the EventChannel's own
+`onListen`/`onCancel`. Why: the FR text requires detection "while
+foregrounded," a stricter and more predictable scope than "while some
+Dart widget happens to be subscribed" -- and it avoids ever registering
+a `BroadcastReceiver` for USB attach/detach from a manifest
+`<intent-filter>`, which Rules.md's eSIM adapter section implicitly
+rules out (no auto-launch) and which Android would otherwise allow.
+Revisit if a future FR needs reader detection to survive backgrounding
+(e.g. a long-running download) -- would need a foreground service, a
+materially bigger change, not a tweak to this receiver's lifecycle.
+
+**Tooling note:** the phone's single USB-C port can't hold both the PC
+cable (for adb/screenshots) and the OTG reader at once, so this
+session switched to wireless adb (`adb pair` + `adb connect` over the
+phone's own Wireless debugging screen) to keep inspecting the device
+with the reader attached. No code or config change, just how this
+session's evidence was gathered.
+
 ## 2026-11-19 — FR-L902 shipped: `mobile_scanner` added; manual form's "confirmation code" field scoped to the SGP.22 requirement flag, not a code value
 Added `mobile_scanner: ^6.0.11` (resolved by `flutter pub add`) for live
 QR camera scan and gallery-image QR decode, per

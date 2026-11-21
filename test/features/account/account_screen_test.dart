@@ -451,4 +451,15 @@ void main() {
     expect(find.byKey(const ValueKey('account-adapter-activation-input-row')),
         findsNothing);
   });
+
+  testWidgets(
+      'FR-L910: the "eSIM adapter (USB)" row is gated to Platform.isAndroid '
+      '-- not shown on this (non-Android) test host, confirming the gate '
+      'exists; the Android-visible case needs real device evidence, not a '
+      'host-platform-faked test', (tester) async {
+    await tester.pumpWidget(_testApp(const AuthAuthenticated(_tokenOk)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('account-adapter-usb-row')), findsNothing);
+  });
 }
