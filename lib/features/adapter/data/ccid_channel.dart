@@ -17,6 +17,11 @@ abstract class CcidChannel {
   /// registers/unregisters the OS receiver from the activity's own
   /// lifecycle, not a manifest auto-launch).
   Stream<List<Map<String, dynamic>>> watchReaders();
+
+  /// FR-L911: requests the standard per-device USB permission for the
+  /// reader with this `deviceId`. Always resolves (never throws) to a
+  /// raw `{"result": "granted"|"denied"|"detached_meanwhile"|...}` map.
+  Future<Map<String, dynamic>> requestPermission(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -32,4 +37,11 @@ class CcidChannelImpl implements CcidChannel {
                 .map((m) => m.cast<String, dynamic>())
                 .toList(),
           );
+
+  @override
+  Future<Map<String, dynamic>> requestPermission(int deviceId) async {
+    final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
+        'requestPermission', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
 }

@@ -1168,9 +1168,12 @@
       "id": "FR-L911",
       "behavior": "eSIM adapter: USB permission request flow (granted / denied / detached-meanwhile), retryable, never crashes",
       "verification": "flutter test test/features/adapter",
-      "state": "blocked",
-      "blocked_reason": "Gate 1 cleared. Gate 3 still open: needs a real USB CCID reader (FR-L905 confirmed the in-tray card doesn't substitute for one).",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "pending",
+        "screens": ["artifacts/l911-screen.png", "artifacts/l911-dialog.png", "artifacts/l911-granted.png"],
+        "notes": "Confirmed live on the real USB CCID reader (vendor 11491/product 38243) over wireless adb: tapping 'Grant access' triggered the real Android system dialog ('Allow Triptel to access EMV Smartcard Reader? / Cancel / OK'), driven by a real UsbManager.requestPermission() call with a mutable PendingIntent; granting it updated the card live to a green-bordered 'Access granted' with the button gone (via ref.invalidate(ccidReadersProvider), the only way the UI learns of a grant since it doesn't fire a hot-plug broadcast). Reviewer: PASS (FLAG_MUTABLE correctness, denied-vs-detached-meanwhile disambiguation via deviceList re-check + a second ACTION_USB_DEVICE_DETACHED path, Rules.md unprivileged-only compliance, 68/68 tests green including a test proven to catch a missing ref.invalidate)."
+      }
     },
     {
       "id": "FR-L912",

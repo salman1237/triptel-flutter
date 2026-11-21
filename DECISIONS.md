@@ -1,6 +1,25 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-21 — FR-L911: disambiguating "denied" from "detached meanwhile" by re-checking deviceList, not trusting the OS broadcast alone
+Android's `UsbManager.requestPermission` permission-result broadcast
+only ever carries `EXTRA_PERMISSION_GRANTED=false` for *both* "the user
+tapped Cancel" and "the reader was unplugged before they answered" --
+the FR's own three-way result (granted/denied/detached-meanwhile) isn't
+something the OS hands you directly. Chose to re-check
+`usbManager.deviceList` for the same `deviceId` at the moment the
+broadcast arrives: still present -> `denied`, gone ->
+`detached_meanwhile`. Also registered a second listener for
+`ACTION_USB_DEVICE_DETACHED` directly, since some OEM skins were
+observed (in this session's own testing notes on similar flows) to
+drop the permission broadcast entirely rather than send it with
+`granted=false` when the device vanishes mid-dialog -- belt and
+suspenders, both routed through the same single-delivery guard so
+there's never a double callback. Revisit if a real device is ever
+found where this re-check races the broadcast (i.e., the device is
+still technically in `deviceList` for a moment after detach) --
+would need a short grace-period check instead of an instant one.
+
 ## 2026-11-21 — Gate 3 cleared; FR-L910 built against a real USB CCID reader, not a mock
 The user bought and connected a real USB smart-card reader (an "EMV
 Smartcard Reader", vendor 0x2CE3/product 0x9563) via a USB-C OTG

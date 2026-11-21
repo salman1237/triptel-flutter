@@ -1,6 +1,31 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-21 — FR-L911 passing: USB permission request, real system dialog confirmed live
+Built the USB permission request flow on top of FR-L910's reader
+detection: `UsbCcidReaders.requestPermission()` (mutable `PendingIntent`
+-- required since Android 12, a one-line miss that silently breaks the
+whole flow; `denied` vs `detached_meanwhile` disambiguated by
+re-checking `deviceList` when the permission broadcast arrives, plus a
+second `ACTION_USB_DEVICE_DETACHED` path for when the OS drops the
+permission broadcast entirely mid-dialog), a new pure
+`ccid_permission_result.dart`, and a "Grant access" button on the
+adapter screen. 17 new tests; one of them required rewriting the test's
+fake channel mid-session to actually model native semantics (a grant
+doesn't fire a hot-plug broadcast, so only `ref.invalidate` makes the
+UI see it) before it could catch a missing `invalidate` call --
+confirmed by deliberately breaking it and watching the test fail.
+
+**Confirmed live** on the real reader over wireless adb: tapping
+"Grant access" triggered the actual Android system dialog ("Allow
+Triptel to access EMV Smartcard Reader?"), and granting it updated the
+card live to "Access granted" (green border, button gone). Reviewer:
+PASS. FR-L911 passing.
+**Next step:** FR-L912 (CCID transceiver -- the actual byte-level USB
+protocol) is next; it's framing/ATR work with JVM unit tests on
+recorded transcripts, no device needed for most of it, device evidence
+only for the final real-card round trip.
+
 ## 2026-11-21 — Gate 3 cleared: a real USB CCID reader connected; FR-L910 passing
 User acquired a real USB smart-card reader (an "EMV Smartcard Reader",
 vendor 0x2CE3/product 0x9563, USB-A via a USB-C OTG adapter) -- the

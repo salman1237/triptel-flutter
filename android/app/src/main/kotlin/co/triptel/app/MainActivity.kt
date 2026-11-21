@@ -38,6 +38,14 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CCID_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "hasUsbHostFeature" -> result.success(usbCcidReaders.hasUsbHostFeature())
+                "requestPermission" -> {
+                    val deviceId = call.argument<Int>("deviceId")
+                    if (deviceId == null) {
+                        result.error("invalid_argument", "deviceId is required", null)
+                    } else {
+                        usbCcidReaders.requestPermission(deviceId, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
