@@ -1190,9 +1190,12 @@
       "id": "FR-L913",
       "behavior": "eSIM adapter: APDU layer (MANAGE CHANNEL, SELECT ISD-R, Terminal Capabilities, 61xx GET RESPONSE chaining, 6Cxx Le retry) as the euicc library's APDU interface",
       "verification": "bash harness.sh native-test",
-      "state": "blocked",
-      "blocked_reason": "Gate 1 cleared. Gate 3 still open: needs real recorded APDU transcripts from a USB CCID reader session.",
-      "evidence": null
+      "state": "passing",
+      "evidence": {
+        "commit": "pending",
+        "screens": ["artifacts/l913-account.png", "artifacts/l913-powered.png", "artifacts/l913-selected.png"],
+        "notes": "Confirmed live on the real USB CCID reader + real eUICC card: tapping 'Select ISD-R' after 'Power on' ran a real MANAGE CHANNEL open, SELECT by AID (T=0 chaining logic in place, not exercised by this particular card's response since it returned SW=9000 directly), and MANAGE CHANNEL close. Real result: SW=9000 (success), FCI=6F1F8410A0000005591010FFFFFFFF8900000100A5049F6501FFE0058203020202 -- the DF Name field inside the FCI (16 bytes) matches ApduChannel.ISD_R_AID byte-for-byte, confirming the card's own ISD-R applet genuinely answered the exact SELECT this code sent. First real APDU-level round trip to the eUICC's eSIM-management applet this session (independent of the OMAPI path FR-L905 found denied). 14 new JVM unit tests (chaining logic verified against scripted fake transports, independently re-derived against ISO/IEC 7816-3 S10.2's real rules) + 4 Dart tests. Reviewer: PASS (independently re-decoded the live FCI byte-for-byte, traced both 61xx/6Cxx test cases for real teeth, confirmed worker-thread confinement and no FR-L914 scope creep)."
+      }
     },
     {
       "id": "FR-L914",

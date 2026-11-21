@@ -250,6 +250,67 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
         }
     }
 
+    /**
+     * FR-L913: opens a logical channel (`MANAGE CHANNEL`) and selects
+     * ISD-R by AID on it, following T=0's `61xx`/`6Cxx` chaining to a
+     * final status word -- then closes the channel again. Requires the
+     * card to already be powered on ([powerOn]).
+     */
+    fun selectIsdR(deviceId: Int, result: MethodChannel.Result) {
+        val transceiver = transceivers[deviceId]
+        if (transceiver == null) {
+            result.success(mapOf("outcome" to "not_powered_on"))
+            return
+        }
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        transceiver.executor.execute {
+            val openResult = transceiver.sendApduOnWorker(0, ApduChannel.buildManageChannelOpen())
+            val response: Map<String, Any?> =
+                when (openResult) {
+                    is ApduResult.Failed ->
+                        mapOf("outcome" to "channel_open_failed", "reason" to openResult.reason)
+                    is ApduResult.Response -> {
+                        if (!openResult.isSuccess || openResult.data.size != 1) {
+                            mapOf(
+                                "outcome" to "channel_open_failed",
+                                "reason" to "SW=${openResult.sw.toString(16)}",
+                            )
+                        } else {
+                            val channel = openResult.data[0].toInt() and 0xFF
+                            val selectResult = transceiver.sendApduOnWorker(
+                                channel,
+                                ApduChannel.buildSelectByAid(channel, ApduChannel.ISD_R_AID),
+                            )
+                            // Best-effort cleanup; the outcome we report
+                            // is the SELECT result, not the close.
+                            transceiver.sendApduOnWorker(
+                                channel,
+                                ApduChannel.buildManageChannelClose(channel),
+                            )
+                            when (selectResult) {
+                                is ApduResult.Failed ->
+                                    mapOf(
+                                        "outcome" to "select_failed",
+                                        "reason" to selectResult.reason,
+                                        "channel" to channel,
+                                    )
+                                is ApduResult.Response ->
+                                    mapOf(
+                                        "outcome" to "success",
+                                        "channel" to channel,
+                                        "sw" to selectResult.sw.toString(16),
+                                        "success" to selectResult.isSuccess,
+                                        "fciHex" to selectResult.data.toHex(),
+                                    )
+                            }
+                        }
+                    }
+                }
+            mainHandler.post { result.success(response) }
+        }
+    }
+
     private fun openSession(device: UsbDevice): CcidTransceiver? {
         val usbInterface = (0 until device.interfaceCount)
             .map(device::getInterface)

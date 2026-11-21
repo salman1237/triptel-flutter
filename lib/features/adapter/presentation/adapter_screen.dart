@@ -8,13 +8,16 @@ import '../application/ccid_permission_result.dart';
 import '../application/ccid_power_on_result.dart';
 import '../application/ccid_providers.dart';
 import '../application/ccid_reader.dart';
+import '../application/ccid_select_isdr_result.dart';
 
-/// FR-L910/FR-L911/FR-L912: lists the USB CCID smart-card reader(s)
-/// currently attached (live attach/detach while this screen -- and the
-/// app -- is foregrounded), lets the user request the standard
-/// per-device USB permission for one that doesn't have it yet, and --
-/// once granted -- powers on the card to show the real ATR. No APDU
-/// exchange (FR-L913+) happens from this screen yet.
+/// FR-L910/FR-L911/FR-L912/FR-L913: lists the USB CCID smart-card
+/// reader(s) currently attached (live attach/detach while this screen
+/// -- and the app -- is foregrounded), lets the user request the
+/// standard per-device USB permission for one that doesn't have it yet,
+/// powers on the card to show the real ATR, and -- once powered on --
+/// opens a logical channel and selects ISD-R by AID to show the real
+/// status word/FCI. No profile download (FR-L914+/euicc library) from
+/// this screen yet.
 class AdapterScreen extends ConsumerStatefulWidget {
   const AdapterScreen({super.key});
 
@@ -24,6 +27,7 @@ class AdapterScreen extends ConsumerStatefulWidget {
 
 class _AdapterScreenState extends ConsumerState<AdapterScreen> {
   final Map<int, CcidPowerOnResult> _powerOnResults = {};
+  final Map<int, CcidSelectIsdRResult> _selectIsdRResults = {};
 
   Future<void> _requestPermission(CcidReader reader) async {
     final raw =
@@ -55,6 +59,14 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
     });
   }
 
+  Future<void> _selectIsdR(CcidReader reader) async {
+    final raw = await ref.read(ccidChannelProvider).selectIsdR(reader.id);
+    if (!mounted) return;
+    setState(() {
+      _selectIsdRResults[reader.id] = CcidSelectIsdRResult.fromRaw(raw);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasUsbHostAsync = ref.watch(ccidHasUsbHostProvider);
@@ -81,8 +93,10 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
                 AsyncData(:final value) => _ReadersList(
                     readers: value,
                     powerOnResults: _powerOnResults,
+                    selectIsdRResults: _selectIsdRResults,
                     onRequestPermission: _requestPermission,
                     onPowerOn: _powerOn,
+                    onSelectIsdR: _selectIsdR,
                   ),
                 AsyncError() => ErrorState(
                     message: "Couldn't check for a reader.",
@@ -130,14 +144,18 @@ class _ReadersList extends StatelessWidget {
   const _ReadersList({
     required this.readers,
     required this.powerOnResults,
+    required this.selectIsdRResults,
     required this.onRequestPermission,
     required this.onPowerOn,
+    required this.onSelectIsdR,
   });
 
   final List<CcidReader> readers;
   final Map<int, CcidPowerOnResult> powerOnResults;
+  final Map<int, CcidSelectIsdRResult> selectIsdRResults;
   final ValueChanged<CcidReader> onRequestPermission;
   final ValueChanged<CcidReader> onPowerOn;
+  final ValueChanged<CcidReader> onSelectIsdR;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -147,8 +165,10 @@ class _ReadersList extends StatelessWidget {
             _ReaderCard(
               reader: reader,
               powerOnResult: powerOnResults[reader.id],
+              selectIsdRResult: selectIsdRResults[reader.id],
               onRequestPermission: () => onRequestPermission(reader),
               onPowerOn: () => onPowerOn(reader),
+              onSelectIsdR: () => onSelectIsdR(reader),
             ),
             const SizedBox(height: 12),
           ],
@@ -160,14 +180,18 @@ class _ReaderCard extends StatelessWidget {
   const _ReaderCard({
     required this.reader,
     required this.powerOnResult,
+    required this.selectIsdRResult,
     required this.onRequestPermission,
     required this.onPowerOn,
+    required this.onSelectIsdR,
   });
 
   final CcidReader reader;
   final CcidPowerOnResult? powerOnResult;
+  final CcidSelectIsdRResult? selectIsdRResult;
   final VoidCallback onRequestPermission;
   final VoidCallback onPowerOn;
+  final VoidCallback onSelectIsdR;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -235,6 +259,24 @@ class _ReaderCard extends StatelessWidget {
                   result: powerOnResult!,
                 ),
               ],
+              if (powerOnResult?.outcome == CcidPowerOnOutcome.success) ...[
+                const SizedBox(height: 12),
+                PillButton(
+                  key: ValueKey(
+                      'adapter-reader-${reader.id}-select-isdr-button'),
+                  label: 'Select ISD-R',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: onSelectIsdR,
+                ),
+                if (selectIsdRResult != null) ...[
+                  const SizedBox(height: 12),
+                  _SelectIsdRResultView(
+                    key: ValueKey(
+                        'adapter-reader-${reader.id}-select-isdr-result'),
+                    result: selectIsdRResult!,
+                  ),
+                ],
+              ],
             ],
           ],
         ),
@@ -272,6 +314,46 @@ class _PowerOnResultView extends StatelessWidget {
       CcidPowerOnOutcome.openFailed => "Couldn't open the reader.",
       CcidPowerOnOutcome.success => '', // unreachable, handled above
       CcidPowerOnOutcome.unknown => "Couldn't power on the card.",
+    };
+    return Text(message, style: AppTypography.caption(color: AppColors.danger));
+  }
+}
+
+class _SelectIsdRResultView extends StatelessWidget {
+  const _SelectIsdRResultView({super.key, required this.result});
+
+  final CcidSelectIsdRResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == CcidSelectIsdROutcome.success) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SW ${result.sw} -- ${result.swIsSuccess == true ? 'OK' : 'not OK'}',
+            style: AppTypography.caption(
+              color: result.swIsSuccess == true
+                  ? AppColors.success
+                  : AppColors.danger,
+            ),
+          ),
+          if ((result.fciHex ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('FCI', style: AppTypography.label()),
+            Text(result.fciHex!, style: AppTypography.caption()),
+          ],
+        ],
+      );
+    }
+    final message = switch (result.outcome) {
+      CcidSelectIsdROutcome.channelOpenFailed =>
+        result.reason ?? "Couldn't open a logical channel.",
+      CcidSelectIsdROutcome.selectFailed =>
+        result.reason ?? "Couldn't select ISD-R.",
+      CcidSelectIsdROutcome.notPoweredOn => 'Power on the card first.',
+      CcidSelectIsdROutcome.success => '', // unreachable, handled above
+      CcidSelectIsdROutcome.unknown => "Couldn't select ISD-R.",
     };
     return Text(message, style: AppTypography.caption(color: AppColors.danger));
   }

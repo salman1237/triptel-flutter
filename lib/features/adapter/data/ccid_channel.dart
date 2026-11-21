@@ -28,6 +28,13 @@ abstract class CcidChannel {
   /// resolves (never throws) to a raw
   /// `{"outcome": "success"|"power_on_failed"|"no_permission"|...}` map.
   Future<Map<String, dynamic>> powerOn(int deviceId);
+
+  /// FR-L913: opens a logical channel and selects ISD-R by AID on it
+  /// (following T=0's response-chaining rules), then closes the
+  /// channel again. Requires the card to already be powered on.
+  /// Always resolves (never throws) to a raw
+  /// `{"outcome": "success"|"select_failed"|"not_powered_on"|...}` map.
+  Future<Map<String, dynamic>> selectIsdR(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -55,6 +62,13 @@ class CcidChannelImpl implements CcidChannel {
   Future<Map<String, dynamic>> powerOn(int deviceId) async {
     final raw = await _methodChannel
         .invokeMapMethod<String, dynamic>('powerOn', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> selectIsdR(int deviceId) async {
+    final raw = await _methodChannel
+        .invokeMapMethod<String, dynamic>('selectIsdR', {'deviceId': deviceId});
     return raw ?? const {};
   }
 }

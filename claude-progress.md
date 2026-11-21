@@ -1,6 +1,38 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-22 — FR-L913 passing: real SELECT ISD-R round trip, SW 9000, AID echoed back byte-for-byte
+Built the ISO/IEC 7816-4 APDU layer on top of FR-L910/911/912:
+`ApduChannel.kt` (MANAGE CHANNEL open/close, SELECT by AID, Terminal
+Capabilities, and T=0's `61xx`->GET RESPONSE / `6Cxx`->Le-corrected-
+resend chaining as a pure, scripted-transport-testable function), new
+`sendApduOnWorker` on `CcidTransceiver` (same single-worker-thread
+confinement as FR-L912), and `selectIsdR` on `UsbCcidReaders` (opens a
+channel, selects ISD-R, best-effort closes the channel after --
+reports the SELECT's own outcome, not the close's). Added a
+"Select ISD-R" button to the adapter screen, gated on a successful
+"Power on" first. 14 new JVM tests (chaining logic, CLA encoding) + 4
+Dart tests.
+
+**Confirmed live** on the real USB CCID reader + real eUICC card: the
+real MANAGE CHANNEL + SELECT round trip returned **SW 9000 (success)**
+with a real FCI
+(`6F1F8410A0000005591010FFFFFFFF8900000100A5049F6501FFE0058203020202`)
+whose DF Name field (16 bytes) matches `ApduChannel.ISD_R_AID`
+byte-for-byte -- the card's own ISD-R applet genuinely answered the
+exact SELECT this code sent. This is the first real APDU-level round
+trip to the eUICC's actual eSIM-management applet this session,
+independent of the OMAPI path FR-L905 found denied -- proof the
+USB-CCID transport genuinely works end to end for reaching it.
+Reviewer: PASS (independently re-decoded the FCI byte-for-byte,
+re-derived the T=0 chaining rules independently rather than trusting
+test-and-code agreement). FR-L913 passing, commit pending.
+**Next step:** FR-L914 (euicc library integration -- vendoring lpac's
+LGPL `euicc/` under `third_party/lpac-euicc/`, ndk-build, the app's own
+JNI glue) is the next item, and it's the first one with its own
+explicit gate 2 (the LGPL/ESTKME commercial license choice) still
+needing the user's go-ahead before any code is written.
+
 ## 2026-11-22 — FR-L912 passing: USB-CCID transceiver, real ATR captured, a real parser bug found and fixed live
 Built the full USB-CCID protocol layer on top of FR-L910/FR-L911:
 `Atr.kt` (ISO/IEC 7816-3 ATR parser), `CcidFraming.kt` (CCID rev 1.1

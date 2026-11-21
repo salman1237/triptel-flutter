@@ -1,6 +1,32 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-22 — FR-L913: `selectIsdR`'s "success" means the round trip completed, not that SW=9000
+`UsbCcidReaders.selectIsdR` reports `outcome: "success"` whenever the
+MANAGE CHANNEL + SELECT + T=0-chaining round trip completes to *any*
+final status word, not only `9000`. The actual SW and whether it means
+success is a separate field (`sw`/`success` in the response map,
+`swIsSuccess` in Dart). Why: a round trip that completes with, say,
+`6A82` (file/applet not found) is still real, useful, non-error
+information -- "the eUICC genuinely doesn't have this AID" is not the
+same failure class as "we couldn't talk to the reader/card at all"
+(`channel_open_failed`/`select_failed`), and collapsing them would
+hide a real card-level answer behind a generic failure screen, the
+same mistake FR-L905/906 avoided for OMAPI. Revisit if a later FR
+(FR-L914+) ever assumes `outcome == success` implies the SELECT
+actually worked -- it must check `swIsSuccess` too.
+
+**Channel cleanup is best-effort and never overrides the SELECT's own
+reported outcome:** `selectIsdR` issues a MANAGE CHANNEL CLOSE after
+SELECT regardless of what SELECT returned, but the response map is
+built from the SELECT result only -- a close failure is silently
+swallowed. Why: the user's action is "select ISD-R," not "close a
+channel"; surfacing a close failure as if it were the real answer
+would be misleading. Revisit if a future FR needs the channel to stay
+open across multiple operations (FR-L917+'s download flow likely
+will) -- `selectIsdR` as written always closes, so that flow will need
+its own channel-lifetime management, not a call to this method.
+
 ## 2026-11-22 — FR-L912: replaced the FR's "TPDU-mode quirk list" with the reader's own real CCID class descriptor
 The FR text as originally scoped called for "a TPDU-mode quirk list" --
 implying a hand-maintained per-reader/vendor table of known exchange-

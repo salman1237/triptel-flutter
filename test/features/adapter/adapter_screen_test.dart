@@ -22,19 +22,24 @@ class _FakeCcidChannel implements CcidChannel {
     required bool hasUsbHost,
     Map<String, dynamic>? permissionResult,
     Map<String, dynamic>? powerOnResult,
+    Map<String, dynamic>? selectIsdRResult,
   })  : _hasUsbHost = hasUsbHost,
         _permissionResult = permissionResult ?? const {'result': 'granted'},
-        _powerOnResult = powerOnResult ?? const {'outcome': 'success'};
+        _powerOnResult = powerOnResult ?? const {'outcome': 'success'},
+        _selectIsdRResult = selectIsdRResult ?? const {'outcome': 'success'};
 
   final bool _hasUsbHost;
   final Map<String, dynamic> _permissionResult;
   final Map<String, dynamic> _powerOnResult;
+  final Map<String, dynamic> _selectIsdRResult;
   List<Map<String, dynamic>> _current = const [];
   final _watchers = <StreamController<List<Map<String, dynamic>>>>[];
   int requestPermissionCalls = 0;
   int? lastRequestedDeviceId;
   int powerOnCalls = 0;
   int? lastPowerOnDeviceId;
+  int selectIsdRCalls = 0;
+  int? lastSelectIsdRDeviceId;
 
   @override
   Future<bool> hasUsbHostFeature() async => _hasUsbHost;
@@ -67,6 +72,13 @@ class _FakeCcidChannel implements CcidChannel {
     powerOnCalls++;
     lastPowerOnDeviceId = deviceId;
     return _powerOnResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> selectIsdR(int deviceId) async {
+    selectIsdRCalls++;
+    lastSelectIsdRDeviceId = deviceId;
+    return _selectIsdRResult;
   }
 
   /// Simulates a real hot-plug broadcast (attach/detach) -- delivered to
@@ -416,6 +428,106 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('ICC_MUTE'), findsOneWidget);
+    });
+  });
+
+  group('FR-L913: select ISD-R', () {
+    testWidgets('no "Select ISD-R" button before a successful power-on',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('adapter-reader-2-select-isdr-button')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'after a successful power-on, tapping "Select ISD-R" shows the '
+        'real status word and FCI', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        selectIsdRResult: const {
+          'outcome': 'success',
+          'channel': 1,
+          'sw': '9000',
+          'success': true,
+          'fciHex': '6F108408A000000559101001A5049F6501FF',
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      final powerOnButton =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(powerOnButton);
+      await tester.tap(powerOnButton);
+      await tester.pumpAndSettle();
+
+      final selectButton =
+          find.byKey(const ValueKey('adapter-reader-2-select-isdr-button'));
+      await tester.ensureVisible(selectButton);
+      await tester.tap(selectButton);
+      await tester.pumpAndSettle();
+
+      expect(channel.selectIsdRCalls, 1);
+      expect(channel.lastSelectIsdRDeviceId, 2);
+      expect(find.textContaining('9000'), findsOneWidget);
+      expect(find.text('6F108408A000000559101001A5049F6501FF'), findsOneWidget);
+    });
+
+    testWidgets('a channel_open_failed result shows the real native reason',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        selectIsdRResult: const {
+          'outcome': 'channel_open_failed',
+          'reason': 'SW=6e00',
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      final powerOnButton =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(powerOnButton);
+      await tester.tap(powerOnButton);
+      await tester.pumpAndSettle();
+
+      final selectButton =
+          find.byKey(const ValueKey('adapter-reader-2-select-isdr-button'));
+      await tester.ensureVisible(selectButton);
+      await tester.tap(selectButton);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('6e00'), findsOneWidget);
     });
   });
 }

@@ -94,6 +94,26 @@ class CcidTransceiver(
     fun powerOffOnWorker(slot: Int = 0, timeoutMs: Int = 5000): CcidParseResult =
         transceive(buildIccPowerOff(slot, nextSeq()), timeoutMs)
 
+    /**
+     * FR-L913: sends one (possibly chained, per T=0's `61xx`/`6Cxx`
+     * rules) APDU over this session's open card, via CCID `XfrBlock`.
+     * Must only be called from [executor] -- the card must already be
+     * powered on ([powerOnOnWorker]) first.
+     */
+    fun sendApduOnWorker(channel: Int, capdu: ByteArray, slot: Int = 0, timeoutMs: Int = 10_000): ApduResult =
+        transceiveApdu(channel, capdu, send = { command ->
+            val xfr = buildXfrBlock(slot, nextSeq(), command)
+            when (val result = transceive(xfr, timeoutMs)) {
+                is CcidParseResult.Parsed ->
+                    if (result.response.commandStatus == CcidCommandStatus.OK) {
+                        result.response.data
+                    } else {
+                        null
+                    }
+                is CcidParseResult.Invalid -> null
+            }
+        })
+
     fun close() {
         try {
             connection.releaseInterface(usbInterface)
