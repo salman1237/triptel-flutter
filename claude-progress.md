@@ -36,7 +36,7 @@ assumed to be an "unrecognized" error code in a test, when it's
 actually a documented 0x00-0x7F command-error offset -- fixed the test,
 not the (already-correct) production code. Reviewer: PASS (independently
 re-derived both real transcripts' decode by hand/script).
-FR-L912 passing, commit pending.
+FR-L912 passing, commit `f702f79`.
 **Next step:** FR-L913 (the APDU layer -- MANAGE CHANNEL, SELECT ISD-R,
 response chaining) is next; the reviewer flagged one thing worth
 keeping in mind there: `CcidTransceiver.close()` doesn't currently

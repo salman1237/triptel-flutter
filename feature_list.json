@@ -1181,7 +1181,7 @@
       "verification": "bash harness.sh native-test",
       "state": "passing",
       "evidence": {
-        "commit": "pending",
+        "commit": "f702f79",
         "screens": ["artifacts/l912-screen.png", "artifacts/l912-powered.png", "artifacts/l912b-screen.png", "artifacts/l912b-powered.png"],
         "notes": "Confirmed live on the real USB CCID reader (vendor 11491/product 38243) over wireless adb: 'Power on' ran a real PC_to_RDR_IccPowerOn and captured a real ATR (3B9F96803FC7828031E073FE211B57AA8660F0020008F4). Live testing surfaced and fixed a real parser bug: TD2's protocol nibble was 0xF (15, ISO/IEC 7816-3's 'global interface bytes follow' marker, not a real protocol) -- before the fix the screen showed 'Protocol(s) 0, 15'; after, correctly 'Protocol(s) 0' (screenshots show both states). Hand-verified the checksum XOR and TA1=0x96->Fi512/Di32 against the real bytes. Also captured the reader's real CCID class descriptor (dwFeatures=0x000404BE) and confirmed it decodes to Short+Extended APDU exchange level (bit18), replacing a hand-maintained 'TPDU quirk list' with the reader's own real descriptor -- bit citations verified against a real external source (Linux kernel CCID gadget driver header) mid-session, not memory alone. 29 JVM unit tests (bash harness.sh native-test) use these two real transcripts as fixtures; synthetic ISO-7816-3-rule-constructed cases are explicitly labeled as such, never presented as real. Reviewer: PASS (independently re-derived both real transcripts' decode by hand/script, confirmed worker-thread confinement, no FR-L913 scope creep)."
       }
