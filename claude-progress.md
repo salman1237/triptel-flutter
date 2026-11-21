@@ -26,7 +26,7 @@ independent of the OMAPI path FR-L905 found denied -- proof the
 USB-CCID transport genuinely works end to end for reaching it.
 Reviewer: PASS (independently re-decoded the FCI byte-for-byte,
 re-derived the T=0 chaining rules independently rather than trusting
-test-and-code agreement). FR-L913 passing, commit pending.
+test-and-code agreement). FR-L913 passing, commit `a061e56`.
 **Next step:** FR-L914 (euicc library integration -- vendoring lpac's
 LGPL `euicc/` under `third_party/lpac-euicc/`, ndk-build, the app's own
 JNI glue) is the next item, and it's the first one with its own
