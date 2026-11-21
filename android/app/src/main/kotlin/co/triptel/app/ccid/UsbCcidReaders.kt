@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Handler
@@ -35,9 +36,18 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
     private var eventSink: EventChannel.EventSink? = null
     private var receiverRegistered = false
 
+    /** FR-L912: open card sessions, keyed by `UsbDevice.deviceId`. Torn
+     * down on detach (below) -- never held past a device's lifetime. */
+    private val transceivers = mutableMapOf<Int, CcidTransceiver>()
+
     private val receiver =
         object : BroadcastReceiver() {
             override fun onReceive(ctx: Context, intent: Intent) {
+                if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
+                    @Suppress("DEPRECATION")
+                    val detached = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                    detached?.let { closeSession(it.deviceId) }
+                }
                 emitCurrentList()
             }
         }
@@ -186,6 +196,79 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
         } catch (e: Exception) {
             sendOnce(mapOf("result" to "exception", "error" to e.toString()))
         }
+    }
+
+    /**
+     * FR-L912: opens the device, claims its CCID interface, and runs
+     * `PC_to_RDR_IccPowerOn` (with voltage fallback) on
+     * [CcidTransceiver]'s own worker thread -- never the calling
+     * thread. Requires FR-L911's permission to already be granted.
+     */
+    fun powerOn(deviceId: Int, result: MethodChannel.Result) {
+        val device = usbManager.deviceList.values.firstOrNull { it.deviceId == deviceId }
+        if (device == null) {
+            result.success(mapOf("outcome" to "detached"))
+            return
+        }
+        if (!usbManager.hasPermission(device)) {
+            result.success(mapOf("outcome" to "no_permission"))
+            return
+        }
+
+        val transceiver = transceivers[deviceId] ?: run {
+            val opened = openSession(device) ?: run {
+                result.success(mapOf("outcome" to "open_failed"))
+                return
+            }
+            transceivers[deviceId] = opened
+            opened
+        }
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        transceiver.executor.execute {
+            val powerOnResult = transceiver.powerOnOnWorker()
+            val response =
+                when (powerOnResult) {
+                    is CcidPowerOnResult.Success ->
+                        mapOf(
+                            "outcome" to "success",
+                            "atrHex" to powerOnResult.rawAtr.toHex(),
+                            "protocols" to powerOnResult.atr.protocols.toList(),
+                            "preferredProtocol" to powerOnResult.atr.preferredProtocol(),
+                            "checksumValid" to powerOnResult.atr.checksumValid,
+                            "voltage" to powerOnResult.voltage.name,
+                            "exchangeLevel" to transceiver.classDescriptor?.exchangeLevel?.name,
+                        )
+                    is CcidPowerOnResult.Failed ->
+                        mapOf(
+                            "outcome" to "power_on_failed",
+                            "reason" to powerOnResult.reason,
+                            "error" to powerOnResult.lastError,
+                        )
+                }
+            mainHandler.post { result.success(response) }
+        }
+    }
+
+    private fun openSession(device: UsbDevice): CcidTransceiver? {
+        val usbInterface = (0 until device.interfaceCount)
+            .map(device::getInterface)
+            .firstOrNull { it.interfaceClass == UsbConstants.USB_CLASS_CSCID }
+            ?: return null
+        val endpoints = CcidTransceiver.findBulkEndpoints(usbInterface) ?: return null
+        val connection: UsbDeviceConnection = usbManager.openDevice(device) ?: return null
+        if (!connection.claimInterface(usbInterface, true)) {
+            connection.close()
+            return null
+        }
+        val (bulkOut, bulkIn) = endpoints
+        val transceiver = CcidTransceiver(connection, usbInterface, bulkOut, bulkIn)
+        Log.i(TAG, "raw descriptors: ${connection.rawDescriptors?.toHex()}")
+        return transceiver
+    }
+
+    private fun closeSession(deviceId: Int) {
+        transceivers.remove(deviceId)?.close()
     }
 
     private fun emitCurrentList() {

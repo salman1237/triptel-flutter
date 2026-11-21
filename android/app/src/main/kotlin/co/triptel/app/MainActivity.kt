@@ -46,6 +46,14 @@ class MainActivity : FlutterActivity() {
                         usbCcidReaders.requestPermission(deviceId, result)
                     }
                 }
+                "powerOn" -> {
+                    val deviceId = call.argument<Int>("deviceId")
+                    if (deviceId == null) {
+                        result.error("invalid_argument", "deviceId is required", null)
+                    } else {
+                        usbCcidReaders.powerOn(deviceId, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

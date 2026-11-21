@@ -18,17 +18,23 @@ import 'package:triptel/features/adapter/presentation/adapter_screen.dart';
 /// it). This is deliberate: it's what makes the "granted" test below
 /// actually exercise that invalidate call, not just redundantly re-emit.
 class _FakeCcidChannel implements CcidChannel {
-  _FakeCcidChannel(
-      {required bool hasUsbHost, Map<String, dynamic>? permissionResult})
-      : _hasUsbHost = hasUsbHost,
-        _permissionResult = permissionResult ?? const {'result': 'granted'};
+  _FakeCcidChannel({
+    required bool hasUsbHost,
+    Map<String, dynamic>? permissionResult,
+    Map<String, dynamic>? powerOnResult,
+  })  : _hasUsbHost = hasUsbHost,
+        _permissionResult = permissionResult ?? const {'result': 'granted'},
+        _powerOnResult = powerOnResult ?? const {'outcome': 'success'};
 
   final bool _hasUsbHost;
   final Map<String, dynamic> _permissionResult;
+  final Map<String, dynamic> _powerOnResult;
   List<Map<String, dynamic>> _current = const [];
   final _watchers = <StreamController<List<Map<String, dynamic>>>>[];
   int requestPermissionCalls = 0;
   int? lastRequestedDeviceId;
+  int powerOnCalls = 0;
+  int? lastPowerOnDeviceId;
 
   @override
   Future<bool> hasUsbHostFeature() async => _hasUsbHost;
@@ -54,6 +60,13 @@ class _FakeCcidChannel implements CcidChannel {
           .toList();
     }
     return _permissionResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> powerOn(int deviceId) async {
+    powerOnCalls++;
+    lastPowerOnDeviceId = deviceId;
+    return _powerOnResult;
   }
 
   /// Simulates a real hot-plug broadcast (attach/detach) -- delivered to
@@ -288,6 +301,121 @@ void main() {
 
       expect(find.textContaining('unplugged before you responded'),
           findsOneWidget);
+    });
+  });
+
+  group('FR-L912: power on the card', () {
+    testWidgets(
+        'a granted reader shows a "Power on" button, no result shown yet',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('adapter-reader-2-power-on-button')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('adapter-reader-2-power-on-result')),
+          findsNothing);
+    });
+
+    testWidgets('an ungranted reader shows no "Power on" button',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': false,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('adapter-reader-2-power-on-button')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'a successful power-on shows the real ATR, protocols, and voltage',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        powerOnResult: const {
+          'outcome': 'success',
+          'atrHex': '3B9F96801FC78031E073FE211B64D0009000FA',
+          'protocols': [0, 1],
+          'preferredProtocol': 1,
+          'checksumValid': true,
+          'voltage': 'V5_0',
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      final button =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(channel.powerOnCalls, 1);
+      expect(channel.lastPowerOnDeviceId, 2);
+      expect(
+          find.text('3B9F96801FC78031E073FE211B64D0009000FA'), findsOneWidget);
+      expect(find.textContaining('T=1'), findsOneWidget);
+      expect(find.textContaining('V5_0'), findsOneWidget);
+    });
+
+    testWidgets('a power-on failure shows the real native reason',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        powerOnResult: const {
+          'outcome': 'power_on_failed',
+          'reason': 'ICC_MUTE: no response from the card (not inserted, or '
+              'dead)',
+          'error': 0xFE,
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      final button =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('ICC_MUTE'), findsOneWidget);
     });
   });
 }

@@ -42,3 +42,9 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FR-L912: JVM unit tests for the CCID framing/ATR parser (pure
+    // Kotlin, no Android framework, no device needed to run these).
+    testImplementation "junit:junit:4.13.2"
+}

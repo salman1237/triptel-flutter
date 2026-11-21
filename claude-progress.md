@@ -1,6 +1,48 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-22 — FR-L912 passing: USB-CCID transceiver, real ATR captured, a real parser bug found and fixed live
+Built the full USB-CCID protocol layer on top of FR-L910/FR-L911:
+`Atr.kt` (ISO/IEC 7816-3 ATR parser), `CcidFraming.kt` (CCID rev 1.1
+message build/parse), `CcidClassDescriptor.kt` (decodes the reader's
+own real USB class descriptor for exchange level -- replaces the FR's
+"TPDU quirk list" with the reader's own real self-description instead
+of a hand-maintained guess table; `dwFeatures` bit meanings verified
+against a real external source, a Linux kernel CCID gadget driver
+header, not memory alone), and `CcidTransceiver.kt` (the real bulk
+I/O, voltage fallback 5V->3V->1.8V, one dedicated worker thread per
+Rules.md). Added a "Power on" diagnostic button to the adapter screen.
+
+**Confirmed live** on the real USB CCID reader: ran a real
+`PC_to_RDR_IccPowerOn` and captured a real ATR
+(`3B9F96803FC7828031E073FE211B57AA8660F0020008F4`). This surfaced a
+genuine bug: TD2's protocol nibble was `0xF` (15), which ISO/IEC
+7816-3 reserves to mean "the following interface bytes are global,
+not protocol-specific" -- not a real alternate protocol -- but the
+first version of the parser added it to the offered-protocols set
+anyway (screenshot shows "Protocol(s) 0, 15"). Fixed it to exclude 15
+from the protocol set while still correctly triggering checksum
+presence on any non-zero TDi nibble (hand-verified the XOR against the
+real bytes both before and after); re-ran live, confirmed "Protocol(s)
+0" (screenshot). Also captured the reader's real CCID class descriptor
+and confirmed it decodes to Short+Extended APDU exchange level.
+
+29 new JVM unit tests (`bash harness.sh native-test`), using the two
+real captured transcripts (ATR + full USB config descriptor) as
+fixtures -- synthetic ISO-7816-3-rule-constructed cases are explicitly
+labeled as such, never presented as real captures, per Rules.md. One
+test-authoring mistake caught before shipping: `0x33` was wrongly
+assumed to be an "unrecognized" error code in a test, when it's
+actually a documented 0x00-0x7F command-error offset -- fixed the test,
+not the (already-correct) production code. Reviewer: PASS (independently
+re-derived both real transcripts' decode by hand/script).
+FR-L912 passing, commit pending.
+**Next step:** FR-L913 (the APDU layer -- MANAGE CHANNEL, SELECT ISD-R,
+response chaining) is next; the reviewer flagged one thing worth
+keeping in mind there: `CcidTransceiver.close()` doesn't currently
+coordinate with an in-flight worker-thread task, which matters more
+once APDU exchanges get more complex.
+
 ## 2026-11-21 — FR-L911 passing: USB permission request, real system dialog confirmed live
 Built the USB permission request flow on top of FR-L910's reader
 detection: `UsbCcidReaders.requestPermission()` (mutable `PendingIntent`

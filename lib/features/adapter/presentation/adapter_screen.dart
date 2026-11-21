@@ -5,26 +5,31 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
 import '../application/ccid_permission_result.dart';
+import '../application/ccid_power_on_result.dart';
 import '../application/ccid_providers.dart';
 import '../application/ccid_reader.dart';
 
-/// FR-L910/FR-L911: lists the USB CCID smart-card reader(s) currently
-/// attached (live attach/detach while this screen -- and the app -- is
-/// foregrounded), and lets the user request the standard per-device USB
-/// permission for one that doesn't have it yet. No card access
-/// (FR-L912+) happens from this screen yet.
-class AdapterScreen extends ConsumerWidget {
+/// FR-L910/FR-L911/FR-L912: lists the USB CCID smart-card reader(s)
+/// currently attached (live attach/detach while this screen -- and the
+/// app -- is foregrounded), lets the user request the standard
+/// per-device USB permission for one that doesn't have it yet, and --
+/// once granted -- powers on the card to show the real ATR. No APDU
+/// exchange (FR-L913+) happens from this screen yet.
+class AdapterScreen extends ConsumerStatefulWidget {
   const AdapterScreen({super.key});
 
-  Future<void> _requestPermission(
-    BuildContext context,
-    WidgetRef ref,
-    CcidReader reader,
-  ) async {
+  @override
+  ConsumerState<AdapterScreen> createState() => _AdapterScreenState();
+}
+
+class _AdapterScreenState extends ConsumerState<AdapterScreen> {
+  final Map<int, CcidPowerOnResult> _powerOnResults = {};
+
+  Future<void> _requestPermission(CcidReader reader) async {
     final raw =
         await ref.read(ccidChannelProvider).requestPermission(reader.id);
     final result = parseCcidPermissionResult(raw);
-    if (!context.mounted) return;
+    if (!mounted) return;
     switch (result) {
       case CcidPermissionResult.granted:
         ref.invalidate(ccidReadersProvider);
@@ -42,8 +47,16 @@ class AdapterScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _powerOn(CcidReader reader) async {
+    final raw = await ref.read(ccidChannelProvider).powerOn(reader.id);
+    if (!mounted) return;
+    setState(() {
+      _powerOnResults[reader.id] = CcidPowerOnResult.fromRaw(raw);
+    });
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final hasUsbHostAsync = ref.watch(ccidHasUsbHostProvider);
     final readersAsync = ref.watch(ccidReadersProvider);
 
@@ -67,8 +80,9 @@ class AdapterScreen extends ConsumerWidget {
                   const _NoReaderState(),
                 AsyncData(:final value) => _ReadersList(
                     readers: value,
-                    onRequestPermission: (reader) =>
-                        _requestPermission(context, ref, reader),
+                    powerOnResults: _powerOnResults,
+                    onRequestPermission: _requestPermission,
+                    onPowerOn: _powerOn,
                   ),
                 AsyncError() => ErrorState(
                     message: "Couldn't check for a reader.",
@@ -113,11 +127,17 @@ class _NoReaderState extends StatelessWidget {
 }
 
 class _ReadersList extends StatelessWidget {
-  const _ReadersList(
-      {required this.readers, required this.onRequestPermission});
+  const _ReadersList({
+    required this.readers,
+    required this.powerOnResults,
+    required this.onRequestPermission,
+    required this.onPowerOn,
+  });
 
   final List<CcidReader> readers;
+  final Map<int, CcidPowerOnResult> powerOnResults;
   final ValueChanged<CcidReader> onRequestPermission;
+  final ValueChanged<CcidReader> onPowerOn;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -126,7 +146,9 @@ class _ReadersList extends StatelessWidget {
           for (final reader in readers) ...[
             _ReaderCard(
               reader: reader,
+              powerOnResult: powerOnResults[reader.id],
               onRequestPermission: () => onRequestPermission(reader),
+              onPowerOn: () => onPowerOn(reader),
             ),
             const SizedBox(height: 12),
           ],
@@ -135,10 +157,17 @@ class _ReadersList extends StatelessWidget {
 }
 
 class _ReaderCard extends StatelessWidget {
-  const _ReaderCard({required this.reader, required this.onRequestPermission});
+  const _ReaderCard({
+    required this.reader,
+    required this.powerOnResult,
+    required this.onRequestPermission,
+    required this.onPowerOn,
+  });
 
   final CcidReader reader;
+  final CcidPowerOnResult? powerOnResult;
   final VoidCallback onRequestPermission;
+  final VoidCallback onPowerOn;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -191,7 +220,59 @@ class _ReaderCard extends StatelessWidget {
                 onPressed: onRequestPermission,
               ),
             ],
+            if (reader.hasPermission) ...[
+              const SizedBox(height: 12),
+              PillButton(
+                key: ValueKey('adapter-reader-${reader.id}-power-on-button'),
+                label: 'Power on',
+                variant: PillButtonVariant.secondary,
+                onPressed: onPowerOn,
+              ),
+              if (powerOnResult != null) ...[
+                const SizedBox(height: 12),
+                _PowerOnResultView(
+                  key: ValueKey('adapter-reader-${reader.id}-power-on-result'),
+                  result: powerOnResult!,
+                ),
+              ],
+            ],
           ],
         ),
       );
+}
+
+class _PowerOnResultView extends StatelessWidget {
+  const _PowerOnResultView({super.key, required this.result});
+
+  final CcidPowerOnResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == CcidPowerOnOutcome.success) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('ATR', style: AppTypography.label()),
+          Text(result.atrHex ?? '', style: AppTypography.caption()),
+          const SizedBox(height: 4),
+          Text(
+            'Protocol(s) ${result.protocols.join(', ')} -- using '
+            'T=${result.preferredProtocol} · ${result.voltage}',
+            style: AppTypography.caption(color: AppColors.inkMuted),
+          ),
+        ],
+      );
+    }
+    final message = switch (result.outcome) {
+      CcidPowerOnOutcome.powerOnFailed =>
+        result.reason ?? "Couldn't power on the card.",
+      CcidPowerOnOutcome.noPermission =>
+        'Access was revoked -- try "Grant access" again.',
+      CcidPowerOnOutcome.detached => 'The reader was unplugged.',
+      CcidPowerOnOutcome.openFailed => "Couldn't open the reader.",
+      CcidPowerOnOutcome.success => '', // unreachable, handled above
+      CcidPowerOnOutcome.unknown => "Couldn't power on the card.",
+    };
+    return Text(message, style: AppTypography.caption(color: AppColors.danger));
+  }
 }

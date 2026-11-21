@@ -1,6 +1,48 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-22 — FR-L912: replaced the FR's "TPDU-mode quirk list" with the reader's own real CCID class descriptor
+The FR text as originally scoped called for "a TPDU-mode quirk list" --
+implying a hand-maintained per-reader/vendor table of known exchange-
+level quirks. Built `CcidClassDescriptor.kt` instead: it decodes the
+reader's own real USB CCID class descriptor (`dwFeatures`, the same
+field any USB host OS reads) to get the actual exchange level
+(character/TPDU/short-APDU/short+extended-APDU) directly from the
+hardware, every time, for every reader -- no table to maintain, no
+guessing for readers never seen before. Verified the `dwFeatures` bit
+meanings (bit16=TPDU, bit17=Short APDU, bit18=Short+Extended APDU)
+against a real external source (a Linux kernel CCID gadget driver
+header, GPL-2.0, `f_ccid.h`) mid-session rather than from memory alone,
+since Rules.md requires cited sources, not guessed byte layouts.
+Confirmed live against the real connected reader: its real
+`dwFeatures=0x000404BE` decodes to Short+Extended APDU level, meaning
+FR-L913's APDU layer can hand it full APDUs directly without manual
+TPDU-level chaining for *this* reader. Revisit if a future reader is
+found that reports character or TPDU level -- FR-L913 would then need
+to branch on `CcidExchangeLevel` for that specific reader's session.
+
+## 2026-11-22 — FR-L912: a real captured ATR exposed a parser bug (ISO 7816-3's T=15 marker), fixed and re-verified live
+First version of `Atr.kt` added every TDi byte's protocol nibble to
+the offered-protocols set. Live testing against the real reader's card
+produced a real ATR whose TD2 nibble was `0xF` (15) -- ISO/IEC 7816-3
+§8.3 reserves 15 to mean "the interface bytes at this level are global,
+not protocol-specific," not a selectable transmission protocol. The
+bug: showed "Protocol(s) 0, 15" to the user, and would have made
+`preferredProtocol()` consider T=15 a real (if unselected) option.
+Fixed by excluding 15 from the protocols set while separately tracking
+"was any TDi nibble ever non-zero" for the TCK-checksum-presence
+decision (confirmed by hand that TCK really is present and valid in
+this exact real ATR despite the only *real* protocol being T=0 --
+checksum presence and "a real alternate protocol was offered" are two
+different conditions that happen to often coincide but aren't the same
+rule). This is exactly the kind of bug `docs/Rules.md`'s "verify
+everything on device" standing instruction exists to catch -- it would
+not have been found by hand-constructed test ATRs alone, since writing
+a synthetic test requires already knowing what the real data looks
+like. Revisit if a card is ever found with TD3+ levels needing the
+same treatment (the current loop already generalizes correctly, but
+untested beyond level 2 against real hardware).
+
 ## 2026-11-21 — FR-L911: disambiguating "denied" from "detached meanwhile" by re-checking deviceList, not trusting the OS broadcast alone
 Android's `UsbManager.requestPermission` permission-result broadcast
 only ever carries `EXTRA_PERMISSION_GRANTED=false` for *both* "the user

@@ -22,6 +22,12 @@ abstract class CcidChannel {
   /// reader with this `deviceId`. Always resolves (never throws) to a
   /// raw `{"result": "granted"|"denied"|"detached_meanwhile"|...}` map.
   Future<Map<String, dynamic>> requestPermission(int deviceId);
+
+  /// FR-L912: powers on the card in this reader (with voltage
+  /// fallback) and returns the real ATR, or a typed failure. Always
+  /// resolves (never throws) to a raw
+  /// `{"outcome": "success"|"power_on_failed"|"no_permission"|...}` map.
+  Future<Map<String, dynamic>> powerOn(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -42,6 +48,13 @@ class CcidChannelImpl implements CcidChannel {
   Future<Map<String, dynamic>> requestPermission(int deviceId) async {
     final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
         'requestPermission', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> powerOn(int deviceId) async {
+    final raw = await _methodChannel
+        .invokeMapMethod<String, dynamic>('powerOn', {'deviceId': deviceId});
     return raw ?? const {};
   }
 }
