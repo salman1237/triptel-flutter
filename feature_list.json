@@ -1159,7 +1159,7 @@
       "verification": "flutter test test/features/adapter test/features/account/account_screen_test.dart",
       "state": "passing",
       "evidence": {
-        "commit": "pending",
+        "commit": "caeaa47",
         "screens": ["artifacts/l910-account.png", "artifacts/l910-screen.png", "artifacts/l910-unplugged.png", "artifacts/l910-replugged.png"],
         "notes": "Gate 3 cleared 2026-11-21: a real USB CCID reader (a USB-A 'EMV Smartcard Reader', vendor 0x2CE3/11491, product 0x9563/38243, interface class 0x0B) connected to the Pinehurst test phone via a USB-C OTG adapter and wireless adb. UsbCcidReaders.kt enumerates it correctly and the Dart adapter_screen.dart shows its real name/vendor/product ids and permission state. Confirmed live: a full hot-plug cycle (attached -> user unplugged -> screen updated to 'No reader connected' live, no restart -> user replugged -> screen showed the reader again), proving registerReceiver/unregisterReceiver (tied to MainActivity.onStart/onStop, never a manifest auto-launch per Rules.md) and the EventChannel stream both work end to end on real hardware. Reviewer: PASS (Rules.md unprivileged-only compliance, correct 0x0B filter, idempotent receiver (re)registration, RECEIVER_NOT_EXPORTED handling for API 33+, thin data layer / pure application layer, 79 tests green, flutter analyze clean, no regressions to the OMAPI/activation-input routes)."
       }
