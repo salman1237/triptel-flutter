@@ -1252,3 +1252,19 @@ to deviate from a documented rule -- it wasn't checked the first time.
 `Design_System.md`'s documented table, either update that doc with a verified
 exception or don't deviate; never justify a deviation with an unverified
 claim about backend behavior.
+
+## 2026-11-22 — FR-L915: EuiccInfo2 crosses the JNI boundary as a JSON string, not a second ad-hoc return shape
+`es10c_ex_get_euiccinfo2()` returns a multi-field C struct (`svn`, several
+memory counters, etc.), richer than FR-L914's single-string EID return.
+**Decision:** serialize the subset of fields this FR needs (`svn`,
+`freeNonVolatileMemory`, `freeVolatileMemory`) to a small JSON string via
+cJSON -- already linked into the build as the `lpac-cjson` ndk-build module
+for lpac's own internal use -- rather than inventing a second native-return
+convention (e.g. multiple `jstring`/primitive out-params) alongside
+`nativeReadEid`'s single-string shape. **Why:** one consistent "native
+returns a JSON string, Kotlin parses it with org.json, Dart has a typed
+`fromRaw` parser" convention scales better than a bespoke marshaling scheme
+per native call, and cJSON was already a zero-cost dependency. **How to
+apply:** any future ES10x call that needs to return more than one scalar
+(e.g. FR-L916's profile list) should follow the same JSON-string convention
+unless the payload becomes large enough that JSON parsing overhead matters.

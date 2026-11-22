@@ -1,6 +1,34 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-22 — FR-L915 passing: chip info (EuiccInfo2) + unplugged mid-read state
+Most of FR-L915's stated scope (reader list, permission CTA, masked/
+copyable EID) was already built by FR-L910–L914; the genuinely new work
+was (a) a "Chip info" summary -- SGP.22 spec version + free memory via
+lpac's `es10c_ex_get_euiccinfo2()` -- and (b) a distinct "unplugged
+mid-read" (`detached`) outcome, as opposed to a generic failure, for
+both the EID and chip-info reads.
+
+New native entry point `nativeReadEuiccInfo2` (lpa_jni.c) serializes
+the richer `struct es10c_ex_euiccinfo2` result to a small JSON string
+via cJSON (already linked for FR-L914) rather than inventing a second
+ad-hoc JNI return shape; frees `es10c_ex_euiccinfo2_free()` on every
+success path, no leaks. The "detached" disambiguation reuses FR-L911's
+`usbManager.deviceList` re-check technique via a new shared
+`failureOutcome(deviceId)` helper in `UsbCcidReaders.kt`, now used by
+both `readEid` and `readEuiccInfo2`.
+
+**Confirmed live** on the real USB CCID reader + eUICC card (wireless
+adb): Power on -> real ATR -> Select ISD-R -> Read EID -> Chip info
+showed the real `SGP.22 v2.2.2 · 427.4 KB free`, end to end through
+lpac's own EuiccInfo2 call. Non-vacuousness proven for the detached
+message (broke the switch arm, confirmed the new widget test failed,
+restored). Reviewer: PASS, no FAIL items (cJSON lifecycle, license
+boundary, masking non-regression, and test non-vacuousness all
+independently checked). FR-L915 passing, commit `fc4a9b4`.
+**Next step:** FR-L916 (list profiles on the card) is next -- same
+LpaBridge/euicc_ctx foundation, next ES10c call (`es10c_get_profiles_info`).
+
 ## 2026-11-22 — FR-L914 passing: real EID read via the actual LGPL euicc library, first native code in this project
 With the user's go-ahead on the license path (LGPL-2.1, not the ESTKME
 commercial license -- DECISIONS.md), vendored lpac's `euicc/` + cjson/
