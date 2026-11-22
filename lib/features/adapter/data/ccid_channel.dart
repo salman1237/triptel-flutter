@@ -47,6 +47,13 @@ abstract class CcidChannel {
   /// powered on. Always resolves (never throws) to a raw
   /// `{"outcome": "success"|"read_failed"|"detached"|...}` map.
   Future<Map<String, dynamic>> readEuiccInfo2(int deviceId);
+
+  /// FR-L916: lists profiles on the card via lpac's
+  /// `es10c_get_profiles_info()`. Requires the card to already be
+  /// powered on. Always resolves (never throws) to a raw
+  /// `{"outcome": "success"|"read_failed"|"detached"|..., "profiles": [...]}`
+  /// map.
+  Future<Map<String, dynamic>> listProfiles(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -95,6 +102,13 @@ class CcidChannelImpl implements CcidChannel {
   Future<Map<String, dynamic>> readEuiccInfo2(int deviceId) async {
     final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
         'readEuiccInfo2', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> listProfiles(int deviceId) async {
+    final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
+        'listProfiles', {'deviceId': deviceId});
     return raw ?? const {};
   }
 }

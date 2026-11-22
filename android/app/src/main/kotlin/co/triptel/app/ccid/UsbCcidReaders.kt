@@ -378,10 +378,61 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
                 if (json != null) {
                     mapOf(
                         "outcome" to "success",
-                        "svn" to json.optString("svn").ifEmpty { null },
+                        "svn" to optStringOrNull(json, "svn"),
                         "freeNonVolatileMemory" to json.optLong("freeNonVolatileMemory"),
                         "freeVolatileMemory" to json.optLong("freeVolatileMemory"),
                     )
+                } else {
+                    mapOf("outcome" to failureOutcome(deviceId))
+                }
+            mainHandler.post { result.success(response) }
+        }.start()
+    }
+
+    /**
+     * FR-L916: lists profiles on the card -- same session/threading
+     * rules as [readEid]/[readEuiccInfo2]. The native side returns a
+     * JSON array string; this just re-parses it into a list of maps
+     * (or [] on any parse failure, never crashes) for the Dart side's
+     * own typed parser to consume.
+     */
+    fun listProfiles(deviceId: Int, result: MethodChannel.Result) {
+        val transceiver = transceivers[deviceId]
+        if (transceiver == null) {
+            result.success(mapOf("outcome" to "not_powered_on"))
+            return
+        }
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        Thread {
+            val raw =
+                try {
+                    LpaBridge(transceiver).nativeListProfiles()
+                } catch (e: Exception) {
+                    Log.w(TAG, "nativeListProfiles failed", e)
+                    null
+                }
+            val profiles = raw?.let {
+                try {
+                    val array = org.json.JSONArray(it)
+                    (0 until array.length()).map { i ->
+                        val obj = array.getJSONObject(i)
+                        mapOf(
+                            "iccid" to optStringOrNull(obj, "iccid"),
+                            "serviceProviderName" to optStringOrNull(obj, "serviceProviderName"),
+                            "profileName" to optStringOrNull(obj, "profileName"),
+                            "profileNickname" to optStringOrNull(obj, "profileNickname"),
+                            "state" to obj.optString("state"),
+                            "profileClass" to obj.optString("profileClass"),
+                        )
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val response =
+                if (profiles != null) {
+                    mapOf("outcome" to "success", "profiles" to profiles)
                 } else {
                     mapOf("outcome" to failureOutcome(deviceId))
                 }
@@ -398,6 +449,18 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
         val stillPresent = usbManager.deviceList.values.any { it.deviceId == deviceId }
         return if (stillPresent) "read_failed" else "detached"
     }
+
+    /** `org.json.JSONObject.optString` returns the literal string
+     * `"null"` (not an empty string) for a key whose value is JSON
+     * `null` -- cJSON's `cJSON_AddStringOrNullToObject` (used by
+     * `lpa_jni.c` for every optional native string field) emits
+     * exactly that for an absent C string. Found live on a real card
+     * with a profile missing its `profileName`: without this check,
+     * "null" rendered as a visible profile name instead of falling
+     * back. [JSONObject.isNull] correctly reports true for both an
+     * absent key and an explicit JSON null. */
+    private fun optStringOrNull(obj: org.json.JSONObject, key: String): String? =
+        if (obj.isNull(key)) null else obj.optString(key).ifEmpty { null }
 
     private fun openSession(device: UsbDevice): CcidTransceiver? {
         val usbInterface = (0 until device.interfaceCount)

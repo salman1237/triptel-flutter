@@ -226,3 +226,68 @@ JNIEXPORT jstring JNICALL Java_co_triptel_app_lpa_LpaBridge_nativeReadEuiccInfo2
     g_bridge = NULL;
     return result;
 }
+
+static const char *profile_state_str(enum es10c_profile_state state) {
+    switch (state) {
+        case ES10C_PROFILE_STATE_DISABLED: return "disabled";
+        case ES10C_PROFILE_STATE_ENABLED: return "enabled";
+        default: return "undefined";
+    }
+}
+
+static const char *profile_class_str(enum es10c_profile_class cls) {
+    switch (cls) {
+        case ES10C_PROFILE_CLASS_TEST: return "test";
+        case ES10C_PROFILE_CLASS_PROVISIONING: return "provisioning";
+        case ES10C_PROFILE_CLASS_OPERATIONAL: return "operational";
+        default: return "undefined";
+    }
+}
+
+/*
+ * FR-L916: list profiles on the card via es10c_get_profiles_info()'s
+ * linked list, walked into a JSON array (same JSON-string JNI
+ * convention as FR-L915's nativeReadEuiccInfo2, DECISIONS.md
+ * 2026-11-22). Only the fields this FR asks for are surfaced: ICCID
+ * (raw -- masking is the Dart UI's job, same as the EID), provider
+ * (serviceProviderName), profile name/nickname, enabled/disabled
+ * state, and profile class. NULL on any failure, never throws.
+ */
+JNIEXPORT jstring JNICALL Java_co_triptel_app_lpa_LpaBridge_nativeListProfiles(JNIEnv *env, jobject thiz) {
+    cache_methods_if_needed(env, thiz);
+    g_bridge = (*env)->NewGlobalRef(env, thiz);
+
+    struct euicc_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.apdu.interface = &g_apdu_interface;
+
+    jstring result = NULL;
+    if (euicc_init(&ctx) == 0) {
+        struct es10c_profile_info_list *list = NULL;
+        if (es10c_get_profiles_info(&ctx, &list) == 0) {
+            cJSON *array = cJSON_CreateArray();
+            for (struct es10c_profile_info_list *p = list; p != NULL; p = p->next) {
+                cJSON *item = cJSON_CreateObject();
+                cJSON_AddStringOrNullToObject(item, "iccid", p->iccid);
+                cJSON_AddStringOrNullToObject(item, "serviceProviderName", p->serviceProviderName);
+                cJSON_AddStringOrNullToObject(item, "profileName", p->profileName);
+                cJSON_AddStringOrNullToObject(item, "profileNickname", p->profileNickname);
+                cJSON_AddStringToObject(item, "state", profile_state_str(p->profileState));
+                cJSON_AddStringToObject(item, "profileClass", profile_class_str(p->profileClass));
+                cJSON_AddItemToArray(array, item);
+            }
+            char *printed = cJSON_PrintUnformatted(array);
+            if (printed != NULL) {
+                result = (*env)->NewStringUTF(env, printed);
+                free(printed);
+            }
+            cJSON_Delete(array);
+            es10c_profile_info_list_free_all(list);
+        }
+        euicc_fini(&ctx);
+    }
+
+    (*env)->DeleteGlobalRef(env, g_bridge);
+    g_bridge = NULL;
+    return result;
+}

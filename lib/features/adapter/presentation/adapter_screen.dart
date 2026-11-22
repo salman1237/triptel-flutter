@@ -12,6 +12,7 @@ import '../application/ccid_providers.dart';
 import '../application/ccid_read_eid_result.dart';
 import '../application/ccid_reader.dart';
 import '../application/ccid_select_isdr_result.dart';
+import '../application/profile_info.dart';
 
 /// FR-L910/FR-L911/FR-L912/FR-L913: lists the USB CCID smart-card
 /// reader(s) currently attached (live attach/detach while this screen
@@ -33,6 +34,7 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
   final Map<int, CcidSelectIsdRResult> _selectIsdRResults = {};
   final Map<int, CcidReadEidResult> _readEidResults = {};
   final Map<int, CcidEuiccInfoResult> _euiccInfoResults = {};
+  final Map<int, CcidProfileListResult> _profileListResults = {};
   final Set<int> _eidRevealed = {};
 
   Future<void> _requestPermission(CcidReader reader) async {
@@ -89,6 +91,14 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
     });
   }
 
+  Future<void> _listProfiles(CcidReader reader) async {
+    final raw = await ref.read(ccidChannelProvider).listProfiles(reader.id);
+    if (!mounted) return;
+    setState(() {
+      _profileListResults[reader.id] = CcidProfileListResult.fromRaw(raw);
+    });
+  }
+
   void _toggleEidRevealed(int readerId) {
     setState(() {
       if (!_eidRevealed.add(readerId)) _eidRevealed.remove(readerId);
@@ -131,12 +141,14 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
                     selectIsdRResults: _selectIsdRResults,
                     readEidResults: _readEidResults,
                     euiccInfoResults: _euiccInfoResults,
+                    profileListResults: _profileListResults,
                     eidRevealed: _eidRevealed,
                     onRequestPermission: _requestPermission,
                     onPowerOn: _powerOn,
                     onSelectIsdR: _selectIsdR,
                     onReadEid: _readEid,
                     onReadEuiccInfo: _readEuiccInfo,
+                    onListProfiles: _listProfiles,
                     onToggleEidRevealed: _toggleEidRevealed,
                     onCopyEid: _copyEid,
                   ),
@@ -189,12 +201,14 @@ class _ReadersList extends StatelessWidget {
     required this.selectIsdRResults,
     required this.readEidResults,
     required this.euiccInfoResults,
+    required this.profileListResults,
     required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
     required this.onReadEid,
     required this.onReadEuiccInfo,
+    required this.onListProfiles,
     required this.onToggleEidRevealed,
     required this.onCopyEid,
   });
@@ -204,12 +218,14 @@ class _ReadersList extends StatelessWidget {
   final Map<int, CcidSelectIsdRResult> selectIsdRResults;
   final Map<int, CcidReadEidResult> readEidResults;
   final Map<int, CcidEuiccInfoResult> euiccInfoResults;
+  final Map<int, CcidProfileListResult> profileListResults;
   final Set<int> eidRevealed;
   final ValueChanged<CcidReader> onRequestPermission;
   final ValueChanged<CcidReader> onPowerOn;
   final ValueChanged<CcidReader> onSelectIsdR;
   final ValueChanged<CcidReader> onReadEid;
   final ValueChanged<CcidReader> onReadEuiccInfo;
+  final ValueChanged<CcidReader> onListProfiles;
   final ValueChanged<int> onToggleEidRevealed;
   final ValueChanged<String> onCopyEid;
 
@@ -224,12 +240,14 @@ class _ReadersList extends StatelessWidget {
               selectIsdRResult: selectIsdRResults[reader.id],
               readEidResult: readEidResults[reader.id],
               euiccInfoResult: euiccInfoResults[reader.id],
+              profileListResult: profileListResults[reader.id],
               eidRevealed: eidRevealed.contains(reader.id),
               onRequestPermission: () => onRequestPermission(reader),
               onPowerOn: () => onPowerOn(reader),
               onSelectIsdR: () => onSelectIsdR(reader),
               onReadEid: () => onReadEid(reader),
               onReadEuiccInfo: () => onReadEuiccInfo(reader),
+              onListProfiles: () => onListProfiles(reader),
               onToggleEidRevealed: () => onToggleEidRevealed(reader.id),
               onCopyEid: onCopyEid,
             ),
@@ -246,12 +264,14 @@ class _ReaderCard extends StatelessWidget {
     required this.selectIsdRResult,
     required this.readEidResult,
     required this.euiccInfoResult,
+    required this.profileListResult,
     required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
     required this.onReadEid,
     required this.onReadEuiccInfo,
+    required this.onListProfiles,
     required this.onToggleEidRevealed,
     required this.onCopyEid,
   });
@@ -261,12 +281,14 @@ class _ReaderCard extends StatelessWidget {
   final CcidSelectIsdRResult? selectIsdRResult;
   final CcidReadEidResult? readEidResult;
   final CcidEuiccInfoResult? euiccInfoResult;
+  final CcidProfileListResult? profileListResult;
   final bool eidRevealed;
   final VoidCallback onRequestPermission;
   final VoidCallback onPowerOn;
   final VoidCallback onSelectIsdR;
   final VoidCallback onReadEid;
   final VoidCallback onReadEuiccInfo;
+  final VoidCallback onListProfiles;
   final VoidCallback onToggleEidRevealed;
   final ValueChanged<String> onCopyEid;
 
@@ -384,6 +406,22 @@ class _ReaderCard extends StatelessWidget {
                     key: ValueKey(
                         'adapter-reader-${reader.id}-chip-info-result'),
                     result: euiccInfoResult!,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                PillButton(
+                  key: ValueKey(
+                      'adapter-reader-${reader.id}-list-profiles-button'),
+                  label: 'List profiles',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: onListProfiles,
+                ),
+                if (profileListResult != null) ...[
+                  const SizedBox(height: 12),
+                  _ProfileListResultView(
+                    key: ValueKey(
+                        'adapter-reader-${reader.id}-list-profiles-result'),
+                    result: profileListResult!,
                   ),
                 ],
               ],
@@ -566,3 +604,98 @@ String _formatBytes(int? bytes) {
   if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
   return '$bytes bytes';
 }
+
+class _ProfileListResultView extends StatelessWidget {
+  const _ProfileListResultView({super.key, required this.result});
+
+  final CcidProfileListResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == CcidProfileListOutcome.success) {
+      if (result.profiles.isEmpty) {
+        return Text(
+          'No profiles on this card.',
+          key: const ValueKey('adapter-profile-list-empty'),
+          style: AppTypography.caption(color: AppColors.inkMuted),
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final profile in result.profiles)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _ProfileRow(profile: profile),
+            ),
+        ],
+      );
+    }
+    final message = switch (result.outcome) {
+      CcidProfileListOutcome.readFailed => "Couldn't list profiles.",
+      CcidProfileListOutcome.notPoweredOn => 'Power on the card first.',
+      CcidProfileListOutcome.detached => 'The reader was unplugged mid-read.',
+      CcidProfileListOutcome.success => '', // unreachable, handled above
+      CcidProfileListOutcome.unknown => "Couldn't list profiles.",
+    };
+    return Text(message, style: AppTypography.caption(color: AppColors.danger));
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({required this.profile});
+
+  final ProfileInfo profile;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(profile.displayName, style: AppTypography.label()),
+            const SizedBox(height: 2),
+            Text(
+              // docs/Rules.md: "EID, ICCIDs and card info stay on the
+              // device" and "mask them in UI by default" -- same
+              // mask-last-4 convention as the EID, no reveal/copy for
+              // this list view (FR-L916 only asks for "masked ICCID").
+              _maskIccid(profile.iccid),
+              style: AppTypography.caption(color: AppColors.inkMuted),
+            ),
+            Text(
+              '${profile.serviceProviderName ?? 'Unknown provider'} · '
+              '${_profileClassLabel(profile.profileClass)}',
+              style: AppTypography.caption(color: AppColors.inkMuted),
+            ),
+            Text(
+              profile.state == ProfileState.enabled ? 'Enabled' : 'Disabled',
+              style: AppTypography.caption(
+                color: profile.state == ProfileState.enabled
+                    ? AppColors.success
+                    : AppColors.inkMuted,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+String _maskIccid(String? iccid) {
+  if (iccid == null || iccid.isEmpty) return 'Unknown ICCID';
+  return iccid.length > 4
+      ? '${'•' * (iccid.length - 4)}${iccid.substring(iccid.length - 4)}'
+      : iccid;
+}
+
+String _profileClassLabel(ProfileClass profileClass) => switch (profileClass) {
+      ProfileClass.test => 'Test',
+      ProfileClass.provisioning => 'Provisioning',
+      ProfileClass.operational => 'Operational',
+      ProfileClass.undefined => 'Unknown class',
+    };

@@ -25,13 +25,16 @@ class _FakeCcidChannel implements CcidChannel {
     Map<String, dynamic>? selectIsdRResult,
     Map<String, dynamic>? readEidResult,
     Map<String, dynamic>? readEuiccInfo2Result,
+    Map<String, dynamic>? listProfilesResult,
   })  : _hasUsbHost = hasUsbHost,
         _permissionResult = permissionResult ?? const {'result': 'granted'},
         _powerOnResult = powerOnResult ?? const {'outcome': 'success'},
         _selectIsdRResult = selectIsdRResult ?? const {'outcome': 'success'},
         _readEidResult = readEidResult ?? const {'outcome': 'success'},
         _readEuiccInfo2Result =
-            readEuiccInfo2Result ?? const {'outcome': 'success'};
+            readEuiccInfo2Result ?? const {'outcome': 'success'},
+        _listProfilesResult =
+            listProfilesResult ?? const {'outcome': 'success', 'profiles': []};
 
   final bool _hasUsbHost;
   final Map<String, dynamic> _permissionResult;
@@ -39,6 +42,7 @@ class _FakeCcidChannel implements CcidChannel {
   final Map<String, dynamic> _selectIsdRResult;
   final Map<String, dynamic> _readEidResult;
   final Map<String, dynamic> _readEuiccInfo2Result;
+  final Map<String, dynamic> _listProfilesResult;
   List<Map<String, dynamic>> _current = const [];
   final _watchers = <StreamController<List<Map<String, dynamic>>>>[];
   int requestPermissionCalls = 0;
@@ -51,6 +55,8 @@ class _FakeCcidChannel implements CcidChannel {
   int? lastReadEidDeviceId;
   int readEuiccInfo2Calls = 0;
   int? lastReadEuiccInfo2DeviceId;
+  int listProfilesCalls = 0;
+  int? lastListProfilesDeviceId;
 
   @override
   Future<bool> hasUsbHostFeature() async => _hasUsbHost;
@@ -104,6 +110,13 @@ class _FakeCcidChannel implements CcidChannel {
     readEuiccInfo2Calls++;
     lastReadEuiccInfo2DeviceId = deviceId;
     return _readEuiccInfo2Result;
+  }
+
+  @override
+  Future<Map<String, dynamic>> listProfiles(int deviceId) async {
+    listProfilesCalls++;
+    lastListProfilesDeviceId = deviceId;
+    return _listProfilesResult;
   }
 
   /// Simulates a real hot-plug broadcast (attach/detach) -- delivered to
@@ -775,6 +788,142 @@ void main() {
           find.byKey(const ValueKey('adapter-reader-2-chip-info-button'));
       await tester.ensureVisible(chipInfoButton);
       await tester.tap(chipInfoButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('The reader was unplugged mid-read.'), findsOneWidget);
+    });
+  });
+
+  group('FR-L916: list profiles', () {
+    Future<void> powerOnReader(WidgetTester tester) async {
+      final powerOnButton =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(powerOnButton);
+      await tester.tap(powerOnButton);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('no "List profiles" button before a successful power-on',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('adapter-reader-2-list-profiles-button')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'after power-on, tapping "List profiles" shows the real masked '
+        'ICCID, provider, name, and enabled state', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        listProfilesResult: const {
+          'outcome': 'success',
+          'profiles': [
+            {
+              'iccid': '8900000000000000001',
+              'serviceProviderName': 'Triptel',
+              'profileName': 'Triptel Travel',
+              'profileNickname': null,
+              'state': 'enabled',
+              'profileClass': 'operational',
+            },
+          ],
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final listButton =
+          find.byKey(const ValueKey('adapter-reader-2-list-profiles-button'));
+      await tester.ensureVisible(listButton);
+      await tester.tap(listButton);
+      await tester.pumpAndSettle();
+
+      expect(channel.listProfilesCalls, 1);
+      expect(channel.lastListProfilesDeviceId, 2);
+      // Masked: only the last 4 real digits visible, never the full ICCID.
+      expect(find.text('8900000000000000001'), findsNothing);
+      expect(find.textContaining('0001'), findsOneWidget);
+      expect(find.text('Triptel Travel'), findsOneWidget);
+      expect(find.textContaining('Triptel'), findsWidgets);
+      expect(find.textContaining('Operational'), findsOneWidget);
+      expect(find.text('Enabled'), findsOneWidget);
+    });
+
+    testWidgets('an empty profile list shows a clear empty state',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        listProfilesResult: const {'outcome': 'success', 'profiles': []},
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final listButton =
+          find.byKey(const ValueKey('adapter-reader-2-list-profiles-button'));
+      await tester.ensureVisible(listButton);
+      await tester.tap(listButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('No profiles on this card.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a detached (unplugged mid-read) result shows a distinct '
+        'message, never crashes', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        listProfilesResult: const {'outcome': 'detached'},
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final listButton =
+          find.byKey(const ValueKey('adapter-reader-2-list-profiles-button'));
+      await tester.ensureVisible(listButton);
+      await tester.tap(listButton);
       await tester.pumpAndSettle();
 
       expect(find.text('The reader was unplugged mid-read.'), findsOneWidget);

@@ -78,6 +78,14 @@ class MainActivity : FlutterActivity() {
                         usbCcidReaders.readEuiccInfo2(deviceId, result)
                     }
                 }
+                "listProfiles" -> {
+                    val deviceId = call.argument<Int>("deviceId")
+                    if (deviceId == null) {
+                        result.error("invalid_argument", "deviceId is required", null)
+                    } else {
+                        usbCcidReaders.listProfiles(deviceId, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

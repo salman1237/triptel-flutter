@@ -82,6 +82,15 @@ class LpaBridge(private val transceiver: CcidTransceiver) {
      * any failure -- never throws. */
     external fun nativeReadEuiccInfo2(): String?
 
+    /** FR-L916: lists profiles on the card via lpac's
+     * `es10c_get_profiles_info()` (native, `lpa_jni.c`), returned as a
+     * JSON array string (one object per profile: `iccid`,
+     * `serviceProviderName`, `profileName`, `profileNickname`,
+     * `state` ("enabled"|"disabled"|"undefined"), `profileClass`
+     * ("test"|"provisioning"|"operational"|"undefined")). `null` on
+     * any failure -- never throws. */
+    external fun nativeListProfiles(): String?
+
     companion object {
         init {
             System.loadLibrary("triptel-lpa-jni")
