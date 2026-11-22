@@ -33,7 +33,7 @@ real EID `89086030202200000026000135090432`, masked by default
 sent to any API. Reviewer: PASS, with extra scrutiny given the stakes
 (license boundary independently re-checked clean; JNI deadlock-freedom
 independently traced thread-by-thread, not just trusted from comments).
-FR-L914 passing, commit pending.
+FR-L914 passing, commit `16f7f52`.
 **Next step:** FR-L915 (adapter screen + chip info -- EuiccInfo2
 summary, free memory, SGP.22 version) is next; it builds on the same
 LpaBridge/euicc_ctx foundation FR-L914 just proved works end to end.

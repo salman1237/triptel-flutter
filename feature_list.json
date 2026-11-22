@@ -1203,7 +1203,7 @@
       "verification": "bash harness.sh native-test && bash harness.sh verify",
       "state": "passing",
       "evidence": {
-        "commit": "pending",
+        "commit": "16f7f52",
         "screens": ["artifacts/l914-powered.png", "artifacts/l914-eid-masked.png", "artifacts/l914-eid-revealed.png"],
         "notes": "Vendored lpac's euicc/ (LGPL-2.1-only, user-confirmed license path, DECISIONS.md) + cjson/cjson-ext unmodified under third_party/lpac-euicc/ (see its VENDORED.md for exact upstream commits). Wrote this project's first native code: android/app/src/main/jni/Android.mk (ndk-build, 3-module graph: lpac-cjson -> lpac-euicc -> triptel-lpa-jni) + lpa_jni.c (JNI glue implementing euicc_apdu_interface by calling back into LpaBridge.kt, which drives the already-verified CcidTransceiver/ApduChannel). Interface shape confirmed against two independent sources before writing glue code (euicc/interface.h + euicc.c directly, and jmp-sim-manager's own shipping lpac-jni as a second source) per the FR's own required spike methodology. Confirmed live on the real USB CCID reader + real eUICC card: a full euicc_init() (MANAGE CHANNEL + SELECT ISD-R via the JNI callbacks) + es10c_get_eid() + euicc_fini() round trip returned the real EID 89086030202200000026000135090432, masked by default (per docs/Rules.md) with a working reveal/copy toggle, never sent to any API. Reviewer: PASS (license boundary clean -- only euicc/cjson/cjson-ext vendored, no AGPL src/driver/ code anywhere; JNI deadlock-avoidance independently traced thread-by-thread, confirmed genuinely deadlock-free; no FR-L915+ scope creep; 904 Dart tests + harness.sh verify green)."
       }
