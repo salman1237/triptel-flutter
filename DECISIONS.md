@@ -1268,3 +1268,31 @@ per native call, and cJSON was already a zero-cost dependency. **How to
 apply:** any future ES10x call that needs to return more than one scalar
 (e.g. FR-L916's profile list) should follow the same JSON-string convention
 unless the payload becomes large enough that JSON parsing overhead matters.
+
+## 2026-11-22 — FR-L916: `org.json.JSONObject.optString` silently returns "null" for a JSON null, not empty
+Found live on a real card: a profile with a null native field
+(`profileNickname`/`profileName`) rendered the literal word "null" in
+the UI instead of falling back to the next name in the display chain.
+**Root cause:** `optString(key)` on Android's `org.json` does not
+treat a JSON `null` value the same as a missing key -- it calls
+`.toString()` on the stored `JSONObject.NULL` singleton, which is the
+string `"null"`, and returns that (not `""`). `cJSON_AddStringOrNullToObject`
+(used in `lpa_jni.c` for every optional native string field, e.g. EID,
+profile name, SGP.22 `svn`) legitimately emits a JSON `null` for an
+absent C string, so any Kotlin code reading one of these fields with
+plain `optString(key).ifEmpty { null }` has this bug -- it just doesn't
+surface until a real device returns an actually-null value for that
+specific field. **Decision:** added a shared
+`optStringOrNull(obj, key)` helper (`UsbCcidReaders.kt`) that checks
+`obj.isNull(key)` first; applied to FR-L916's new `listProfiles()` and
+retrofitted into FR-L915's already-shipped `readEuiccInfo2()` (`svn`
+field had the same latent bug, just not yet observed since that card's
+`svn` happened to be non-null). **Why recorded:** this is exactly the
+kind of bug that passes every test built with synthetic non-null
+fixtures and only shows up against a real card's real null fields --
+the project's own "verified against the real thing, not a guess"
+discipline is what caught it here. **How to apply:** any future native
+JNI call that reads an optional string field cJSON serialized via
+`cJSON_AddStringOrNullToObject` must go through `optStringOrNull`, not
+bare `optString(...).ifEmpty { null }` -- grep `UsbCcidReaders.kt` for
+every call site before adding a new one.

@@ -1224,9 +1224,13 @@
       "id": "FR-L916",
       "behavior": "eSIM adapter: list profiles on the card (masked ICCID, provider, name/nickname, enabled state, class), refreshed after every mutation",
       "verification": "flutter test test/features/adapter && bash harness.sh shot FR-L916",
-      "state": "blocked",
-      "blocked_reason": "Gates 1-3 (depends on FR-L914).",
-      "evidence": null
+      "state": "passing",
+      "blocked_reason": null,
+      "evidence": {
+        "commit": "e78e03f",
+        "screens": ["artifacts/FR-L916.png"],
+        "notes": "flutter test test/features/adapter: 127 tests pass (incl. new FR-L916: list profiles group + profile_info_test.dart). bash harness.sh verify: green (932 tests, APK built). bash harness.sh native-test: JVM suite green. Reviewer agent: PASS, no FAIL items. Live on real device (EMV Smartcard Reader via wireless adb): Power on -> Select ISD-R -> List profiles showed the real card's one profile: masked ICCID (mask-last-4), 'Carrier . Operational', 'Enabled', real name 'ESIM_ACCESS_CARRIER'. Found and fixed a real bug live: org.json.JSONObject.optString() returns the literal string 'null' for a JSON null value, so a profile with a null native field first rendered the literal word 'null' as its name; added optStringOrNull() (checks JSONObject.isNull first), applied here and retrofitted into FR-L915's readEuiccInfo2 svn field (same latent bug, not previously observed live). Re-tested live after the fix: real profile name rendered correctly. Non-vacuousness proven for the empty-list message and the ICCID masking (both broken, confirmed the relevant widget test failed, restored)."
+      }
     },
     {
       "id": "FR-L917",

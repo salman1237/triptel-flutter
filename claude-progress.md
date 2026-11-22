@@ -1,6 +1,46 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-22 — FR-L916 passing: list profiles on the card, real "null"-string bug found and fixed live
+New native entry point `nativeListProfiles` (lpa_jni.c) walks lpac's
+`es10c_get_profiles_info()` linked list into a JSON array (same
+JSON-string JNI convention as FR-L915) -- one object per profile:
+masked ICCID, provider, name/nickname, enabled/disabled state, profile
+class. `ProfileInfo.displayName` picks nickname > profile name >
+provider > an honest "Unnamed profile" fallback. ICCID masked with the
+same mask-last-4 convention as the EID (docs/Rules.md: "mask them in
+UI by default"), no reveal/copy for this list view since the FR only
+asks for "masked ICCID".
+
+**Found and fixed a real bug live on the actual card**: a profile
+missing its `profileNickname`/`profileName` rendered the literal word
+"null" in the UI instead of falling back to the next name in the
+chain. Root cause: `org.json.JSONObject.optString(key)` returns the
+*string* `"null"` (not empty) when the JSON value is an explicit
+`null` -- which cJSON's `cJSON_AddStringOrNullToObject` legitimately
+produces for an absent C string. Fixed with a shared
+`optStringOrNull()` helper (checks `JSONObject.isNull()` first) in
+`UsbCcidReaders.kt`, applied to the new `listProfiles()` and
+retrofitted into FR-L915's already-shipped `readEuiccInfo2()` (same
+latent bug existed there for `svn`, just not yet observed live since
+that card's `svn` happened to be non-null).
+
+**Confirmed live** on the real USB CCID reader + eUICC card (wireless
+adb): Power on -> Select ISD-R -> List profiles showed the real card's
+one profile -- masked ICCID, "Carrier · Operational", "Enabled", and
+(after the fix) the real name "ESIM_ACCESS_CARRIER" instead of "null".
+Non-vacuousness proven for the empty-list message and the ICCID
+masking (both broken, confirmed the relevant widget test failed,
+restored). Reviewer: PASS, no FAIL items (cJSON/list lifecycle, the
+JSON-null fix's completeness -- grepped every other `optString` call
+site in the file -- masking, scope, and test non-vacuousness all
+independently checked). FR-L916 passing, commit `e78e03f`.
+**Next step:** FR-L917 (download a profile, SGP.22 ES9+) is next, but
+it's `blocked` -- needs either a free/test activation code or the
+user's explicit OK to consume a real Triptel order's code (real
+money), per feature_list.json's own gate. All of FR-L918–L922 chain
+off FR-L917 in turn.
+
 ## 2026-11-22 — FR-L915 passing: chip info (EuiccInfo2) + unplugged mid-read state
 Most of FR-L915's stated scope (reader list, permission CTA, masked/
 copyable EID) was already built by FR-L910–L914; the genuinely new work
