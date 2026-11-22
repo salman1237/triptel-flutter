@@ -41,6 +41,12 @@ abstract class CcidChannel {
   /// Requires the card to already be powered on. Always resolves (never
   /// throws) to a raw `{"outcome": "success"|"read_failed"|...}` map.
   Future<Map<String, dynamic>> readEid(int deviceId);
+
+  /// FR-L915: reads the card's EuiccInfo2 summary (SGP.22 spec version,
+  /// free memory) via lpac's `euicc/`. Requires the card to already be
+  /// powered on. Always resolves (never throws) to a raw
+  /// `{"outcome": "success"|"read_failed"|"detached"|...}` map.
+  Future<Map<String, dynamic>> readEuiccInfo2(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -82,6 +88,13 @@ class CcidChannelImpl implements CcidChannel {
   Future<Map<String, dynamic>> readEid(int deviceId) async {
     final raw = await _methodChannel
         .invokeMapMethod<String, dynamic>('readEid', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> readEuiccInfo2(int deviceId) async {
+    final raw = await _methodChannel.invokeMapMethod<String, dynamic>(
+        'readEuiccInfo2', {'deviceId': deviceId});
     return raw ?? const {};
   }
 }

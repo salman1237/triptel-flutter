@@ -24,17 +24,21 @@ class _FakeCcidChannel implements CcidChannel {
     Map<String, dynamic>? powerOnResult,
     Map<String, dynamic>? selectIsdRResult,
     Map<String, dynamic>? readEidResult,
+    Map<String, dynamic>? readEuiccInfo2Result,
   })  : _hasUsbHost = hasUsbHost,
         _permissionResult = permissionResult ?? const {'result': 'granted'},
         _powerOnResult = powerOnResult ?? const {'outcome': 'success'},
         _selectIsdRResult = selectIsdRResult ?? const {'outcome': 'success'},
-        _readEidResult = readEidResult ?? const {'outcome': 'success'};
+        _readEidResult = readEidResult ?? const {'outcome': 'success'},
+        _readEuiccInfo2Result =
+            readEuiccInfo2Result ?? const {'outcome': 'success'};
 
   final bool _hasUsbHost;
   final Map<String, dynamic> _permissionResult;
   final Map<String, dynamic> _powerOnResult;
   final Map<String, dynamic> _selectIsdRResult;
   final Map<String, dynamic> _readEidResult;
+  final Map<String, dynamic> _readEuiccInfo2Result;
   List<Map<String, dynamic>> _current = const [];
   final _watchers = <StreamController<List<Map<String, dynamic>>>>[];
   int requestPermissionCalls = 0;
@@ -45,6 +49,8 @@ class _FakeCcidChannel implements CcidChannel {
   int? lastSelectIsdRDeviceId;
   int readEidCalls = 0;
   int? lastReadEidDeviceId;
+  int readEuiccInfo2Calls = 0;
+  int? lastReadEuiccInfo2DeviceId;
 
   @override
   Future<bool> hasUsbHostFeature() async => _hasUsbHost;
@@ -91,6 +97,13 @@ class _FakeCcidChannel implements CcidChannel {
     readEidCalls++;
     lastReadEidDeviceId = deviceId;
     return _readEidResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> readEuiccInfo2(int deviceId) async {
+    readEuiccInfo2Calls++;
+    lastReadEuiccInfo2DeviceId = deviceId;
+    return _readEuiccInfo2Result;
   }
 
   /// Simulates a real hot-plug broadcast (attach/detach) -- delivered to
@@ -670,6 +683,101 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("Couldn't read the EID."), findsOneWidget);
+    });
+  });
+
+  group('FR-L915: chip info', () {
+    Future<void> powerOnReader(WidgetTester tester) async {
+      final powerOnButton =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(powerOnButton);
+      await tester.tap(powerOnButton);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('no "Chip info" button before a successful power-on',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('adapter-reader-2-chip-info-button')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'after power-on, tapping "Chip info" shows the real SGP.22 '
+        'version and free memory', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        readEuiccInfo2Result: const {
+          'outcome': 'success',
+          'svn': '2.2.0',
+          'freeNonVolatileMemory': 427416,
+          'freeVolatileMemory': 12544,
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final chipInfoButton =
+          find.byKey(const ValueKey('adapter-reader-2-chip-info-button'));
+      await tester.ensureVisible(chipInfoButton);
+      await tester.tap(chipInfoButton);
+      await tester.pumpAndSettle();
+
+      expect(channel.readEuiccInfo2Calls, 1);
+      expect(channel.lastReadEuiccInfo2DeviceId, 2);
+      expect(find.textContaining('2.2.0'), findsOneWidget);
+      expect(find.textContaining('417.4 KB'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a detached (unplugged mid-read) result shows a distinct '
+        'message, never crashes', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        readEuiccInfo2Result: const {'outcome': 'detached'},
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final chipInfoButton =
+          find.byKey(const ValueKey('adapter-reader-2-chip-info-button'));
+      await tester.ensureVisible(chipInfoButton);
+      await tester.tap(chipInfoButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('The reader was unplugged mid-read.'), findsOneWidget);
     });
   });
 }

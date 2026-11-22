@@ -75,6 +75,13 @@ class LpaBridge(private val transceiver: CcidTransceiver) {
      * throws. */
     external fun nativeReadEid(): String?
 
+    /** FR-L915's chip-info summary: SGP.22 spec version + free memory,
+     * via lpac's `es10c_ex_get_euiccinfo2()` (native, `lpa_jni.c`),
+     * returned as a small JSON string (`{"svn":..,
+     * "freeNonVolatileMemory":..,"freeVolatileMemory":..}`). `null` on
+     * any failure -- never throws. */
+    external fun nativeReadEuiccInfo2(): String?
+
     companion object {
         init {
             System.loadLibrary("triptel-lpa-jni")

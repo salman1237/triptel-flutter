@@ -7,6 +7,11 @@ enum CcidReadEidOutcome {
   readFailed,
   notPoweredOn,
 
+  /// FR-L915: the reader was unplugged mid-read -- distinct from a
+  /// generic [readFailed] (re-checked natively against the live USB
+  /// device list at the moment of failure, not guessed).
+  detached,
+
   /// The native side returned an `outcome` string this Dart code
   /// doesn't recognize yet -- surfaced honestly rather than silently
   /// mapped to some other outcome.
@@ -32,5 +37,6 @@ CcidReadEidOutcome _parseOutcome(String? raw) => switch (raw) {
       'success' => CcidReadEidOutcome.success,
       'read_failed' => CcidReadEidOutcome.readFailed,
       'not_powered_on' => CcidReadEidOutcome.notPoweredOn,
+      'detached' => CcidReadEidOutcome.detached,
       _ => CcidReadEidOutcome.unknown,
     };

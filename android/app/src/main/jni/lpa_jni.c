@@ -23,8 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <euicc/euicc.h>
+#include <cjson-ext/cJSON_ex.h>
+#include <cjson/cJSON.h>
 #include <euicc/es10c.h>
+#include <euicc/es10c_ex.h>
+#include <euicc/euicc.h>
 
 static JavaVM *g_vm = NULL;
 static jclass g_bridge_class = NULL;
@@ -170,6 +173,51 @@ JNIEXPORT jstring JNICALL Java_co_triptel_app_lpa_LpaBridge_nativeReadEid(JNIEnv
         if (es10c_get_eid(&ctx, &eid) == 0 && eid != NULL) {
             result = (*env)->NewStringUTF(env, eid);
             free(eid);
+        }
+        euicc_fini(&ctx);
+    }
+
+    (*env)->DeleteGlobalRef(env, g_bridge);
+    g_bridge = NULL;
+    return result;
+}
+
+/*
+ * FR-L915: the chip-info summary the FR asks for (free memory, SGP.22
+ * version) -- SGP.22's `svn` field (es10c_ex_euiccinfo2.svn) *is* the
+ * spec version number, per euicc/es10c_ex.c's own comment on tag 0x82.
+ * Returned as a small JSON string (cJSON is already linked in via
+ * lpac-cjson, see Android.mk) rather than inventing a second ad-hoc
+ * serialization just for this one call; Kotlin/Dart parse it.
+ * NULL on any failure (device unplugged mid-read included -- the
+ * caller distinguishes that from other failures by re-checking
+ * UsbManager.deviceList, not from anything this function reports).
+ */
+JNIEXPORT jstring JNICALL Java_co_triptel_app_lpa_LpaBridge_nativeReadEuiccInfo2(JNIEnv *env, jobject thiz) {
+    cache_methods_if_needed(env, thiz);
+    g_bridge = (*env)->NewGlobalRef(env, thiz);
+
+    struct euicc_ctx ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    ctx.apdu.interface = &g_apdu_interface;
+
+    jstring result = NULL;
+    if (euicc_init(&ctx) == 0) {
+        struct es10c_ex_euiccinfo2 info;
+        if (es10c_ex_get_euiccinfo2(&ctx, &info) == 0) {
+            cJSON *json = cJSON_CreateObject();
+            cJSON_AddStringOrNullToObject(json, "svn", info.svn);
+            cJSON_AddNumberToObject(json, "freeNonVolatileMemory",
+                                     info.extCardResource.freeNonVolatileMemory);
+            cJSON_AddNumberToObject(json, "freeVolatileMemory",
+                                     info.extCardResource.freeVolatileMemory);
+            char *printed = cJSON_PrintUnformatted(json);
+            if (printed != NULL) {
+                result = (*env)->NewStringUTF(env, printed);
+                free(printed);
+            }
+            cJSON_Delete(json);
+            es10c_ex_euiccinfo2_free(&info);
         }
         euicc_fini(&ctx);
     }

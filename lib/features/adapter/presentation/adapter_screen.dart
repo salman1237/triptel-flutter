@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/widgets/widgets.dart';
+import '../application/ccid_euicc_info_result.dart';
 import '../application/ccid_permission_result.dart';
 import '../application/ccid_power_on_result.dart';
 import '../application/ccid_providers.dart';
@@ -31,6 +32,7 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
   final Map<int, CcidPowerOnResult> _powerOnResults = {};
   final Map<int, CcidSelectIsdRResult> _selectIsdRResults = {};
   final Map<int, CcidReadEidResult> _readEidResults = {};
+  final Map<int, CcidEuiccInfoResult> _euiccInfoResults = {};
   final Set<int> _eidRevealed = {};
 
   Future<void> _requestPermission(CcidReader reader) async {
@@ -79,6 +81,14 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
     });
   }
 
+  Future<void> _readEuiccInfo(CcidReader reader) async {
+    final raw = await ref.read(ccidChannelProvider).readEuiccInfo2(reader.id);
+    if (!mounted) return;
+    setState(() {
+      _euiccInfoResults[reader.id] = CcidEuiccInfoResult.fromRaw(raw);
+    });
+  }
+
   void _toggleEidRevealed(int readerId) {
     setState(() {
       if (!_eidRevealed.add(readerId)) _eidRevealed.remove(readerId);
@@ -120,11 +130,13 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
                     powerOnResults: _powerOnResults,
                     selectIsdRResults: _selectIsdRResults,
                     readEidResults: _readEidResults,
+                    euiccInfoResults: _euiccInfoResults,
                     eidRevealed: _eidRevealed,
                     onRequestPermission: _requestPermission,
                     onPowerOn: _powerOn,
                     onSelectIsdR: _selectIsdR,
                     onReadEid: _readEid,
+                    onReadEuiccInfo: _readEuiccInfo,
                     onToggleEidRevealed: _toggleEidRevealed,
                     onCopyEid: _copyEid,
                   ),
@@ -176,11 +188,13 @@ class _ReadersList extends StatelessWidget {
     required this.powerOnResults,
     required this.selectIsdRResults,
     required this.readEidResults,
+    required this.euiccInfoResults,
     required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
     required this.onReadEid,
+    required this.onReadEuiccInfo,
     required this.onToggleEidRevealed,
     required this.onCopyEid,
   });
@@ -189,11 +203,13 @@ class _ReadersList extends StatelessWidget {
   final Map<int, CcidPowerOnResult> powerOnResults;
   final Map<int, CcidSelectIsdRResult> selectIsdRResults;
   final Map<int, CcidReadEidResult> readEidResults;
+  final Map<int, CcidEuiccInfoResult> euiccInfoResults;
   final Set<int> eidRevealed;
   final ValueChanged<CcidReader> onRequestPermission;
   final ValueChanged<CcidReader> onPowerOn;
   final ValueChanged<CcidReader> onSelectIsdR;
   final ValueChanged<CcidReader> onReadEid;
+  final ValueChanged<CcidReader> onReadEuiccInfo;
   final ValueChanged<int> onToggleEidRevealed;
   final ValueChanged<String> onCopyEid;
 
@@ -207,11 +223,13 @@ class _ReadersList extends StatelessWidget {
               powerOnResult: powerOnResults[reader.id],
               selectIsdRResult: selectIsdRResults[reader.id],
               readEidResult: readEidResults[reader.id],
+              euiccInfoResult: euiccInfoResults[reader.id],
               eidRevealed: eidRevealed.contains(reader.id),
               onRequestPermission: () => onRequestPermission(reader),
               onPowerOn: () => onPowerOn(reader),
               onSelectIsdR: () => onSelectIsdR(reader),
               onReadEid: () => onReadEid(reader),
+              onReadEuiccInfo: () => onReadEuiccInfo(reader),
               onToggleEidRevealed: () => onToggleEidRevealed(reader.id),
               onCopyEid: onCopyEid,
             ),
@@ -227,11 +245,13 @@ class _ReaderCard extends StatelessWidget {
     required this.powerOnResult,
     required this.selectIsdRResult,
     required this.readEidResult,
+    required this.euiccInfoResult,
     required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
     required this.onReadEid,
+    required this.onReadEuiccInfo,
     required this.onToggleEidRevealed,
     required this.onCopyEid,
   });
@@ -240,11 +260,13 @@ class _ReaderCard extends StatelessWidget {
   final CcidPowerOnResult? powerOnResult;
   final CcidSelectIsdRResult? selectIsdRResult;
   final CcidReadEidResult? readEidResult;
+  final CcidEuiccInfoResult? euiccInfoResult;
   final bool eidRevealed;
   final VoidCallback onRequestPermission;
   final VoidCallback onPowerOn;
   final VoidCallback onSelectIsdR;
   final VoidCallback onReadEid;
+  final VoidCallback onReadEuiccInfo;
   final VoidCallback onToggleEidRevealed;
   final ValueChanged<String> onCopyEid;
 
@@ -347,6 +369,21 @@ class _ReaderCard extends StatelessWidget {
                     revealed: eidRevealed,
                     onToggleRevealed: onToggleEidRevealed,
                     onCopy: onCopyEid,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                PillButton(
+                  key: ValueKey('adapter-reader-${reader.id}-chip-info-button'),
+                  label: 'Chip info',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: onReadEuiccInfo,
+                ),
+                if (euiccInfoResult != null) ...[
+                  const SizedBox(height: 12),
+                  _EuiccInfoResultView(
+                    key: ValueKey(
+                        'adapter-reader-${reader.id}-chip-info-result'),
+                    result: euiccInfoResult!,
                   ),
                 ],
               ],
@@ -485,9 +522,47 @@ class _ReadEidResultView extends StatelessWidget {
     final message = switch (result.outcome) {
       CcidReadEidOutcome.readFailed => "Couldn't read the EID.",
       CcidReadEidOutcome.notPoweredOn => 'Power on the card first.',
+      CcidReadEidOutcome.detached => 'The reader was unplugged mid-read.',
       CcidReadEidOutcome.success => '', // unreachable, handled above
       CcidReadEidOutcome.unknown => "Couldn't read the EID.",
     };
     return Text(message, style: AppTypography.caption(color: AppColors.danger));
   }
+}
+
+class _EuiccInfoResultView extends StatelessWidget {
+  const _EuiccInfoResultView({super.key, required this.result});
+
+  final CcidEuiccInfoResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == CcidEuiccInfoOutcome.success) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Chip info', style: AppTypography.label()),
+          Text(
+            'SGP.22 v${result.svn ?? '?'} · '
+            '${_formatBytes(result.freeNonVolatileMemory)} free',
+            style: AppTypography.caption(),
+          ),
+        ],
+      );
+    }
+    final message = switch (result.outcome) {
+      CcidEuiccInfoOutcome.readFailed => "Couldn't read the chip info.",
+      CcidEuiccInfoOutcome.notPoweredOn => 'Power on the card first.',
+      CcidEuiccInfoOutcome.detached => 'The reader was unplugged mid-read.',
+      CcidEuiccInfoOutcome.success => '', // unreachable, handled above
+      CcidEuiccInfoOutcome.unknown => "Couldn't read the chip info.",
+    };
+    return Text(message, style: AppTypography.caption(color: AppColors.danger));
+  }
+}
+
+String _formatBytes(int? bytes) {
+  if (bytes == null) return 'an unknown amount of';
+  if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '$bytes bytes';
 }

@@ -70,6 +70,14 @@ class MainActivity : FlutterActivity() {
                         usbCcidReaders.readEid(deviceId, result)
                     }
                 }
+                "readEuiccInfo2" -> {
+                    val deviceId = call.argument<Int>("deviceId")
+                    if (deviceId == null) {
+                        result.error("invalid_argument", "deviceId is required", null)
+                    } else {
+                        usbCcidReaders.readEuiccInfo2(deviceId, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

@@ -341,10 +341,62 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
                 if (eid != null) {
                     mapOf("outcome" to "success", "eid" to eid)
                 } else {
-                    mapOf("outcome" to "read_failed")
+                    mapOf("outcome" to failureOutcome(deviceId))
                 }
             mainHandler.post { result.success(response) }
         }.start()
+    }
+
+    /**
+     * FR-L915: the EuiccInfo2 chip-info summary (SGP.22 spec version,
+     * free memory) -- same session/threading rules as [readEid].
+     */
+    fun readEuiccInfo2(deviceId: Int, result: MethodChannel.Result) {
+        val transceiver = transceivers[deviceId]
+        if (transceiver == null) {
+            result.success(mapOf("outcome" to "not_powered_on"))
+            return
+        }
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        Thread {
+            val raw =
+                try {
+                    LpaBridge(transceiver).nativeReadEuiccInfo2()
+                } catch (e: Exception) {
+                    Log.w(TAG, "nativeReadEuiccInfo2 failed", e)
+                    null
+                }
+            val json = raw?.let {
+                try {
+                    org.json.JSONObject(it)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val response =
+                if (json != null) {
+                    mapOf(
+                        "outcome" to "success",
+                        "svn" to json.optString("svn").ifEmpty { null },
+                        "freeNonVolatileMemory" to json.optLong("freeNonVolatileMemory"),
+                        "freeVolatileMemory" to json.optLong("freeVolatileMemory"),
+                    )
+                } else {
+                    mapOf("outcome" to failureOutcome(deviceId))
+                }
+            mainHandler.post { result.success(response) }
+        }.start()
+    }
+
+    /** FR-L915's "unplugged mid-read" state: a failed native read is
+     * reported as `detached` (not a generic failure) if the device is
+     * no longer in `deviceList` by the time it's checked -- the same
+     * re-check technique FR-L911 uses to disambiguate "denied" from
+     * "detached meanwhile" for permission requests. */
+    private fun failureOutcome(deviceId: Int): String {
+        val stillPresent = usbManager.deviceList.values.any { it.deviceId == deviceId }
+        return if (stillPresent) "read_failed" else "detached"
     }
 
     private fun openSession(device: UsbDevice): CcidTransceiver? {
