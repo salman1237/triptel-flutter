@@ -35,6 +35,12 @@ abstract class CcidChannel {
   /// Always resolves (never throws) to a raw
   /// `{"outcome": "success"|"select_failed"|"not_powered_on"|...}` map.
   Future<Map<String, dynamic>> selectIsdR(int deviceId);
+
+  /// FR-L914: reads the real EID via lpac's `euicc/` (vendored LGPL-2.1,
+  /// `third_party/lpac-euicc/`), driven through `LpaBridge`/`lpa_jni.c`.
+  /// Requires the card to already be powered on. Always resolves (never
+  /// throws) to a raw `{"outcome": "success"|"read_failed"|...}` map.
+  Future<Map<String, dynamic>> readEid(int deviceId);
 }
 
 class CcidChannelImpl implements CcidChannel {
@@ -69,6 +75,13 @@ class CcidChannelImpl implements CcidChannel {
   Future<Map<String, dynamic>> selectIsdR(int deviceId) async {
     final raw = await _methodChannel
         .invokeMapMethod<String, dynamic>('selectIsdR', {'deviceId': deviceId});
+    return raw ?? const {};
+  }
+
+  @override
+  Future<Map<String, dynamic>> readEid(int deviceId) async {
+    final raw = await _methodChannel
+        .invokeMapMethod<String, dynamic>('readEid', {'deviceId': deviceId});
     return raw ?? const {};
   }
 }

@@ -23,15 +23,18 @@ class _FakeCcidChannel implements CcidChannel {
     Map<String, dynamic>? permissionResult,
     Map<String, dynamic>? powerOnResult,
     Map<String, dynamic>? selectIsdRResult,
+    Map<String, dynamic>? readEidResult,
   })  : _hasUsbHost = hasUsbHost,
         _permissionResult = permissionResult ?? const {'result': 'granted'},
         _powerOnResult = powerOnResult ?? const {'outcome': 'success'},
-        _selectIsdRResult = selectIsdRResult ?? const {'outcome': 'success'};
+        _selectIsdRResult = selectIsdRResult ?? const {'outcome': 'success'},
+        _readEidResult = readEidResult ?? const {'outcome': 'success'};
 
   final bool _hasUsbHost;
   final Map<String, dynamic> _permissionResult;
   final Map<String, dynamic> _powerOnResult;
   final Map<String, dynamic> _selectIsdRResult;
+  final Map<String, dynamic> _readEidResult;
   List<Map<String, dynamic>> _current = const [];
   final _watchers = <StreamController<List<Map<String, dynamic>>>>[];
   int requestPermissionCalls = 0;
@@ -40,6 +43,8 @@ class _FakeCcidChannel implements CcidChannel {
   int? lastPowerOnDeviceId;
   int selectIsdRCalls = 0;
   int? lastSelectIsdRDeviceId;
+  int readEidCalls = 0;
+  int? lastReadEidDeviceId;
 
   @override
   Future<bool> hasUsbHostFeature() async => _hasUsbHost;
@@ -79,6 +84,13 @@ class _FakeCcidChannel implements CcidChannel {
     selectIsdRCalls++;
     lastSelectIsdRDeviceId = deviceId;
     return _selectIsdRResult;
+  }
+
+  @override
+  Future<Map<String, dynamic>> readEid(int deviceId) async {
+    readEidCalls++;
+    lastReadEidDeviceId = deviceId;
+    return _readEidResult;
   }
 
   /// Simulates a real hot-plug broadcast (attach/detach) -- delivered to
@@ -528,6 +540,136 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('6e00'), findsOneWidget);
+    });
+  });
+
+  group('FR-L914: read EID', () {
+    Future<void> powerOnReader(WidgetTester tester) async {
+      final powerOnButton =
+          find.byKey(const ValueKey('adapter-reader-2-power-on-button'));
+      await tester.ensureVisible(powerOnButton);
+      await tester.tap(powerOnButton);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('no "Read EID" button before a successful power-on',
+        (tester) async {
+      final channel = _FakeCcidChannel(hasUsbHost: true);
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('adapter-reader-2-read-eid-button')),
+          findsNothing);
+    });
+
+    testWidgets(
+        'after power-on, tapping "Read EID" shows the real EID masked by '
+        'default', (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        readEidResult: const {
+          'outcome': 'success',
+          'eid': '89086030000000000135090432000000',
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final readButton =
+          find.byKey(const ValueKey('adapter-reader-2-read-eid-button'));
+      await tester.ensureVisible(readButton);
+      await tester.tap(readButton);
+      await tester.pumpAndSettle();
+
+      expect(channel.readEidCalls, 1);
+      expect(channel.lastReadEidDeviceId, 2);
+      // Masked: only the last 4 real digits visible, never the full EID.
+      expect(find.text('89086030000000000135090432000000'), findsNothing);
+      expect(find.textContaining('0000'), findsOneWidget);
+    });
+
+    testWidgets('tapping the reveal toggle shows the real, unmasked EID',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        readEidResult: const {
+          'outcome': 'success',
+          'eid': '89086030000000000135090432000000',
+        },
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final readButton =
+          find.byKey(const ValueKey('adapter-reader-2-read-eid-button'));
+      await tester.ensureVisible(readButton);
+      await tester.tap(readButton);
+      await tester.pumpAndSettle();
+
+      final revealToggle =
+          find.byKey(const ValueKey('adapter-eid-reveal-toggle'));
+      await tester.ensureVisible(revealToggle);
+      await tester.tap(revealToggle);
+      await tester.pumpAndSettle();
+
+      expect(find.text('89086030000000000135090432000000'), findsOneWidget);
+    });
+
+    testWidgets('a read_failed result shows a clear message, never crashes',
+        (tester) async {
+      final channel = _FakeCcidChannel(
+        hasUsbHost: true,
+        readEidResult: const {'outcome': 'read_failed'},
+      );
+      await tester.pumpWidget(_app(channel));
+      channel.emit([
+        {
+          'id': 2,
+          'name': 'EMV Smartcard Reader',
+          'vendorId': 11491,
+          'productId': 38243,
+          'hasPermission': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      await powerOnReader(tester);
+
+      final readButton =
+          find.byKey(const ValueKey('adapter-reader-2-read-eid-button'));
+      await tester.ensureVisible(readButton);
+      await tester.tap(readButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't read the EID."), findsOneWidget);
     });
   });
 }

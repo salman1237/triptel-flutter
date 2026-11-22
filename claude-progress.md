@@ -1,6 +1,43 @@
 # claude-progress.md
 Session log. Read first at session start, update last at session end.
 
+## 2026-11-22 — FR-L914 passing: real EID read via the actual LGPL euicc library, first native code in this project
+With the user's go-ahead on the license path (LGPL-2.1, not the ESTKME
+commercial license -- DECISIONS.md), vendored lpac's `euicc/` + cjson/
+cjson-ext unmodified under `third_party/lpac-euicc/` (exact upstream
+commits in its `VENDORED.md`) and wrote this project's first-ever
+native (C/JNI) code: `android/app/src/main/jni/Android.mk` (ndk-build,
+not CMake -- matches jmp-sim-manager's own shape) + `lpa_jni.c`
+(implements `euicc_apdu_interface` by calling back into a new
+`LpaBridge.kt`, which drives the already-verified `CcidTransceiver`/
+`ApduChannel` from FR-L912/913 -- no USB/APDU logic duplicated in C).
+Confirmed the real interface shape from two independent sources
+(euicc/interface.h + euicc.c directly, and jmp-sim-manager's own
+shipping lpac-jni) before writing a line of glue, per the FR's own
+required "interface spike" methodology.
+
+Hit and fixed a real build bug: `cjson-ext`'s header expects
+`#include <cjson/cJSON.h>` with a directory prefix; fixed the ndk-build
+include path. Also carefully traced the JNI call's thread topology to
+avoid a single-thread-executor deadlock: `UsbCcidReaders.readEid()`
+spawns a plain `Thread` (never `CcidTransceiver.executor` itself) to
+call into native code, since the native glue calls back into
+`LpaBridge` methods that each submit-and-block on that same executor --
+calling from a thread already running on it would hang forever.
+
+**Confirmed live** on the real USB CCID reader + real eUICC card: a
+full `euicc_init()` (MANAGE CHANNEL + SELECT ISD-R via the JNI
+callbacks) + `es10c_get_eid()` + `euicc_fini()` round trip returned the
+real EID `89086030202200000026000135090432`, masked by default
+(docs/Rules.md) with a working reveal/copy toggle, confirmed never
+sent to any API. Reviewer: PASS, with extra scrutiny given the stakes
+(license boundary independently re-checked clean; JNI deadlock-freedom
+independently traced thread-by-thread, not just trusted from comments).
+FR-L914 passing, commit pending.
+**Next step:** FR-L915 (adapter screen + chip info -- EuiccInfo2
+summary, free memory, SGP.22 version) is next; it builds on the same
+LpaBridge/euicc_ctx foundation FR-L914 just proved works end to end.
+
 ## 2026-11-22 — FR-L913 passing: real SELECT ISD-R round trip, SW 9000, AID echoed back byte-for-byte
 Built the ISO/IEC 7816-4 APDU layer on top of FR-L910/911/912:
 `ApduChannel.kt` (MANAGE CHANNEL open/close, SELECT by AID, Terminal

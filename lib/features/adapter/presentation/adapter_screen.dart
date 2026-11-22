@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -7,6 +8,7 @@ import '../../../core/widgets/widgets.dart';
 import '../application/ccid_permission_result.dart';
 import '../application/ccid_power_on_result.dart';
 import '../application/ccid_providers.dart';
+import '../application/ccid_read_eid_result.dart';
 import '../application/ccid_reader.dart';
 import '../application/ccid_select_isdr_result.dart';
 
@@ -28,6 +30,8 @@ class AdapterScreen extends ConsumerStatefulWidget {
 class _AdapterScreenState extends ConsumerState<AdapterScreen> {
   final Map<int, CcidPowerOnResult> _powerOnResults = {};
   final Map<int, CcidSelectIsdRResult> _selectIsdRResults = {};
+  final Map<int, CcidReadEidResult> _readEidResults = {};
+  final Set<int> _eidRevealed = {};
 
   Future<void> _requestPermission(CcidReader reader) async {
     final raw =
@@ -67,6 +71,27 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
     });
   }
 
+  Future<void> _readEid(CcidReader reader) async {
+    final raw = await ref.read(ccidChannelProvider).readEid(reader.id);
+    if (!mounted) return;
+    setState(() {
+      _readEidResults[reader.id] = CcidReadEidResult.fromRaw(raw);
+    });
+  }
+
+  void _toggleEidRevealed(int readerId) {
+    setState(() {
+      if (!_eidRevealed.add(readerId)) _eidRevealed.remove(readerId);
+    });
+  }
+
+  Future<void> _copyEid(String eid) async {
+    await Clipboard.setData(ClipboardData(text: eid));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('EID copied.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasUsbHostAsync = ref.watch(ccidHasUsbHostProvider);
@@ -94,9 +119,14 @@ class _AdapterScreenState extends ConsumerState<AdapterScreen> {
                     readers: value,
                     powerOnResults: _powerOnResults,
                     selectIsdRResults: _selectIsdRResults,
+                    readEidResults: _readEidResults,
+                    eidRevealed: _eidRevealed,
                     onRequestPermission: _requestPermission,
                     onPowerOn: _powerOn,
                     onSelectIsdR: _selectIsdR,
+                    onReadEid: _readEid,
+                    onToggleEidRevealed: _toggleEidRevealed,
+                    onCopyEid: _copyEid,
                   ),
                 AsyncError() => ErrorState(
                     message: "Couldn't check for a reader.",
@@ -145,17 +175,27 @@ class _ReadersList extends StatelessWidget {
     required this.readers,
     required this.powerOnResults,
     required this.selectIsdRResults,
+    required this.readEidResults,
+    required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
+    required this.onReadEid,
+    required this.onToggleEidRevealed,
+    required this.onCopyEid,
   });
 
   final List<CcidReader> readers;
   final Map<int, CcidPowerOnResult> powerOnResults;
   final Map<int, CcidSelectIsdRResult> selectIsdRResults;
+  final Map<int, CcidReadEidResult> readEidResults;
+  final Set<int> eidRevealed;
   final ValueChanged<CcidReader> onRequestPermission;
   final ValueChanged<CcidReader> onPowerOn;
   final ValueChanged<CcidReader> onSelectIsdR;
+  final ValueChanged<CcidReader> onReadEid;
+  final ValueChanged<int> onToggleEidRevealed;
+  final ValueChanged<String> onCopyEid;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -166,9 +206,14 @@ class _ReadersList extends StatelessWidget {
               reader: reader,
               powerOnResult: powerOnResults[reader.id],
               selectIsdRResult: selectIsdRResults[reader.id],
+              readEidResult: readEidResults[reader.id],
+              eidRevealed: eidRevealed.contains(reader.id),
               onRequestPermission: () => onRequestPermission(reader),
               onPowerOn: () => onPowerOn(reader),
               onSelectIsdR: () => onSelectIsdR(reader),
+              onReadEid: () => onReadEid(reader),
+              onToggleEidRevealed: () => onToggleEidRevealed(reader.id),
+              onCopyEid: onCopyEid,
             ),
             const SizedBox(height: 12),
           ],
@@ -181,17 +226,27 @@ class _ReaderCard extends StatelessWidget {
     required this.reader,
     required this.powerOnResult,
     required this.selectIsdRResult,
+    required this.readEidResult,
+    required this.eidRevealed,
     required this.onRequestPermission,
     required this.onPowerOn,
     required this.onSelectIsdR,
+    required this.onReadEid,
+    required this.onToggleEidRevealed,
+    required this.onCopyEid,
   });
 
   final CcidReader reader;
   final CcidPowerOnResult? powerOnResult;
   final CcidSelectIsdRResult? selectIsdRResult;
+  final CcidReadEidResult? readEidResult;
+  final bool eidRevealed;
   final VoidCallback onRequestPermission;
   final VoidCallback onPowerOn;
   final VoidCallback onSelectIsdR;
+  final VoidCallback onReadEid;
+  final VoidCallback onToggleEidRevealed;
+  final ValueChanged<String> onCopyEid;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -276,6 +331,24 @@ class _ReaderCard extends StatelessWidget {
                     result: selectIsdRResult!,
                   ),
                 ],
+                const SizedBox(height: 12),
+                PillButton(
+                  key: ValueKey('adapter-reader-${reader.id}-read-eid-button'),
+                  label: 'Read EID',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: onReadEid,
+                ),
+                if (readEidResult != null) ...[
+                  const SizedBox(height: 12),
+                  _ReadEidResultView(
+                    key:
+                        ValueKey('adapter-reader-${reader.id}-read-eid-result'),
+                    result: readEidResult!,
+                    revealed: eidRevealed,
+                    onToggleRevealed: onToggleEidRevealed,
+                    onCopy: onCopyEid,
+                  ),
+                ],
               ],
             ],
           ],
@@ -354,6 +427,66 @@ class _SelectIsdRResultView extends StatelessWidget {
       CcidSelectIsdROutcome.notPoweredOn => 'Power on the card first.',
       CcidSelectIsdROutcome.success => '', // unreachable, handled above
       CcidSelectIsdROutcome.unknown => "Couldn't select ISD-R.",
+    };
+    return Text(message, style: AppTypography.caption(color: AppColors.danger));
+  }
+}
+
+class _ReadEidResultView extends StatelessWidget {
+  const _ReadEidResultView({
+    super.key,
+    required this.result,
+    required this.revealed,
+    required this.onToggleRevealed,
+    required this.onCopy,
+  });
+
+  final CcidReadEidResult result;
+  final bool revealed;
+  final VoidCallback onToggleRevealed;
+  final ValueChanged<String> onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    if (result.outcome == CcidReadEidOutcome.success) {
+      final eid = result.eid ?? '';
+      // FR-L914/docs/Rules.md: "EID ... stay on the device" and "mask
+      // them in UI by default" -- never sent anywhere, shown only on
+      // request.
+      final display = revealed
+          ? eid
+          : (eid.length > 4
+              ? '${'•' * (eid.length - 4)}${eid.substring(eid.length - 4)}'
+              : eid);
+      return Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('EID', style: AppTypography.label()),
+                Text(display, style: AppTypography.caption()),
+              ],
+            ),
+          ),
+          IconButton(
+            key: const ValueKey('adapter-eid-reveal-toggle'),
+            icon: Icon(revealed ? Icons.visibility_off : Icons.visibility),
+            onPressed: onToggleRevealed,
+          ),
+          IconButton(
+            key: const ValueKey('adapter-eid-copy'),
+            icon: const Icon(Icons.copy),
+            onPressed: () => onCopy(eid),
+          ),
+        ],
+      );
+    }
+    final message = switch (result.outcome) {
+      CcidReadEidOutcome.readFailed => "Couldn't read the EID.",
+      CcidReadEidOutcome.notPoweredOn => 'Power on the card first.',
+      CcidReadEidOutcome.success => '', // unreachable, handled above
+      CcidReadEidOutcome.unknown => "Couldn't read the EID.",
     };
     return Text(message, style: AppTypography.caption(color: AppColors.danger));
   }

@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import co.triptel.app.lpa.LpaBridge
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.atomic.AtomicBoolean
@@ -309,6 +310,41 @@ class UsbCcidReaders(private val context: Context) : EventChannel.StreamHandler 
                 }
             mainHandler.post { result.success(response) }
         }
+    }
+
+    /**
+     * FR-L914's own "done" criterion: a real EID read, driven by
+     * lpac's `euicc/` (via `LpaBridge`/`lpa_jni.c`) through the same
+     * already-powered-on card session. Run on a plain background
+     * [Thread] -- never [CcidTransceiver.executor] directly, since
+     * `LpaBridge`'s own methods each submit work *to* that executor
+     * and block for it; calling from a task already running on it
+     * would deadlock a single-thread pool.
+     */
+    fun readEid(deviceId: Int, result: MethodChannel.Result) {
+        val transceiver = transceivers[deviceId]
+        if (transceiver == null) {
+            result.success(mapOf("outcome" to "not_powered_on"))
+            return
+        }
+
+        val mainHandler = Handler(Looper.getMainLooper())
+        Thread {
+            val eid =
+                try {
+                    LpaBridge(transceiver).nativeReadEid()
+                } catch (e: Exception) {
+                    Log.w(TAG, "nativeReadEid failed", e)
+                    null
+                }
+            val response =
+                if (eid != null) {
+                    mapOf("outcome" to "success", "eid" to eid)
+                } else {
+                    mapOf("outcome" to "read_failed")
+                }
+            mainHandler.post { result.success(response) }
+        }.start()
     }
 
     private fun openSession(device: UsbDevice): CcidTransceiver? {

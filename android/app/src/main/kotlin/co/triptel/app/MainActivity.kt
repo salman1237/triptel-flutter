@@ -62,6 +62,14 @@ class MainActivity : FlutterActivity() {
                         usbCcidReaders.selectIsdR(deviceId, result)
                     }
                 }
+                "readEid" -> {
+                    val deviceId = call.argument<Int>("deviceId")
+                    if (deviceId == null) {
+                        result.error("invalid_argument", "deviceId is required", null)
+                    } else {
+                        usbCcidReaders.readEid(deviceId, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

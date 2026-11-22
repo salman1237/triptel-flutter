@@ -1,6 +1,38 @@
 # DECISIONS.md
 Judgment calls, newest first. Each: what, why, revisit-if.
 
+## 2026-11-22 — FR-L914: `readEid()` spawns a plain `Thread`, deliberately never `CcidTransceiver.executor`
+`LpaBridge`'s five methods (`connect`/`disconnect`/`logicalChannelOpen`/
+`logicalChannelClose`/`transmit`) each do
+`transceiver.executor.submit { ... }.get()` -- they block the *calling*
+thread while the real work runs on `CcidTransceiver`'s single
+dedicated worker thread (Rules.md: "one card, one in-flight APDU
+exchange at a time"). `lpa_jni.c`'s native code calls back into these
+methods synchronously while itself running on whatever thread called
+the JNI entry point (`nativeReadEid()`). If that entry point were ever
+invoked from a task already running *on* `transceiver.executor` (its
+own single thread), the `.submit().get()` inside `LpaBridge`'s methods
+would wait forever for a worker slot that the same thread is itself
+occupying -- a deadlock. Fixed by having `UsbCcidReaders.readEid()`
+spawn a **plain `Thread`** for the whole native call, never dispatching
+it onto `transceiver.executor` itself. Revisit if a future FR
+(FR-L917's download, likely) adds another entry point that calls into
+`LpaBridge`/native code -- it must follow the same rule: call from
+anywhere except `transceiver.executor`'s own thread.
+
+## 2026-11-22 — FR-L914 gate 2 cleared: user confirmed LGPL-2.1, not the ESTKME commercial license
+Asked the user directly (per this file's own 2026-11-19 "ASK BEFORE
+DECIDING" entry and CLAUDE.md's hard constraint) which license path to
+take for vendoring lpac's `euicc/` library. **User chose LGPL-2.1** --
+the same path `jmp-sim-manager` itself uses, per its `REUSE.toml`
+(`euicc/` is LGPL-2.1-only OR the ESTKME commercial license; `src/`/
+`driver/` are AGPL-3.0-only and will never be vendored here). No
+commercial agreement negotiated or needed. Revisit if a future
+distribution channel (e.g. an App Store review, or a partner
+integration) turns out to be incompatible with LGPL's relinking/
+source-on-request obligations -- would need to renegotiate toward the
+commercial license at that point, a real business step, not a code one.
+
 ## 2026-11-22 — FR-L913: `selectIsdR`'s "success" means the round trip completed, not that SW=9000
 `UsbCcidReaders.selectIsdR` reports `outcome: "success"` whenever the
 MANAGE CHANNEL + SELECT + T=0-chaining round trip completes to *any*
